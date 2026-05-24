@@ -1,0 +1,31 @@
+debug: false
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:school_erp;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  flyway:
+    enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+app:
+  master-data:
+    seed:
+      enabled: false
+  security:
+    auth:
+      max-failed-login-attempts: 5
+      lock-duration: 15m
+    bootstrap-super-admin:
+      enabled: false
+    jwt:
+      issuer: school-erp-test
+      audiences: school-erp-api
+      secret: test-secret-test-secret-test-secret-32
+      access-token-ttl: 15m
+      refresh-token-ttl: 7d
+      password-reset-token-ttl: 30m
