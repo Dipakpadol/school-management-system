@@ -166,6 +166,21 @@ public class StudentFeeAssignment extends BaseEntity {
 		recalculate();
 	}
 
+	public void reversePayment(FeePayment payment, FeePaymentStatus targetStatus, String reason) {
+		payment.getAllocations().forEach(allocation -> allocation.getInstallment().reversePayment(allocation.getAmount()));
+		if (targetStatus == FeePaymentStatus.REVERSED) {
+			payment.reverse(reason);
+		}
+		else if (targetStatus == FeePaymentStatus.VOIDED) {
+			payment.voidPayment(reason);
+		}
+		else if (targetStatus == FeePaymentStatus.REFUNDED) {
+			payment.refund(reason);
+		}
+		payment.getReceipt().cancel();
+		recalculate();
+	}
+
 	public Set<StudentFeeInstallment> orderedInstallments() {
 		return installments.stream()
 				.sorted(Comparator.comparing(StudentFeeInstallment::getDueDate)

@@ -1,8 +1,13 @@
 package com.school.erp.modules.auth.application;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
+import com.school.erp.common.audit.application.AuditAction;
+import com.school.erp.common.audit.application.AuditLogEvent;
+import com.school.erp.common.audit.application.AuditLogService;
 import com.school.erp.common.exception.BusinessException;
 import com.school.erp.common.exception.ErrorCode;
 import com.school.erp.common.exception.ResourceNotFoundException;
@@ -47,6 +52,7 @@ public class AuthService {
 	private final AuthProperties authProperties;
 	private final com.school.erp.common.security.JwtProperties jwtProperties;
 	private final ApplicationEventPublisher eventPublisher;
+	private final AuditLogService auditLogService;
 
 	@Transactional
 	public AuthenticationResponse login(LoginRequest request, ClientRequestInfo client) {
@@ -66,13 +72,18 @@ public class AuthService {
 		}
 
 		user.recordSuccessfulLogin();
-		return issueSession(user, client);
+		AuthenticationResponse response = issueSession(user, client);
+		auditAuth(user, AuditAction.LOGIN, null, authMetadata(user, client));
+		return response;
 	}
 
 	@Transactional
 	public void logout(LogoutRequest request) {
 		String tokenHash = secureTokenService.hash(request.refreshToken());
-		refreshTokenRepository.findByTokenHashAndDeletedFalse(tokenHash).ifPresent(RefreshToken::revoke);
+		refreshTokenRepository.findByTokenHashAndDeletedFalse(tokenHash).ifPresent(token -> {
+			token.revoke();
+			auditAuth(token.getUser(), AuditAction.LOGOUT, null, authMetadata(token.getUser(), null));
+		});
 	}
 
 	@Transactional
@@ -148,6 +159,7 @@ public class AuthService {
 		}
 		resetToken.markUsed();
 		refreshTokenRepository.revokeActiveTokensForUser(user.getId(), Instant.now());
+		auditAuth(user, "PASSWORD_RESET", null, Map.of("userId", user.getId().toString(), "email", user.getEmail()));
 	}
 
 	@Transactional
@@ -167,6 +179,7 @@ public class AuthService {
 
 		user.changePassword(passwordEncoder.encode(request.newPassword()));
 		refreshTokenRepository.revokeActiveTokensForUser(userId, Instant.now());
+		auditAuth(user, "PASSWORD_CHANGE", null, Map.of("userId", user.getId().toString(), "email", user.getEmail()));
 	}
 
 	private AuthenticationResponse issueSession(UserAccount user, ClientRequestInfo client) {
@@ -207,5 +220,29 @@ public class AuthService {
 
 	private BusinessException invalidCredentials() {
 		return new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+	}
+
+	private Map<String, Object> authMetadata(UserAccount user, ClientRequestInfo client) {
+		Map<String, Object> metadata = new LinkedHashMap<>();
+		metadata.put("userId", user.getId() == null ? null : user.getId().toString());
+		metadata.put("email", user.getEmail());
+		if (client != null) {
+			metadata.put("ipAddress", client.ipAddress());
+			metadata.put("userAgent", client.userAgent());
+		}
+		return metadata;
+	}
+
+	private void auditAuth(UserAccount user, String action, Object oldValue, Object newValue) {
+		auditLogService.recordAs(
+				new AuditLogEvent(
+						"AUTH",
+						"UserAccount",
+						user.getId() == null ? null : user.getId().toString(),
+						action,
+						oldValue,
+						newValue),
+				user.getEmail(),
+				null);
 	}
 }

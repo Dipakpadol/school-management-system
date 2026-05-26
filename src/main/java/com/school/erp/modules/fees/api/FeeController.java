@@ -5,6 +5,7 @@ import java.util.UUID;
 import com.school.erp.common.api.ApiResponse;
 import com.school.erp.common.api.PageRequestDto;
 import com.school.erp.common.api.PageResponse;
+import com.school.erp.common.importexport.ImportResultDto;
 import com.school.erp.common.web.CorrelationIdFilter;
 import com.school.erp.modules.fees.api.dto.AssessLateFeeRequest;
 import com.school.erp.modules.fees.api.dto.DefaulterSearchRequest;
@@ -20,9 +21,11 @@ import com.school.erp.modules.fees.api.dto.FeeStructureRequest;
 import com.school.erp.modules.fees.api.dto.FeeStructureResponse;
 import com.school.erp.modules.fees.api.dto.LateFeeRuleRequest;
 import com.school.erp.modules.fees.api.dto.LateFeeRuleResponse;
+import com.school.erp.modules.fees.api.dto.PaymentActionRequest;
 import com.school.erp.modules.fees.api.dto.PaymentCollectionRequest;
 import com.school.erp.modules.fees.api.dto.StudentFeeAssignmentRequest;
 import com.school.erp.modules.fees.api.dto.StudentFeeAssignmentResponse;
+import com.school.erp.modules.fees.application.FeeImportExportService;
 import com.school.erp.modules.fees.application.FeeService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,7 +35,9 @@ import jakarta.validation.Valid;
 
 import org.slf4j.MDC;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -44,7 +49,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import lombok.RequiredArgsConstructor;
 
@@ -56,6 +63,7 @@ import lombok.RequiredArgsConstructor;
 public class FeeController {
 
 	private final FeeService feeService;
+	private final FeeImportExportService feeImportExportService;
 
 	@PostMapping("/categories")
 	@PreAuthorize("hasAuthority('FEES_MANAGE')")
@@ -128,6 +136,58 @@ public class FeeController {
 			@PathVariable UUID structureId,
 			HttpServletRequest httpRequest) {
 		return ok(feeService.getFeeStructure(structureId), "Fee structure fetched successfully", httpRequest);
+	}
+
+	@PostMapping(value = "/structures/import/excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@PreAuthorize("hasAuthority('FEES_MANAGE')")
+	@Operation(summary = "Import fee structures from Excel")
+	public ResponseEntity<ApiResponse<ImportResultDto>> importStructuresExcel(
+			@RequestParam("file") MultipartFile file,
+			HttpServletRequest httpRequest) {
+		return ok(feeImportExportService.importStructuresExcel(file), "Fee structure Excel import completed", httpRequest);
+	}
+
+	@PostMapping(value = "/structures/import/csv", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@PreAuthorize("hasAuthority('FEES_MANAGE')")
+	@Operation(summary = "Import fee structures from CSV")
+	public ResponseEntity<ApiResponse<ImportResultDto>> importStructuresCsv(
+			@RequestParam("file") MultipartFile file,
+			HttpServletRequest httpRequest) {
+		return ok(feeImportExportService.importStructuresCsv(file), "Fee structure CSV import completed", httpRequest);
+	}
+
+	@GetMapping("/structures/export/excel")
+	@PreAuthorize("hasAuthority('FEES_READ')")
+	@Operation(summary = "Export fee structures to Excel")
+	public ResponseEntity<byte[]> exportStructuresExcel() {
+		return file(
+				feeImportExportService.exportStructuresExcel(),
+				"fee-structures.xlsx",
+				"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+	}
+
+	@GetMapping("/structures/export/csv")
+	@PreAuthorize("hasAuthority('FEES_READ')")
+	@Operation(summary = "Export fee structures to CSV")
+	public ResponseEntity<byte[]> exportStructuresCsv() {
+		return file(feeImportExportService.exportStructuresCsv(), "fee-structures.csv", "text/csv");
+	}
+
+	@GetMapping("/structures/template")
+	@PreAuthorize("hasAuthority('FEES_READ')")
+	@Operation(summary = "Download fee structure Excel template")
+	public ResponseEntity<byte[]> structureTemplate() {
+		return file(
+				feeImportExportService.feeStructureTemplateExcel(),
+				"fee-structure-import-template.xlsx",
+				"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+	}
+
+	@GetMapping("/structures/template/csv")
+	@PreAuthorize("hasAuthority('FEES_READ')")
+	@Operation(summary = "Download fee structure CSV template")
+	public ResponseEntity<byte[]> structureCsvTemplate() {
+		return file(feeImportExportService.feeStructureTemplateCsv(), "fee-structure-import-template.csv", "text/csv");
 	}
 
 	@PutMapping("/structures/{structureId}")
@@ -214,6 +274,58 @@ public class FeeController {
 		return ok(feeService.getAssignment(assignmentId), "Fee assignment fetched successfully", httpRequest);
 	}
 
+	@PostMapping(value = "/assignments/import/excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@PreAuthorize("hasAuthority('FEES_MANAGE')")
+	@Operation(summary = "Import student fee assignments from Excel")
+	public ResponseEntity<ApiResponse<ImportResultDto>> importAssignmentsExcel(
+			@RequestParam("file") MultipartFile file,
+			HttpServletRequest httpRequest) {
+		return ok(feeImportExportService.importAssignmentsExcel(file), "Fee assignment Excel import completed", httpRequest);
+	}
+
+	@PostMapping(value = "/assignments/import/csv", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@PreAuthorize("hasAuthority('FEES_MANAGE')")
+	@Operation(summary = "Import student fee assignments from CSV")
+	public ResponseEntity<ApiResponse<ImportResultDto>> importAssignmentsCsv(
+			@RequestParam("file") MultipartFile file,
+			HttpServletRequest httpRequest) {
+		return ok(feeImportExportService.importAssignmentsCsv(file), "Fee assignment CSV import completed", httpRequest);
+	}
+
+	@GetMapping("/assignments/export/excel")
+	@PreAuthorize("hasAuthority('FEES_READ')")
+	@Operation(summary = "Export student fee assignments to Excel")
+	public ResponseEntity<byte[]> exportAssignmentsExcel() {
+		return file(
+				feeImportExportService.exportAssignmentsExcel(),
+				"student-fee-assignments.xlsx",
+				"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+	}
+
+	@GetMapping("/assignments/export/csv")
+	@PreAuthorize("hasAuthority('FEES_READ')")
+	@Operation(summary = "Export student fee assignments to CSV")
+	public ResponseEntity<byte[]> exportAssignmentsCsv() {
+		return file(feeImportExportService.exportAssignmentsCsv(), "student-fee-assignments.csv", "text/csv");
+	}
+
+	@GetMapping("/assignments/template")
+	@PreAuthorize("hasAuthority('FEES_READ')")
+	@Operation(summary = "Download fee assignment Excel template")
+	public ResponseEntity<byte[]> assignmentTemplate() {
+		return file(
+				feeImportExportService.assignmentTemplateExcel(),
+				"student-fee-assignment-import-template.xlsx",
+				"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+	}
+
+	@GetMapping("/assignments/template/csv")
+	@PreAuthorize("hasAuthority('FEES_READ')")
+	@Operation(summary = "Download fee assignment CSV template")
+	public ResponseEntity<byte[]> assignmentCsvTemplate() {
+		return file(feeImportExportService.assignmentTemplateCsv(), "student-fee-assignment-import-template.csv", "text/csv");
+	}
+
 	@PostMapping("/assignments/{assignmentId}/discounts")
 	@PreAuthorize("hasAuthority('FEES_MANAGE')")
 	@Operation(summary = "Apply discount")
@@ -272,6 +384,52 @@ public class FeeController {
 		return ok(feeService.getReceipt(receiptNumber), "Fee receipt fetched successfully", httpRequest);
 	}
 
+	@GetMapping("/receipts/{receiptNumber}/pdf")
+	@PreAuthorize("hasAuthority('FEES_READ')")
+	@Operation(summary = "Download fee receipt PDF")
+	public ResponseEntity<byte[]> receiptPdf(@PathVariable String receiptNumber) {
+		return file(feeImportExportService.receiptPdf(receiptNumber), "fee-receipt-" + receiptNumber + ".pdf", "application/pdf");
+	}
+
+	@GetMapping("/import-errors/{batchId}")
+	@PreAuthorize("hasAuthority('FEES_READ')")
+	@Operation(summary = "Get fees import validation errors")
+	public ResponseEntity<ApiResponse<ImportResultDto>> importErrors(
+			@PathVariable UUID batchId,
+			HttpServletRequest httpRequest) {
+		return ok(feeImportExportService.importErrors(batchId), "Fees import errors fetched successfully", httpRequest);
+	}
+
+	@PostMapping("/payments/{paymentId}/reverse")
+	@PreAuthorize("hasAuthority('FEES_MANAGE')")
+	@Operation(summary = "Reverse payment")
+	public ResponseEntity<ApiResponse<StudentFeeAssignmentResponse>> reversePayment(
+			@PathVariable UUID paymentId,
+			@RequestBody(required = false) PaymentActionRequest request,
+			HttpServletRequest httpRequest) {
+		return ok(feeService.reversePayment(paymentId, request), "Payment reversed successfully", httpRequest);
+	}
+
+	@PostMapping("/payments/{paymentId}/void")
+	@PreAuthorize("hasAuthority('FEES_MANAGE')")
+	@Operation(summary = "Void payment")
+	public ResponseEntity<ApiResponse<StudentFeeAssignmentResponse>> voidPayment(
+			@PathVariable UUID paymentId,
+			@RequestBody(required = false) PaymentActionRequest request,
+			HttpServletRequest httpRequest) {
+		return ok(feeService.voidPayment(paymentId, request), "Payment voided successfully", httpRequest);
+	}
+
+	@PostMapping("/payments/{paymentId}/refund")
+	@PreAuthorize("hasAuthority('FEES_MANAGE')")
+	@Operation(summary = "Refund payment")
+	public ResponseEntity<ApiResponse<StudentFeeAssignmentResponse>> refundPayment(
+			@PathVariable UUID paymentId,
+			@RequestBody(required = false) PaymentActionRequest request,
+			HttpServletRequest httpRequest) {
+		return ok(feeService.refundPayment(paymentId, request), "Payment refunded successfully", httpRequest);
+	}
+
 	@GetMapping("/reports/defaulters")
 	@PreAuthorize("hasAuthority('FEES_READ')")
 	@Operation(summary = "Get fee defaulters")
@@ -282,6 +440,16 @@ public class FeeController {
 		return ok(feeService.findDefaulters(searchRequest, pageRequest), "Fee defaulters fetched successfully", httpRequest);
 	}
 
+	@GetMapping("/reports/defaulters/export/{format}")
+	@PreAuthorize("hasAuthority('FEES_READ')")
+	@Operation(summary = "Export fee defaulters")
+	public ResponseEntity<byte[]> exportDefaulters(@PathVariable String format) {
+		return file(
+				feeImportExportService.defaulterReport(format),
+				"fee-defaulters." + extension(format),
+				contentType(format));
+	}
+
 	@GetMapping("/reports/summary")
 	@PreAuthorize("hasAuthority('FEES_READ')")
 	@Operation(summary = "Get fee collection summary")
@@ -289,6 +457,16 @@ public class FeeController {
 			@Valid @ParameterObject FeeReportRequest reportRequest,
 			HttpServletRequest httpRequest) {
 		return ok(feeService.summarizeFees(reportRequest), "Fee summary fetched successfully", httpRequest);
+	}
+
+	@GetMapping("/reports/collection/export/{format}")
+	@PreAuthorize("hasAuthority('FEES_READ')")
+	@Operation(summary = "Export fee collection summary")
+	public ResponseEntity<byte[]> exportCollectionSummary(@PathVariable String format) {
+		return file(
+				feeImportExportService.collectionReport(format),
+				"fee-collection-summary." + extension(format),
+				contentType(format));
 	}
 
 	private <T> ResponseEntity<ApiResponse<T>> ok(T data, String message, HttpServletRequest request) {
@@ -305,5 +483,26 @@ public class FeeController {
 				message,
 				request.getRequestURI(),
 				MDC.get(CorrelationIdFilter.CORRELATION_ID));
+	}
+
+	private ResponseEntity<byte[]> file(byte[] content, String filename, String contentType) {
+		return ResponseEntity.ok()
+				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+				.contentType(MediaType.parseMediaType(contentType))
+				.body(content);
+	}
+
+	private String extension(String format) {
+		return "pdf".equalsIgnoreCase(format) ? "pdf" : "csv".equalsIgnoreCase(format) ? "csv" : "xlsx";
+	}
+
+	private String contentType(String format) {
+		if ("pdf".equalsIgnoreCase(format)) {
+			return "application/pdf";
+		}
+		if ("csv".equalsIgnoreCase(format)) {
+			return "text/csv";
+		}
+		return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 	}
 }

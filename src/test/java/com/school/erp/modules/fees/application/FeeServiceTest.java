@@ -37,6 +37,7 @@ import com.school.erp.modules.fees.domain.LateFeeRule;
 import com.school.erp.modules.fees.domain.PaymentMode;
 import com.school.erp.modules.fees.domain.StudentFeeAssignment;
 import com.school.erp.modules.fees.infrastructure.FeeCategoryRepository;
+import com.school.erp.modules.fees.infrastructure.FeePaymentRepository;
 import com.school.erp.modules.fees.infrastructure.FeeReceiptRepository;
 import com.school.erp.modules.fees.infrastructure.FeeStructureRepository;
 import com.school.erp.modules.fees.infrastructure.LateFeeRuleRepository;
@@ -72,6 +73,9 @@ class FeeServiceTest {
 	private FeeReceiptRepository feeReceiptRepository;
 
 	@Mock
+	private FeePaymentRepository feePaymentRepository;
+
+	@Mock
 	private StudentRepository studentRepository;
 
 	@Mock
@@ -87,6 +91,7 @@ class FeeServiceTest {
 				assignmentRepository,
 				lateFeeRuleRepository,
 				feeReceiptRepository,
+				feePaymentRepository,
 				studentRepository,
 				new FeeMapper(),
 				auditLogService);

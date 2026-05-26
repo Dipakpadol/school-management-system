@@ -98,6 +98,30 @@ public class FeePayment extends BaseEntity {
 		status = FeePaymentStatus.CANCELLED;
 	}
 
+	public boolean isCompleted() {
+		return status == FeePaymentStatus.COMPLETED;
+	}
+
+	public void reverse(String reason) {
+		updateStatus(FeePaymentStatus.REVERSED, reason);
+	}
+
+	public void voidPayment(String reason) {
+		updateStatus(FeePaymentStatus.VOIDED, reason);
+	}
+
+	public void refund(String reason) {
+		updateStatus(FeePaymentStatus.REFUNDED, reason);
+	}
+
+	private void updateStatus(FeePaymentStatus status, String reason) {
+		this.status = status;
+		if (StringUtils.hasText(reason)) {
+			String suffix = status.name() + ": " + reason.trim();
+			this.remarks = StringUtils.hasText(this.remarks) ? this.remarks + " | " + suffix : suffix;
+		}
+	}
+
 	private String trimToNull(String value) {
 		if (!StringUtils.hasText(value)) {
 			return null;

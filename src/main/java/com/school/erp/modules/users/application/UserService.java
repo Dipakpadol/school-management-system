@@ -1,7 +1,9 @@
 package com.school.erp.modules.users.application;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -14,18 +16,24 @@ import com.school.erp.common.exception.BusinessException;
 import com.school.erp.common.exception.ErrorCode;
 import com.school.erp.common.exception.ResourceNotFoundException;
 import com.school.erp.modules.users.api.dto.AdminResetPasswordRequest;
+import com.school.erp.modules.users.api.dto.PermissionResponse;
+import com.school.erp.modules.users.api.dto.RolePermissionMatrixResponse;
 import com.school.erp.modules.users.api.dto.RoleResponse;
+import com.school.erp.modules.users.api.dto.UpdateRolePermissionsRequest;
 import com.school.erp.modules.users.api.dto.UserCreateRequest;
 import com.school.erp.modules.users.api.dto.UserResponse;
 import com.school.erp.modules.users.api.dto.UserSearchRequest;
 import com.school.erp.modules.users.api.dto.UserUpdateRequest;
+import com.school.erp.modules.users.domain.Permission;
 import com.school.erp.modules.users.domain.Role;
 import com.school.erp.modules.users.domain.RoleName;
 import com.school.erp.modules.users.domain.UserAccount;
+import com.school.erp.modules.users.infrastructure.PermissionRepository;
 import com.school.erp.modules.users.infrastructure.RoleRepository;
 import com.school.erp.modules.users.infrastructure.UserAccountRepository;
 import com.school.erp.modules.users.infrastructure.UserAccountSpecifications;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -41,9 +49,11 @@ public class UserService {
 
 	private static final String MODULE_NAME = "USERS";
 	private static final String ENTITY_NAME = "UserAccount";
+	private static final String ROLE_ENTITY_NAME = "Role";
 
 	private final UserAccountRepository userAccountRepository;
 	private final RoleRepository roleRepository;
+	private final PermissionRepository permissionRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final UserMapper userMapper;
 	private final AuditLogService auditLogService;
@@ -97,6 +107,36 @@ public class UserService {
 				.map(userMapper::toRoleResponse)
 				.sorted(java.util.Comparator.comparing(role -> role.name().name()))
 				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public RolePermissionMatrixResponse getRolePermissions(UUID roleId) {
+		Role role = loadRole(roleId);
+		Set<UUID> assignedPermissionIds = role.getPermissions().stream()
+				.map(Permission::getId)
+				.collect(java.util.stream.Collectors.toSet());
+		List<PermissionResponse> permissions = permissionRepository.findAllByDeletedFalse(Pageable.unpaged()).stream()
+				.sorted(Comparator.comparing(Permission::getCode))
+				.map(permission -> userMapper.toPermissionResponse(
+						permission,
+						assignedPermissionIds.contains(permission.getId())))
+				.toList();
+		return userMapper.toRolePermissionMatrixResponse(role, permissions);
+	}
+
+	@Transactional
+	public RolePermissionMatrixResponse updateRolePermissions(UUID roleId, UpdateRolePermissionsRequest request) {
+		Role role = loadRole(roleId);
+		validateSuperAdminPermissionMutation(role);
+		List<String> oldPermissionCodes = permissionCodes(role.getPermissions());
+		Set<Permission> permissions = resolvePermissions(new LinkedHashSet<>(request.permissionIds()));
+
+		role.replacePermissions(permissions);
+		roleRepository.save(role);
+
+		List<String> newPermissionCodes = permissionCodes(role.getPermissions());
+		auditRole(role.getId(), "UPDATE", Map.of("permissions", oldPermissionCodes), Map.of("permissions", newPermissionCodes));
+		return getRolePermissions(role.getId());
 	}
 
 	@Transactional
@@ -169,6 +209,30 @@ public class UserService {
 				.orElseThrow(() -> new ResourceNotFoundException("User", userId));
 	}
 
+	private Role loadRole(UUID roleId) {
+		return roleRepository.findByIdAndDeletedFalse(roleId)
+				.orElseThrow(() -> new ResourceNotFoundException("Role", roleId));
+	}
+
+	private Set<Permission> resolvePermissions(Set<UUID> permissionIds) {
+		if (permissionIds.isEmpty()) {
+			return new LinkedHashSet<>();
+		}
+		List<Permission> permissions = permissionRepository.findAllById(permissionIds);
+		Set<UUID> foundIds = permissions.stream()
+				.map(Permission::getId)
+				.collect(java.util.stream.Collectors.toSet());
+		List<UUID> missingIds = permissionIds.stream()
+				.filter(id -> !foundIds.contains(id))
+				.toList();
+		if (!missingIds.isEmpty()) {
+			throw new ResourceNotFoundException("Permission", missingIds);
+		}
+		return permissions.stream()
+				.sorted(Comparator.comparing(Permission::getCode))
+				.collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+	}
+
 	private Set<Role> resolveRoles(Set<RoleName> roleNames) {
 		if (roleNames == null || roleNames.isEmpty()) {
 			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "At least one role is required.");
@@ -217,6 +281,12 @@ public class UserService {
 		}
 	}
 
+	private void validateSuperAdminPermissionMutation(Role role) {
+		if (role.getName() == RoleName.SUPER_ADMIN && !currentUserHasRole("ROLE_SUPER_ADMIN")) {
+			throw new BusinessException(ErrorCode.FORBIDDEN, "Only SUPER_ADMIN can update SUPER_ADMIN permissions.");
+		}
+	}
+
 	private void preventSelfMutation(UUID userId, String message) {
 		currentUserId().filter(userId::equals).ifPresent(id -> {
 			throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, message);
@@ -258,5 +328,22 @@ public class UserService {
 				action,
 				oldValue,
 				newValue));
+	}
+
+	private void auditRole(UUID roleId, String action, Object oldValue, Object newValue) {
+		auditLogService.record(new AuditLogEvent(
+				MODULE_NAME,
+				ROLE_ENTITY_NAME,
+				roleId == null ? null : roleId.toString(),
+				action,
+				oldValue,
+				newValue));
+	}
+
+	private List<String> permissionCodes(Set<Permission> permissions) {
+		return permissions.stream()
+				.map(Permission::getCode)
+				.sorted()
+				.toList();
 	}
 }

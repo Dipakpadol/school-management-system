@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.school.erp.common.api.ErrorResponse;
 import com.school.erp.common.api.FieldErrorResponse;
+import com.school.erp.common.importexport.ImportValidationException;
 import com.school.erp.common.web.CorrelationIdFilter;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -53,6 +54,17 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(BusinessException.class)
 	ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex, HttpServletRequest request) {
 		return build(ex.getErrorCode(), ex.getMessage(), request, List.of());
+	}
+
+	@ExceptionHandler(ImportValidationException.class)
+	ResponseEntity<ErrorResponse> handleImportValidation(ImportValidationException ex, HttpServletRequest request) {
+		List<FieldErrorResponse> errors = ex.getResult().errors().stream()
+				.map(error -> new FieldErrorResponse(
+						"row[" + error.rowNumber() + "]." + error.fieldName(),
+						error.errorMessage(),
+						null))
+				.toList();
+		return build(ErrorCode.VALIDATION_ERROR, ex.getMessage(), request, errors);
 	}
 
 	@ExceptionHandler(AuthenticationException.class)

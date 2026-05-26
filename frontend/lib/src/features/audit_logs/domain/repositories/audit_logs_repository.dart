@@ -9,4 +9,22 @@ abstract interface class AuditLogsRepository {
   });
 
   Future<Result<AuditLogModel>> auditLog(String id);
+
+  Future<Result<void>> exportExcel({
+    String? moduleName,
+    String? action,
+    String? performedBy,
+  });
+
+  Future<Result<void>> exportCsv({
+    String? moduleName,
+    String? action,
+    String? performedBy,
+  });
+
+  Future<Result<void>> exportPdf({
+    String? moduleName,
+    String? action,
+    String? performedBy,
+  });
 }

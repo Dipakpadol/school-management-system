@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/result/result.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/auth_session.dart';
+import '../../domain/entities/auth_user.dart';
 import '../../domain/repositories/auth_repository.dart';
 
 final authControllerProvider = NotifierProvider<AuthController, AuthState>(
@@ -21,6 +22,7 @@ class AuthState {
   const AuthState({
     required this.status,
     this.session,
+    this.currentUser,
     this.isSubmitting = false,
     this.errorMessage,
   });
@@ -33,19 +35,27 @@ class AuthState {
           errorMessage: errorMessage,
         );
 
-  const AuthState.authenticated(AuthSession? session)
-      : this(status: AuthStatus.authenticated, session: session);
+  factory AuthState.authenticated(AuthSession? session, {AuthUser? user}) {
+    return AuthState(
+      status: AuthStatus.authenticated,
+      session: session,
+      currentUser: session?.user ?? user,
+    );
+  }
 
   final AuthStatus status;
   final AuthSession? session;
+  final AuthUser? currentUser;
   final bool isSubmitting;
   final String? errorMessage;
 
   bool get isAuthenticated => status == AuthStatus.authenticated;
+  AuthUser? get user => session?.user ?? currentUser;
 
   AuthState copyWith({
     AuthStatus? status,
     AuthSession? session,
+    AuthUser? currentUser,
     bool? isSubmitting,
     String? errorMessage,
     bool clearError = false,
@@ -53,6 +63,7 @@ class AuthState {
     return AuthState(
       status: status ?? this.status,
       session: session ?? this.session,
+      currentUser: currentUser ?? this.currentUser,
       isSubmitting: isSubmitting ?? this.isSubmitting,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
     );
@@ -94,8 +105,24 @@ class AuthController extends Notifier<AuthState> {
 
   Future<void> _restoreSession() async {
     final hasSession = await _repository.hasSavedSession();
-    state = hasSession
-        ? const AuthState.authenticated(null)
-        : const AuthState.unauthenticated();
+    if (!hasSession) {
+      state = const AuthState.unauthenticated();
+      return;
+    }
+
+    final result = await _repository.currentUser();
+    AuthUser? restoredUser;
+    result.when(
+      success: (user) {
+        restoredUser = user;
+      },
+      failure: (_) {},
+    );
+    if (restoredUser != null) {
+      state = AuthState.authenticated(null, user: restoredUser);
+      return;
+    }
+    await _repository.logout();
+    state = const AuthState.unauthenticated();
   }
 }

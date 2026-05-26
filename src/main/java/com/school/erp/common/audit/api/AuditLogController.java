@@ -7,6 +7,7 @@ import com.school.erp.common.api.PageRequestDto;
 import com.school.erp.common.api.PageResponse;
 import com.school.erp.common.audit.api.dto.AuditLogDto;
 import com.school.erp.common.audit.api.dto.AuditLogSearchRequest;
+import com.school.erp.common.audit.application.AuditLogExportService;
 import com.school.erp.common.audit.application.AuditLogService;
 import com.school.erp.common.web.CorrelationIdFilter;
 
@@ -18,6 +19,8 @@ import jakarta.validation.Valid;
 
 import org.slf4j.MDC;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -36,6 +39,7 @@ import lombok.RequiredArgsConstructor;
 public class AuditLogController {
 
 	private final AuditLogService auditLogService;
+	private final AuditLogExportService auditLogExportService;
 
 	@GetMapping
 	@PreAuthorize("hasAuthority('AUDIT_LOGS_READ')")
@@ -54,6 +58,30 @@ public class AuditLogController {
 			@Parameter(description = "Audit log UUID") @PathVariable UUID id,
 			HttpServletRequest httpRequest) {
 		return ok(auditLogService.getById(id), "Audit log fetched successfully", httpRequest);
+	}
+
+	@GetMapping("/export/excel")
+	@PreAuthorize("hasAuthority('AUDIT_LOGS_READ')")
+	@Operation(summary = "Export audit logs to Excel")
+	public ResponseEntity<byte[]> exportExcel(@Valid @ParameterObject AuditLogSearchRequest searchRequest) {
+		return file(
+				auditLogExportService.exportExcel(searchRequest),
+				"audit-logs.xlsx",
+				"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+	}
+
+	@GetMapping("/export/csv")
+	@PreAuthorize("hasAuthority('AUDIT_LOGS_READ')")
+	@Operation(summary = "Export audit logs to CSV")
+	public ResponseEntity<byte[]> exportCsv(@Valid @ParameterObject AuditLogSearchRequest searchRequest) {
+		return file(auditLogExportService.exportCsv(searchRequest), "audit-logs.csv", "text/csv");
+	}
+
+	@GetMapping("/export/pdf")
+	@PreAuthorize("hasAuthority('AUDIT_LOGS_READ')")
+	@Operation(summary = "Export audit logs to PDF")
+	public ResponseEntity<byte[]> exportPdf(@Valid @ParameterObject AuditLogSearchRequest searchRequest) {
+		return file(auditLogExportService.exportPdf(searchRequest), "audit-logs.pdf", "application/pdf");
 	}
 
 	@GetMapping("/by-module/{moduleName}")
@@ -83,5 +111,12 @@ public class AuditLogController {
 				message,
 				request.getRequestURI(),
 				MDC.get(CorrelationIdFilter.CORRELATION_ID)));
+	}
+
+	private ResponseEntity<byte[]> file(byte[] content, String filename, String contentType) {
+		return ResponseEntity.ok()
+				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+				.contentType(MediaType.parseMediaType(contentType))
+				.body(content);
 	}
 }

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/download/file_downloader.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/result/result.dart';
 import '../../domain/repositories/audit_logs_repository.dart';
@@ -27,14 +28,65 @@ class AuditLogsRepositoryImpl implements AuditLogsRepository {
         moduleName: moduleName,
         action: action,
         performedBy: performedBy,
-      ))
-          .content,
+      )).content,
     );
   }
 
   @override
   Future<Result<AuditLogModel>> auditLog(String id) {
     return _guard(() => _remoteDataSource.auditLog(id));
+  }
+
+  @override
+  Future<Result<void>> exportExcel({
+    String? moduleName,
+    String? action,
+    String? performedBy,
+  }) {
+    return _guard(() async {
+      final bytes = await _remoteDataSource.exportExcel(
+        moduleName: moduleName,
+        action: action,
+        performedBy: performedBy,
+      );
+      await downloadBytes(
+        bytes,
+        'audit-logs.xlsx',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+    });
+  }
+
+  @override
+  Future<Result<void>> exportCsv({
+    String? moduleName,
+    String? action,
+    String? performedBy,
+  }) {
+    return _guard(() async {
+      final bytes = await _remoteDataSource.exportCsv(
+        moduleName: moduleName,
+        action: action,
+        performedBy: performedBy,
+      );
+      await downloadBytes(bytes, 'audit-logs.csv', 'text/csv');
+    });
+  }
+
+  @override
+  Future<Result<void>> exportPdf({
+    String? moduleName,
+    String? action,
+    String? performedBy,
+  }) {
+    return _guard(() async {
+      final bytes = await _remoteDataSource.exportPdf(
+        moduleName: moduleName,
+        action: action,
+        performedBy: performedBy,
+      );
+      await downloadBytes(bytes, 'audit-logs.pdf', 'application/pdf');
+    });
   }
 
   Future<Result<T>> _guard<T>(Future<T> Function() action) async {

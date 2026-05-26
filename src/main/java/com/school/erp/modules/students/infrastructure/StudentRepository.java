@@ -19,6 +19,21 @@ public interface StudentRepository extends BaseRepository<Student, UUID>, JpaSpe
 
 	Optional<Student> findByAdmissionNumberIgnoreCaseAndDeletedFalse(String admissionNumber);
 
+	@Query("""
+			select count(assignment) > 0
+			from StudentClassAssignment assignment
+			where assignment.deleted = false
+			  and lower(assignment.academicYear) = lower(:academicYear)
+			  and lower(assignment.className) = lower(:className)
+			  and lower(assignment.sectionName) = lower(:sectionName)
+			  and lower(assignment.rollNumber) = lower(:rollNumber)
+			""")
+	boolean existsRollNumberInClassSectionYear(
+			@Param("academicYear") String academicYear,
+			@Param("className") String className,
+			@Param("sectionName") String sectionName,
+			@Param("rollNumber") String rollNumber);
+
 	@EntityGraph(attributePaths = { "parents", "parents.parent", "documents", "classAssignments" })
 	@Query("select distinct student from Student student where student.id = :id and student.deleted = false")
 	Optional<Student> findProfileByIdAndDeletedFalse(@Param("id") UUID id);

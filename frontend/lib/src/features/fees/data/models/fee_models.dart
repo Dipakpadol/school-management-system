@@ -15,9 +15,9 @@ class PagePayload<T> {
     return PagePayload(
       content: content is List
           ? content
-              .whereType<Map<String, dynamic>>()
-              .map(mapper)
-              .toList(growable: false)
+                .whereType<Map<String, dynamic>>()
+                .map(mapper)
+                .toList(growable: false)
           : const [],
       page: json['page'] as int? ?? 0,
       size: json['size'] as int? ?? 20,

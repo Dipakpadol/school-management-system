@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/download/file_downloader.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/result/result.dart';
 import '../../domain/repositories/fees_repository.dart';
@@ -22,7 +23,9 @@ class FeesRepositoryImpl implements FeesRepository {
   }
 
   @override
-  Future<Result<FeeCategoryModel>> createCategory(Map<String, dynamic> payload) {
+  Future<Result<FeeCategoryModel>> createCategory(
+    Map<String, dynamic> payload,
+  ) {
     return _guard(() => _remoteDataSource.createCategory(payload));
   }
 
@@ -68,7 +71,9 @@ class FeesRepositoryImpl implements FeesRepository {
     String assignmentId,
     Map<String, dynamic> payload,
   ) {
-    return _guard(() => _remoteDataSource.collectPayment(assignmentId, payload));
+    return _guard(
+      () => _remoteDataSource.collectPayment(assignmentId, payload),
+    );
   }
 
   @override
@@ -79,6 +84,131 @@ class FeesRepositoryImpl implements FeesRepository {
   @override
   Future<Result<List<FeeDefaulterModel>>> defaulters() {
     return _guard(() async => (await _remoteDataSource.defaulters()).content);
+  }
+
+  @override
+  Future<Result<StudentFeeAssignmentModel>> reversePayment(String paymentId) {
+    return _guard(() => _remoteDataSource.reversePayment(paymentId));
+  }
+
+  @override
+  Future<Result<StudentFeeAssignmentModel>> voidPayment(String paymentId) {
+    return _guard(() => _remoteDataSource.voidPayment(paymentId));
+  }
+
+  @override
+  Future<Result<StudentFeeAssignmentModel>> refundPayment(String paymentId) {
+    return _guard(() => _remoteDataSource.refundPayment(paymentId));
+  }
+
+  @override
+  Future<Result<void>> exportStructuresExcel() {
+    return _guard(() async {
+      final bytes = await _remoteDataSource.exportStructuresExcel();
+      await downloadBytes(
+        bytes,
+        'fee-structures.xlsx',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+    });
+  }
+
+  @override
+  Future<Result<void>> exportAssignmentsExcel() {
+    return _guard(() async {
+      final bytes = await _remoteDataSource.exportAssignmentsExcel();
+      await downloadBytes(
+        bytes,
+        'student-fee-assignments.xlsx',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+    });
+  }
+
+  @override
+  Future<Result<void>> downloadStructureTemplate() {
+    return _guard(() async {
+      final bytes = await _remoteDataSource.structureTemplate();
+      await downloadBytes(
+        bytes,
+        'fee-structure-import-template.xlsx',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+    });
+  }
+
+  @override
+  Future<Result<void>> downloadAssignmentTemplate() {
+    return _guard(() async {
+      final bytes = await _remoteDataSource.assignmentTemplate();
+      await downloadBytes(
+        bytes,
+        'student-fee-assignment-import-template.xlsx',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+    });
+  }
+
+  @override
+  Future<Result<void>> downloadReceiptPdf(String receiptNumber) {
+    return _guard(() async {
+      final bytes = await _remoteDataSource.receiptPdf(receiptNumber);
+      await downloadBytes(
+        bytes,
+        'fee-receipt-$receiptNumber.pdf',
+        'application/pdf',
+      );
+    });
+  }
+
+  @override
+  Future<Result<void>> exportDefaulters(String format) {
+    return _guard(() async {
+      final bytes = await _remoteDataSource.defaultersExport(format);
+      await downloadBytes(
+        bytes,
+        'fee-defaulters.${_extension(format)}',
+        _contentType(format),
+      );
+    });
+  }
+
+  @override
+  Future<Result<void>> exportCollection(String format) {
+    return _guard(() async {
+      final bytes = await _remoteDataSource.collectionExport(format);
+      await downloadBytes(
+        bytes,
+        'fee-collection-summary.${_extension(format)}',
+        _contentType(format),
+      );
+    });
+  }
+
+  @override
+  Future<Result<void>> importStructuresExcel(List<int> bytes, String filename) {
+    return _guard(
+      () => _remoteDataSource.importStructuresExcel(bytes, filename),
+    );
+  }
+
+  @override
+  Future<Result<void>> importStructuresCsv(List<int> bytes, String filename) {
+    return _guard(() => _remoteDataSource.importStructuresCsv(bytes, filename));
+  }
+
+  @override
+  Future<Result<void>> importAssignmentsExcel(List<int> bytes, String filename) {
+    return _guard(
+      () => _remoteDataSource.importAssignmentsExcel(bytes, filename),
+    );
+  }
+
+  @override
+  Future<Result<void>> importAssignmentsCsv(List<int> bytes, String filename) {
+    return _guard(
+      () => _remoteDataSource.importAssignmentsCsv(bytes, filename),
+    );
   }
 
   Future<Result<T>> _guard<T>(Future<T> Function() action) async {
@@ -115,5 +245,25 @@ class FeesRepositoryImpl implements FeesRepository {
       return data['message'] as String?;
     }
     return null;
+  }
+
+  String _extension(String format) {
+    if (format == 'pdf') {
+      return 'pdf';
+    }
+    if (format == 'csv') {
+      return 'csv';
+    }
+    return 'xlsx';
+  }
+
+  String _contentType(String format) {
+    if (format == 'pdf') {
+      return 'application/pdf';
+    }
+    if (format == 'csv') {
+      return 'text/csv';
+    }
+    return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
   }
 }

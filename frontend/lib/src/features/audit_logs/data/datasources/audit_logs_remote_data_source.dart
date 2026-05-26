@@ -5,8 +5,9 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/network/page_payload.dart';
 import '../models/audit_log_models.dart';
 
-final auditLogsRemoteDataSourceProvider =
-    Provider<AuditLogsRemoteDataSource>((ref) {
+final auditLogsRemoteDataSourceProvider = Provider<AuditLogsRemoteDataSource>((
+  ref,
+) {
   return AuditLogsRemoteDataSource(ref.watch(apiClientProvider));
 });
 
@@ -43,6 +44,65 @@ class AuditLogsRemoteDataSource {
       ApiPaths.auditLog(id),
     );
     return AuditLogModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<List<int>> exportExcel({
+    String? moduleName,
+    String? action,
+    String? performedBy,
+  }) {
+    return _apiClient.download(
+      ApiPaths.auditLogsExportExcel,
+      queryParameters: _filterParams(
+        moduleName: moduleName,
+        action: action,
+        performedBy: performedBy,
+      ),
+    );
+  }
+
+  Future<List<int>> exportCsv({
+    String? moduleName,
+    String? action,
+    String? performedBy,
+  }) {
+    return _apiClient.download(
+      ApiPaths.auditLogsExportCsv,
+      queryParameters: _filterParams(
+        moduleName: moduleName,
+        action: action,
+        performedBy: performedBy,
+      ),
+    );
+  }
+
+  Future<List<int>> exportPdf({
+    String? moduleName,
+    String? action,
+    String? performedBy,
+  }) {
+    return _apiClient.download(
+      ApiPaths.auditLogsExportPdf,
+      queryParameters: _filterParams(
+        moduleName: moduleName,
+        action: action,
+        performedBy: performedBy,
+      ),
+    );
+  }
+
+  Map<String, dynamic> _filterParams({
+    String? moduleName,
+    String? action,
+    String? performedBy,
+  }) {
+    return {
+      if (moduleName != null && moduleName.trim().isNotEmpty)
+        'moduleName': moduleName.trim(),
+      if (action != null && action.trim().isNotEmpty) 'action': action.trim(),
+      if (performedBy != null && performedBy.trim().isNotEmpty)
+        'performedBy': performedBy.trim(),
+    };
   }
 
   Map<String, dynamic> _unwrapData(Map<String, dynamic>? body) {

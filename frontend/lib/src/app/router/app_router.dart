@@ -4,12 +4,14 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/controllers/auth_controller.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/audit_logs/presentation/pages/audit_logs_page.dart';
+import '../../features/dashboard/domain/menu_policy.dart';
 import '../../features/dashboard/presentation/dashboard_page.dart';
 import '../../features/dashboard/presentation/module_placeholder_page.dart';
 import '../../features/fees/presentation/pages/fee_structure_form_page.dart';
 import '../../features/fees/presentation/pages/fees_management_page.dart';
 import '../../features/fees/presentation/pages/payment_collection_page.dart';
 import '../../features/fees/presentation/pages/student_fee_assignment_page.dart';
+import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/students/presentation/pages/students_page.dart';
 import '../../features/users/presentation/pages/users_page.dart';
 import 'app_routes.dart';
@@ -29,6 +31,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return onLogin ? null : AppRoutes.login;
       }
       if (onLogin) {
+        return AppRoutes.dashboard;
+      }
+      final guardedModuleId = moduleIdForPath(state.uri.path);
+      if (guardedModuleId != null &&
+          !canAccessModule(authState.user, guardedModuleId)) {
         return AppRoutes.dashboard;
       }
       return null;
@@ -63,6 +70,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.auditLogs,
         name: AppRouteName.auditLogs,
         builder: (context, state) => const AuditLogsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.settings,
+        name: AppRouteName.settings,
+        builder: (context, state) => const SettingsPage(),
       ),
       GoRoute(
         path: AppRoutes.newFeeStructure,

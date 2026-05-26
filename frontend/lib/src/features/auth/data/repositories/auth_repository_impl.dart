@@ -5,6 +5,7 @@ import '../../../../core/error/failure.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/storage/token_storage.dart';
 import '../../domain/entities/auth_session.dart';
+import '../../domain/entities/auth_user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_data_source.dart';
 
@@ -72,6 +73,19 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<bool> hasSavedSession() async {
     final token = await _tokenStorage.readAccessToken();
     return token != null && token.isNotEmpty;
+  }
+
+  @override
+  Future<Result<AuthUser>> currentUser() async {
+    try {
+      return Success((await _remoteDataSource.me()).toDomain());
+    } on DioException catch (error) {
+      return FailureResult(_failureFromDio(error));
+    } on FormatException catch (error) {
+      return FailureResult(ValidationFailure(error.message));
+    } catch (_) {
+      return const FailureResult(UnexpectedFailure());
+    }
   }
 
   Failure _failureFromDio(DioException error) {

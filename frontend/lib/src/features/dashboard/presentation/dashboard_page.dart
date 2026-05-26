@@ -10,8 +10,9 @@ import '../../auth/presentation/controllers/auth_controller.dart';
 import '../domain/entities/dashboard_metric.dart';
 import '../domain/entities/dashboard_overview.dart';
 import '../domain/erp_module.dart';
-import '../domain/module_registry.dart';
+import '../domain/menu_policy.dart';
 import 'controllers/dashboard_controller.dart';
+import 'controllers/menu_controller.dart';
 
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
@@ -19,6 +20,15 @@ class DashboardPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final overview = ref.watch(dashboardOverviewProvider);
+    final user = ref.watch(authControllerProvider).user;
+    final fallbackModules = visibleErpModules(user);
+    final modules = ref.watch(currentMenuProvider).maybeWhen(
+          data: (items) => visibleErpModulesFromMenuIds(
+            user,
+            items.map((item) => item.moduleId),
+          ),
+          orElse: () => fallbackModules,
+        );
 
     return AdminShell(
       title: 'Dashboard',
@@ -31,6 +41,7 @@ class DashboardPage extends ConsumerWidget {
       child: overview.when(
         data: (data) => _DashboardContent(
           overview: data,
+          modules: modules,
           onRefresh: () => ref.invalidate(dashboardOverviewProvider),
         ),
         error: (error, _) {
@@ -58,10 +69,12 @@ class DashboardPage extends ConsumerWidget {
 class _DashboardContent extends StatelessWidget {
   const _DashboardContent({
     required this.overview,
+    required this.modules,
     required this.onRefresh,
   });
 
   final DashboardOverview overview;
+  final List<ErpModule> modules;
   final VoidCallback onRefresh;
 
   @override
@@ -115,7 +128,7 @@ class _DashboardContent extends StatelessWidget {
         ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-          sliver: _ModuleGrid(modules: erpModules),
+          sliver: _ModuleGrid(modules: modules),
         ),
       ],
     );

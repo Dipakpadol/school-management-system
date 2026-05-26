@@ -21,4 +21,14 @@ abstract interface class UsersRepository {
   Future<Result<void>> resetPassword(String userId, String password);
 
   Future<Result<void>> delete(String userId);
+
+  Future<Result<void>> exportExcel();
+
+  Future<Result<void>> exportCsv();
+
+  Future<Result<void>> downloadTemplate();
+
+  Future<Result<void>> importExcel(List<int> bytes, String filename);
+
+  Future<Result<void>> importCsv(List<int> bytes, String filename);
 }

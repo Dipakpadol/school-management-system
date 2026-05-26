@@ -214,8 +214,8 @@ class _FeeStructureFormPageState extends ConsumerState<FeeStructureFormPage> {
                               onRemove: _items.length == 1 || readOnly
                                   ? null
                                   : () => setState(() {
-                                        _items.removeAt(index).dispose();
-                                      }),
+                                      _items.removeAt(index).dispose();
+                                    }),
                             ),
                         ],
                       ),
@@ -244,10 +244,8 @@ class _FeeStructureFormPageState extends ConsumerState<FeeStructureFormPage> {
                               onRemove: _installments.length == 1 || readOnly
                                   ? null
                                   : () => setState(() {
-                                        _installments
-                                            .removeAt(index)
-                                            .dispose();
-                                      }),
+                                      _installments.removeAt(index).dispose();
+                                    }),
                             ),
                         ],
                       ),
@@ -292,12 +290,12 @@ class _FeeStructureFormPageState extends ConsumerState<FeeStructureFormPage> {
       0,
       (total, item) => total + (_amount(item.amountController.text) ?? 0),
     );
-    final installmentTotal = _installments.fold<double>(
-      0,
-      (total, installment) {
-        return total + (_amount(installment.amountController.text) ?? 0);
-      },
-    );
+    final installmentTotal = _installments.fold<double>(0, (
+      total,
+      installment,
+    ) {
+      return total + (_amount(installment.amountController.text) ?? 0);
+    });
     if ((itemTotal - installmentTotal).abs() > 0.009) {
       _showSnack('Fee item total must equal installment total.');
       return;
@@ -420,9 +418,9 @@ class _FeeStructureFormPageState extends ConsumerState<FeeStructureFormPage> {
   }
 
   void _showSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -462,9 +460,9 @@ class _FormHeader extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   title,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ],
             ),
@@ -482,11 +480,7 @@ class _FormHeader extends StatelessWidget {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({
-    required this.title,
-    required this.child,
-    this.trailing,
-  });
+  const _SectionCard({required this.title, required this.child, this.trailing});
 
   final String title;
   final Widget child;
@@ -590,8 +584,11 @@ class _FeeItemRow extends StatefulWidget {
 class _FeeItemRowState extends State<_FeeItemRow> {
   @override
   Widget build(BuildContext context) {
-    final categoryIds = widget.categories.map((category) => category.id).toSet();
-    final missingSelectedCategory = widget.input.categoryId != null &&
+    final categoryIds = widget.categories
+        .map((category) => category.id)
+        .toSet();
+    final missingSelectedCategory =
+        widget.input.categoryId != null &&
         !categoryIds.contains(widget.input.categoryId);
     final selectedCategory = widget.input.categoryId;
 
@@ -705,9 +702,9 @@ class _InstallmentRow extends StatelessWidget {
             child: Center(
               child: Text(
                 sequenceNo.toString(),
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
               ),
             ),
           );
@@ -743,7 +740,13 @@ class _InstallmentRow extends StatelessWidget {
           if (compact) {
             return Column(
               children: [
-                Row(children: [sequence, Expanded(child: title), remove]),
+                Row(
+                  children: [
+                    sequence,
+                    Expanded(child: title),
+                    remove,
+                  ],
+                ),
                 const SizedBox(height: 10),
                 dueDate,
                 const SizedBox(height: 10),
@@ -770,13 +773,10 @@ class _InstallmentRow extends StatelessWidget {
 }
 
 class _FeeItemInput {
-  _FeeItemInput({
-    this.categoryId,
-    double? amount,
-    this.mandatory = true,
-  }) : amountController = TextEditingController(
-          text: amount == null ? '' : amount.toStringAsFixed(2),
-        );
+  _FeeItemInput({this.categoryId, double? amount, this.mandatory = true})
+    : amountController = TextEditingController(
+        text: amount == null ? '' : amount.toStringAsFixed(2),
+      );
 
   String? categoryId;
   bool mandatory;
@@ -788,15 +788,12 @@ class _FeeItemInput {
 }
 
 class _InstallmentInput {
-  _InstallmentInput({
-    String? title,
-    String? dueDate,
-    double? amount,
-  })  : titleController = TextEditingController(text: title ?? ''),
-        dueDateController = TextEditingController(text: dueDate ?? ''),
-        amountController = TextEditingController(
-          text: amount == null ? '' : amount.toStringAsFixed(2),
-        );
+  _InstallmentInput({String? title, String? dueDate, double? amount})
+    : titleController = TextEditingController(text: title ?? ''),
+      dueDateController = TextEditingController(text: dueDate ?? ''),
+      amountController = TextEditingController(
+        text: amount == null ? '' : amount.toStringAsFixed(2),
+      );
 
   final TextEditingController titleController;
   final TextEditingController dueDateController;

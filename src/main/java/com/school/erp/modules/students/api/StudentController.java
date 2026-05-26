@@ -5,6 +5,7 @@ import java.util.UUID;
 import com.school.erp.common.api.ApiResponse;
 import com.school.erp.common.api.PageRequestDto;
 import com.school.erp.common.api.PageResponse;
+import com.school.erp.common.importexport.ImportResultDto;
 import com.school.erp.common.web.CorrelationIdFilter;
 import com.school.erp.modules.students.api.dto.ClassSectionAssignmentRequest;
 import com.school.erp.modules.students.api.dto.ParentMappingRequest;
@@ -15,6 +16,7 @@ import com.school.erp.modules.students.api.dto.StudentResponse;
 import com.school.erp.modules.students.api.dto.StudentSearchRequest;
 import com.school.erp.modules.students.api.dto.StudentStatusUpdateRequest;
 import com.school.erp.modules.students.api.dto.StudentSummaryResponse;
+import com.school.erp.modules.students.application.StudentImportExportService;
 import com.school.erp.modules.students.application.StudentService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,7 +27,9 @@ import jakarta.validation.Valid;
 
 import org.slf4j.MDC;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -37,7 +41,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import lombok.RequiredArgsConstructor;
 
@@ -49,6 +55,7 @@ import lombok.RequiredArgsConstructor;
 public class StudentController {
 
 	private final StudentService studentService;
+	private final StudentImportExportService studentImportExportService;
 
 	@PostMapping("/admissions")
 	@PreAuthorize("hasAuthority('STUDENTS_CREATE')")
@@ -75,6 +82,67 @@ public class StudentController {
 		return ok(response, "Students fetched successfully", httpRequest);
 	}
 
+	@PostMapping(value = "/import/excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@PreAuthorize("hasAuthority('STUDENTS_CREATE')")
+	@Operation(summary = "Import students from Excel")
+	public ResponseEntity<ApiResponse<ImportResultDto>> importExcel(
+			@RequestParam("file") MultipartFile file,
+			HttpServletRequest httpRequest) {
+		return ok(studentImportExportService.importExcel(file), "Student Excel import completed", httpRequest);
+	}
+
+	@PostMapping(value = "/import/csv", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@PreAuthorize("hasAuthority('STUDENTS_CREATE')")
+	@Operation(summary = "Import students from CSV")
+	public ResponseEntity<ApiResponse<ImportResultDto>> importCsv(
+			@RequestParam("file") MultipartFile file,
+			HttpServletRequest httpRequest) {
+		return ok(studentImportExportService.importCsv(file), "Student CSV import completed", httpRequest);
+	}
+
+	@GetMapping("/export/excel")
+	@PreAuthorize("hasAuthority('STUDENTS_READ')")
+	@Operation(summary = "Export students to Excel")
+	public ResponseEntity<byte[]> exportExcel() {
+		return file(
+				studentImportExportService.exportExcel(),
+				"students.xlsx",
+				"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+	}
+
+	@GetMapping("/export/csv")
+	@PreAuthorize("hasAuthority('STUDENTS_READ')")
+	@Operation(summary = "Export students to CSV")
+	public ResponseEntity<byte[]> exportCsv() {
+		return file(studentImportExportService.exportCsv(), "students.csv", "text/csv");
+	}
+
+	@GetMapping("/template")
+	@PreAuthorize("hasAuthority('STUDENTS_READ')")
+	@Operation(summary = "Download student Excel import template")
+	public ResponseEntity<byte[]> template() {
+		return file(
+				studentImportExportService.excelTemplate(),
+				"student-import-template.xlsx",
+				"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+	}
+
+	@GetMapping("/template/csv")
+	@PreAuthorize("hasAuthority('STUDENTS_READ')")
+	@Operation(summary = "Download student CSV import template")
+	public ResponseEntity<byte[]> csvTemplate() {
+		return file(studentImportExportService.csvTemplate(), "student-import-template.csv", "text/csv");
+	}
+
+	@GetMapping("/import-errors/{batchId}")
+	@PreAuthorize("hasAuthority('STUDENTS_READ')")
+	@Operation(summary = "Get student import validation errors")
+	public ResponseEntity<ApiResponse<ImportResultDto>> importErrors(
+			@PathVariable UUID batchId,
+			HttpServletRequest httpRequest) {
+		return ok(studentImportExportService.importErrors(batchId), "Student import errors fetched successfully", httpRequest);
+	}
+
 	@GetMapping("/{studentId}")
 	@PreAuthorize("hasAuthority('STUDENTS_READ')")
 	@Operation(summary = "Get student profile", description = "Fetches full student profile, parent mappings, documents, and class assignments.")
@@ -82,6 +150,13 @@ public class StudentController {
 			@Parameter(description = "Student UUID") @PathVariable UUID studentId,
 			HttpServletRequest httpRequest) {
 		return ok(studentService.getStudentProfile(studentId), "Student profile fetched successfully", httpRequest);
+	}
+
+	@GetMapping("/{studentId}/pdf")
+	@PreAuthorize("hasAuthority('STUDENTS_READ')")
+	@Operation(summary = "Export student profile PDF")
+	public ResponseEntity<byte[]> profilePdf(@PathVariable UUID studentId) {
+		return file(studentImportExportService.profilePdf(studentId), "student-profile-" + studentId + ".pdf", "application/pdf");
 	}
 
 	@PutMapping("/{studentId}/profile")
@@ -249,5 +324,12 @@ public class StudentController {
 				message,
 				request.getRequestURI(),
 				MDC.get(CorrelationIdFilter.CORRELATION_ID));
+	}
+
+	private ResponseEntity<byte[]> file(byte[] content, String filename, String contentType) {
+		return ResponseEntity.ok()
+				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+				.contentType(MediaType.parseMediaType(contentType))
+				.body(content);
 	}
 }

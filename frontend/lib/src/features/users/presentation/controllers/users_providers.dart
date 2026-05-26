@@ -6,22 +6,24 @@ import '../../data/repositories/users_repository_impl.dart';
 
 final userSearchQueryProvider =
     NotifierProvider<UserSearchQueryController, String>(
-  UserSearchQueryController.new,
-);
+      UserSearchQueryController.new,
+    );
 
 final userRoleFilterProvider =
     NotifierProvider<UserRoleFilterController, String?>(
-  UserRoleFilterController.new,
-);
+      UserRoleFilterController.new,
+    );
 
 final userStatusFilterProvider =
     NotifierProvider<UserStatusFilterController, String?>(
-  UserStatusFilterController.new,
-);
+      UserStatusFilterController.new,
+    );
 
 final usersProvider = FutureProvider<List<UserModel>>((ref) {
   return _resolve(
-    ref.watch(usersRepositoryProvider).users(
+    ref
+        .watch(usersRepositoryProvider)
+        .users(
           query: ref.watch(userSearchQueryProvider),
           role: ref.watch(userRoleFilterProvider),
           status: ref.watch(userStatusFilterProvider),

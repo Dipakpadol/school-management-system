@@ -89,7 +89,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 }
-
 class _LoginForm extends StatelessWidget {
   const _LoginForm({
     required this.formKey,
@@ -135,7 +134,7 @@ class _LoginForm extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'School ERP',
+                  'School Management System',
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w800,
@@ -257,36 +256,6 @@ class _LoginVisualPanel extends StatelessWidget {
       color: ink,
       child: Stack(
         children: [
-          Positioned(
-            right: 64,
-            top: 80,
-            child: _VisualTile(
-              icon: Icons.groups_2_outlined,
-              label: 'Students',
-              value: '2,480',
-              color: const Color(0xFF22C55E),
-            ),
-          ),
-          Positioned(
-            left: 72,
-            top: 210,
-            child: _VisualTile(
-              icon: Icons.payments_outlined,
-              label: 'Fees',
-              value: '94%',
-              color: const Color(0xFFF59E0B),
-            ),
-          ),
-          Positioned(
-            right: 110,
-            bottom: 130,
-            child: _VisualTile(
-              icon: Icons.fact_check_outlined,
-              label: 'Attendance',
-              value: '97%',
-              color: const Color(0xFF38BDF8),
-            ),
-          ),
           Align(
             alignment: Alignment.center,
             child: ConstrainedBox(
@@ -316,71 +285,6 @@ class _LoginVisualPanel extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _VisualTile extends StatelessWidget {
-  const _VisualTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 168,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          SizedBox.square(
-            dimension: 38,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: Colors.white, size: 21),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  value,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFFCBD5E1),
-                  ),
-                ),
-              ],
             ),
           ),
         ],

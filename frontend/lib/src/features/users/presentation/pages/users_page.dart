@@ -7,6 +7,8 @@ import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/result/result.dart';
+import '../../../../core/upload/file_picker.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/models/user_models.dart';
 import '../../data/repositories/users_repository_impl.dart';
@@ -82,10 +84,9 @@ class _UserHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final roles = ref.watch(rolesProvider).maybeWhen(
-          data: (roles) => roles,
-          orElse: () => const <RoleModel>[],
-        );
+    final roles = ref
+        .watch(rolesProvider)
+        .maybeWhen(data: (roles) => roles, orElse: () => const <RoleModel>[]);
     final selectedRole = ref.watch(userRoleFilterProvider);
     final selectedStatus = ref.watch(userStatusFilterProvider);
 
@@ -155,6 +156,37 @@ class _UserHeader extends ConsumerWidget {
               label: 'Create user',
               icon: Icons.person_add_alt_1_outlined,
               onPressed: onAdd,
+            ),
+            OutlinedButton.icon(
+              onPressed: () => _runUserDownload(
+                context,
+                ref.read(usersRepositoryProvider).exportExcel(),
+                'User export downloaded.',
+              ),
+              icon: const Icon(Icons.download_outlined),
+              label: const Text('Export'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => _runUserDownload(
+                context,
+                ref.read(usersRepositoryProvider).downloadTemplate(),
+                'User template downloaded.',
+              ),
+              icon: const Icon(Icons.table_view_outlined),
+              label: const Text('Template'),
+            ),
+            PopupMenuButton<String>(
+              tooltip: 'Import users',
+              icon: const Icon(Icons.upload_file_outlined),
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'excel', child: Text('Import Excel')),
+                PopupMenuItem(value: 'csv', child: Text('Import CSV')),
+              ],
+              onSelected: (format) => _runPickedUserImport(
+                context,
+                ref,
+                format,
+              ),
             ),
             OutlinedButton.icon(
               onPressed: () => ref.invalidate(usersProvider),
@@ -261,7 +293,9 @@ class _UserCard extends ConsumerWidget {
                 const PopupMenuItem(value: 'edit', child: Text('Edit')),
                 PopupMenuItem(
                   value: user.status == 'ACTIVE' ? 'deactivate' : 'activate',
-                  child: Text(user.status == 'ACTIVE' ? 'Deactivate' : 'Activate'),
+                  child: Text(
+                    user.status == 'ACTIVE' ? 'Deactivate' : 'Activate',
+                  ),
                 ),
                 const PopupMenuItem(
                   value: 'reset',
@@ -326,10 +360,9 @@ Future<void> _showUserDialog(
   WidgetRef ref, {
   UserModel? user,
 }) async {
-  final roles = ref.read(rolesProvider).maybeWhen(
-        data: (roles) => roles,
-        orElse: () => const <RoleModel>[],
-      );
+  final roles = ref
+      .read(rolesProvider)
+      .maybeWhen(data: (roles) => roles, orElse: () => const <RoleModel>[]);
   final firstName = TextEditingController(text: user?.firstName ?? '');
   final lastName = TextEditingController(text: user?.lastName ?? '');
   final email = TextEditingController(text: user?.email ?? '');
@@ -624,4 +657,46 @@ Future<bool> _confirm(BuildContext context, String message) async {
 
 void _snack(BuildContext context, String message) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+}
+
+Future<void> _runUserDownload(
+  BuildContext context,
+  Future<Result<void>> action,
+  String successMessage,
+) async {
+  final result = await action;
+  if (!context.mounted) {
+    return;
+  }
+  result.when(
+    success: (_) => _snack(context, successMessage),
+    failure: (failure) => _snack(context, failure.message),
+  );
+}
+
+Future<void> _runPickedUserImport(
+  BuildContext context,
+  WidgetRef ref,
+  String format,
+) async {
+  final file = await pickUploadFile(
+    accept: format == 'csv' ? '.csv,text/csv' : '.xlsx,.xls',
+  );
+  if (file == null || !context.mounted) {
+    return;
+  }
+  final repository = ref.read(usersRepositoryProvider);
+  final result = format == 'csv'
+      ? await repository.importCsv(file.bytes, file.name)
+      : await repository.importExcel(file.bytes, file.name);
+  if (!context.mounted) {
+    return;
+  }
+  result.when(
+    success: (_) {
+      _snack(context, 'User import completed.');
+      ref.invalidate(usersProvider);
+    },
+    failure: (failure) => _snack(context, failure.message),
+  );
 }

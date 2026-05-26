@@ -32,6 +32,7 @@ import com.school.erp.modules.fees.api.dto.FeeStructureResponse;
 import com.school.erp.modules.fees.api.dto.LateFeeRuleRequest;
 import com.school.erp.modules.fees.api.dto.LateFeeRuleResponse;
 import com.school.erp.modules.fees.api.dto.PaymentCollectionRequest;
+import com.school.erp.modules.fees.api.dto.PaymentActionRequest;
 import com.school.erp.modules.fees.api.dto.StudentFeeAssignmentRequest;
 import com.school.erp.modules.fees.api.dto.StudentFeeAssignmentResponse;
 import com.school.erp.modules.fees.domain.DiscountCalculationType;
@@ -39,6 +40,7 @@ import com.school.erp.modules.fees.domain.FeeCategory;
 import com.school.erp.modules.fees.domain.FeeDiscount;
 import com.school.erp.modules.fees.domain.FeeInstallmentStatus;
 import com.school.erp.modules.fees.domain.FeePayment;
+import com.school.erp.modules.fees.domain.FeePaymentStatus;
 import com.school.erp.modules.fees.domain.FeeReceipt;
 import com.school.erp.modules.fees.domain.FeeStructure;
 import com.school.erp.modules.fees.domain.FeeStructureInstallment;
@@ -48,6 +50,7 @@ import com.school.erp.modules.fees.domain.StudentFeeAssignment;
 import com.school.erp.modules.fees.domain.StudentFeeInstallment;
 import com.school.erp.modules.fees.infrastructure.FeeAssignmentSpecifications;
 import com.school.erp.modules.fees.infrastructure.FeeCategoryRepository;
+import com.school.erp.modules.fees.infrastructure.FeePaymentRepository;
 import com.school.erp.modules.fees.infrastructure.FeeReceiptRepository;
 import com.school.erp.modules.fees.infrastructure.FeeStructureRepository;
 import com.school.erp.modules.fees.infrastructure.LateFeeRuleRepository;
@@ -75,6 +78,7 @@ public class FeeService {
 	private final StudentFeeAssignmentRepository assignmentRepository;
 	private final LateFeeRuleRepository lateFeeRuleRepository;
 	private final FeeReceiptRepository feeReceiptRepository;
+	private final FeePaymentRepository feePaymentRepository;
 	private final StudentRepository studentRepository;
 	private final FeeMapper feeMapper;
 	private final AuditLogService auditLogService;
@@ -328,6 +332,21 @@ public class FeeService {
 	}
 
 	@Transactional
+	public StudentFeeAssignmentResponse reversePayment(UUID paymentId, PaymentActionRequest request) {
+		return processPaymentAction(paymentId, request, FeePaymentStatus.REVERSED, "PAYMENT_REVERSAL");
+	}
+
+	@Transactional
+	public StudentFeeAssignmentResponse voidPayment(UUID paymentId, PaymentActionRequest request) {
+		return processPaymentAction(paymentId, request, FeePaymentStatus.VOIDED, "PAYMENT_VOID");
+	}
+
+	@Transactional
+	public StudentFeeAssignmentResponse refundPayment(UUID paymentId, PaymentActionRequest request) {
+		return processPaymentAction(paymentId, request, FeePaymentStatus.REFUNDED, "REFUND");
+	}
+
+	@Transactional
 	public FeeCategoryResponse deleteCategory(UUID categoryId) {
 		FeeCategory category = loadCategory(categoryId);
 		FeeCategoryResponse oldValue = feeMapper.toCategoryResponse(category);
@@ -459,6 +478,37 @@ public class FeeService {
 	private StudentFeeAssignment loadAssignment(UUID assignmentId) {
 		return assignmentRepository.findDetailedByIdAndDeletedFalse(assignmentId)
 				.orElseThrow(() -> new ResourceNotFoundException("Student fee assignment", assignmentId));
+	}
+
+	private StudentFeeAssignmentResponse processPaymentAction(
+			UUID paymentId,
+			PaymentActionRequest request,
+			FeePaymentStatus targetStatus,
+			String auditAction) {
+		FeePayment payment = feePaymentRepository.findDetailedByIdAndDeletedFalse(paymentId)
+				.orElseThrow(() -> new ResourceNotFoundException("Fee payment", paymentId));
+		if (!payment.isCompleted()) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Only completed payments can be reversed, voided, or refunded.");
+		}
+		StudentFeeAssignment assignment = payment.getAssignment();
+		StudentFeeAssignmentResponse oldValue = feeMapper.toAssignmentResponse(assignment);
+		String reason = request == null ? null : request.reason();
+		assignment.reversePayment(payment, targetStatus, reason);
+		StudentFeeAssignmentResponse response = feeMapper.toAssignmentResponse(assignment);
+		audit(
+				"FeePayment",
+				paymentId,
+				auditAction,
+				oldValue,
+				Map.of(
+						"paymentId", paymentId,
+						"targetStatus", targetStatus,
+						"assignment", response,
+						"processedBy", request == null ? currentActor() : firstText(request.processedBy(), currentActor()),
+						"actionDate", request == null || request.actionDate() == null ? LocalDate.now() : request.actionDate()));
+		return response;
 	}
 
 	private void validateFeeStructureRequest(FeeStructureRequest request) {

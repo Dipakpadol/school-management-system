@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/api_paths.dart';
@@ -76,15 +77,42 @@ class UsersRemoteDataSource {
   Future<void> resetPassword(String userId, String password) async {
     await _apiClient.post<Map<String, dynamic>>(
       ApiPaths.userResetPassword(userId),
-      data: {
-        'newPassword': password,
-        'confirmPassword': password,
-      },
+      data: {'newPassword': password, 'confirmPassword': password},
     );
   }
 
   Future<void> delete(String userId) async {
     await _apiClient.delete<Map<String, dynamic>>(ApiPaths.user(userId));
+  }
+
+  Future<List<int>> exportExcel() {
+    return _apiClient.download(ApiPaths.usersExportExcel);
+  }
+
+  Future<List<int>> exportCsv() {
+    return _apiClient.download(ApiPaths.usersExportCsv);
+  }
+
+  Future<List<int>> template() {
+    return _apiClient.download(ApiPaths.usersTemplate);
+  }
+
+  Future<void> importExcel(List<int> bytes, String filename) async {
+    await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.usersImportExcel,
+      data: FormData.fromMap({
+        'file': MultipartFile.fromBytes(bytes, filename: filename),
+      }),
+    );
+  }
+
+  Future<void> importCsv(List<int> bytes, String filename) async {
+    await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.usersImportCsv,
+      data: FormData.fromMap({
+        'file': MultipartFile.fromBytes(bytes, filename: filename),
+      }),
+    );
   }
 
   Map<String, dynamic> _unwrapData(Map<String, dynamic>? body) {

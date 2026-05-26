@@ -38,3 +38,5 @@ frontend/.flutter-plugins-dependencies
 frontend/.metadata
 frontend/build/
 frontend/coverage/
+
+.metadata/*

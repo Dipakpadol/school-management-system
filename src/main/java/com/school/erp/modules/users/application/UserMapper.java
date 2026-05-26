@@ -1,9 +1,13 @@
 package com.school.erp.modules.users.application;
 
 import java.util.Comparator;
+import java.util.List;
 
+import com.school.erp.modules.users.api.dto.PermissionResponse;
+import com.school.erp.modules.users.api.dto.RolePermissionMatrixResponse;
 import com.school.erp.modules.users.api.dto.RoleResponse;
 import com.school.erp.modules.users.api.dto.UserResponse;
+import com.school.erp.modules.users.domain.Permission;
 import com.school.erp.modules.users.domain.Role;
 import com.school.erp.modules.users.domain.UserAccount;
 
@@ -33,5 +37,25 @@ public class UserMapper {
 
 	public RoleResponse toRoleResponse(Role role) {
 		return new RoleResponse(role.getId(), role.getName(), role.getDisplayName(), role.getDescription());
+	}
+
+	public PermissionResponse toPermissionResponse(Permission permission, boolean assigned) {
+		return new PermissionResponse(
+				permission.getId(),
+				permission.getCode(),
+				permission.getName(),
+				permission.getDescription(),
+				assigned);
+	}
+
+	public RolePermissionMatrixResponse toRolePermissionMatrixResponse(
+			Role role,
+			List<PermissionResponse> permissions) {
+		return new RolePermissionMatrixResponse(
+				role.getId(),
+				role.getName(),
+				role.getDisplayName(),
+				role.getDescription(),
+				permissions);
 	}
 }

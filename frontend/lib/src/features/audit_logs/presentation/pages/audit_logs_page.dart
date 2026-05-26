@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
+import '../../../../core/result/result.dart';
 import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/models/audit_log_models.dart';
+import '../../data/repositories/audit_logs_repository_impl.dart';
 import '../controllers/audit_logs_providers.dart';
 
 class AuditLogsPage extends ConsumerStatefulWidget {
@@ -93,6 +95,10 @@ class _AuditHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final moduleName = ref.watch(auditModuleFilterProvider);
+    final action = ref.watch(auditActionFilterProvider);
+    final performedBy = ref.watch(auditUserFilterProvider);
+
     return Material(
       color: Colors.white,
       child: Padding(
@@ -153,6 +159,36 @@ class _AuditHeader extends ConsumerWidget {
               onPressed: () => ref.invalidate(auditLogsProvider),
               icon: const Icon(Icons.refresh),
               label: const Text('Refresh'),
+            ),
+            PopupMenuButton<String>(
+              tooltip: 'Export audit logs',
+              icon: const Icon(Icons.download_outlined),
+              onSelected: (format) {
+                final repository = ref.read(auditLogsRepositoryProvider);
+                final download = switch (format) {
+                  'excel' => repository.exportExcel(
+                    moduleName: moduleName,
+                    action: action,
+                    performedBy: performedBy,
+                  ),
+                  'csv' => repository.exportCsv(
+                    moduleName: moduleName,
+                    action: action,
+                    performedBy: performedBy,
+                  ),
+                  _ => repository.exportPdf(
+                    moduleName: moduleName,
+                    action: action,
+                    performedBy: performedBy,
+                  ),
+                };
+                _runAuditDownload(context, download);
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'excel', child: Text('Export Excel')),
+                PopupMenuItem(value: 'csv', child: Text('Export CSV')),
+                PopupMenuItem(value: 'pdf', child: Text('Export PDF')),
+              ],
             ),
           ],
         ),
@@ -324,10 +360,7 @@ void _showAuditDetail(BuildContext context, AuditLogModel log) {
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({
-    required this.label,
-    required this.value,
-  });
+  const _DetailRow({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -356,10 +389,7 @@ class _DetailRow extends StatelessWidget {
 }
 
 class _JsonBlock extends StatelessWidget {
-  const _JsonBlock({
-    required this.title,
-    required this.value,
-  });
+  const _JsonBlock({required this.title, required this.value});
 
   final String title;
   final String? value;
@@ -371,9 +401,9 @@ class _JsonBlock extends StatelessWidget {
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w800,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 6),
         DecoratedBox(
@@ -386,9 +416,11 @@ class _JsonBlock extends StatelessWidget {
             width: double.infinity,
             child: Padding(
               padding: const EdgeInsets.all(12),
-              child: SelectableText(value?.trim().isNotEmpty ?? false
-                  ? value!
-                  : 'No value recorded.'),
+              child: SelectableText(
+                value?.trim().isNotEmpty ?? false
+                    ? value!
+                    : 'No value recorded.',
+              ),
             ),
           ),
         ),
@@ -406,4 +438,22 @@ String _dateTimeLabel(DateTime value) {
 
 String _message(Object error) {
   return error.toString().replaceFirst('Exception: ', '');
+}
+
+void _snack(BuildContext context, String message) {
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+}
+
+Future<void> _runAuditDownload(
+  BuildContext context,
+  Future<Result<void>> action,
+) async {
+  final result = await action;
+  if (!context.mounted) {
+    return;
+  }
+  result.when(
+    success: (_) => _snack(context, 'Audit log export downloaded.'),
+    failure: (failure) => _snack(context, failure.message),
+  );
 }

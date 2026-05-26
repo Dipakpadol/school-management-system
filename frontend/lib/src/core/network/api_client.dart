@@ -24,6 +24,18 @@ class ApiClient {
     );
   }
 
+  Future<List<int>> download(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    final response = await _dio.get<List<int>>(
+      path,
+      queryParameters: queryParameters,
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return response.data ?? const <int>[];
+  }
+
   Future<Response<T>> post<T>(
     String path, {
     Object? data,

@@ -21,4 +21,16 @@ abstract interface class StudentsRepository {
   Future<Result<StudentProfileModel>> deactivate(String studentId);
 
   Future<Result<void>> delete(String studentId);
+
+  Future<Result<void>> exportExcel();
+
+  Future<Result<void>> exportCsv();
+
+  Future<Result<void>> downloadTemplate();
+
+  Future<Result<void>> downloadProfilePdf(String studentId);
+
+  Future<Result<void>> importExcel(List<int> bytes, String filename);
+
+  Future<Result<void>> importCsv(List<int> bytes, String filename);
 }

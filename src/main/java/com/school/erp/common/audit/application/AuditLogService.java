@@ -42,6 +42,25 @@ public class AuditLogService {
 
 	@Transactional(propagation = Propagation.MANDATORY)
 	public AuditLogDto record(AuditLogEvent event) {
+		return persist(event, currentActor(), currentIpAddress());
+	}
+
+	@Transactional(propagation = Propagation.MANDATORY)
+	public AuditLogDto recordAs(AuditLogEvent event, String performedBy, String ipAddress) {
+		return persist(event, performedBy, ipAddress);
+	}
+
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
+	public AuditLogDto recordStandalone(AuditLogEvent event) {
+		return persist(event, currentActor(), currentIpAddress());
+	}
+
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
+	public AuditLogDto recordStandaloneAs(AuditLogEvent event, String performedBy, String ipAddress) {
+		return persist(event, performedBy, ipAddress);
+	}
+
+	private AuditLogDto persist(AuditLogEvent event, String performedBy, String ipAddress) {
 		AuditLog auditLog = new AuditLog(
 				event.moduleName(),
 				event.entityName(),
@@ -49,9 +68,9 @@ public class AuditLogService {
 				event.action(),
 				serialize(event.oldValue()),
 				serialize(event.newValue()),
-				currentActor(),
+				StringUtils.hasText(performedBy) ? performedBy : currentActor(),
 				Instant.now(),
-				currentIpAddress());
+				StringUtils.hasText(ipAddress) ? ipAddress : currentIpAddress());
 		return auditLogMapper.toDto(auditLogRepository.save(auditLog));
 	}
 

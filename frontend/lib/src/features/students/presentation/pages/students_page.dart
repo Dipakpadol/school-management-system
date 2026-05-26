@@ -7,6 +7,8 @@ import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/result/result.dart';
+import '../../../../core/upload/file_picker.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/models/student_models.dart';
 import '../../data/repositories/students_repository_impl.dart';
@@ -140,6 +142,37 @@ class _StudentHeader extends ConsumerWidget {
               onPressed: onAdd,
             ),
             OutlinedButton.icon(
+              onPressed: () => _runStudentDownload(
+                context,
+                ref.read(studentsRepositoryProvider).exportExcel(),
+                'Student export downloaded.',
+              ),
+              icon: const Icon(Icons.download_outlined),
+              label: const Text('Export'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => _runStudentDownload(
+                context,
+                ref.read(studentsRepositoryProvider).downloadTemplate(),
+                'Student template downloaded.',
+              ),
+              icon: const Icon(Icons.table_view_outlined),
+              label: const Text('Template'),
+            ),
+            PopupMenuButton<String>(
+              tooltip: 'Import students',
+              icon: const Icon(Icons.upload_file_outlined),
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'excel', child: Text('Import Excel')),
+                PopupMenuItem(value: 'csv', child: Text('Import CSV')),
+              ],
+              onSelected: (format) => _runPickedStudentImport(
+                context,
+                ref,
+                format,
+              ),
+            ),
+            OutlinedButton.icon(
               onPressed: () => ref.invalidate(studentsProvider),
               icon: const Icon(Icons.refresh),
               label: const Text('Refresh'),
@@ -188,10 +221,7 @@ class _StudentList extends ConsumerWidget {
 }
 
 class _StudentCard extends StatelessWidget {
-  const _StudentCard({
-    required this.student,
-    required this.onOpen,
-  });
+  const _StudentCard({required this.student, required this.onOpen});
 
   final StudentSummaryModel student;
   final VoidCallback onOpen;
@@ -345,6 +375,22 @@ Future<void> _showStudentProfile(
           profile.maybeWhen(
             data: (student) {
               return OutlinedButton.icon(
+                onPressed: () => _runStudentDownload(
+                  context,
+                  ref
+                      .read(studentsRepositoryProvider)
+                      .downloadProfilePdf(student.id),
+                  'Student profile PDF downloaded.',
+                ),
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                label: const Text('PDF'),
+              );
+            },
+            orElse: () => const SizedBox.shrink(),
+          ),
+          profile.maybeWhen(
+            data: (student) {
+              return OutlinedButton.icon(
                 onPressed: () async {
                   await _showEditStudentDialog(context, ref, student);
                 },
@@ -438,9 +484,9 @@ class _StudentProfileDetail extends StatelessWidget {
             children: [
               Text(
                 student.displayName,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
               _StatusChip(status: student.status),
             ],
@@ -550,9 +596,9 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-        fontWeight: FontWeight.w800,
-      ),
+      style: Theme.of(
+        context,
+      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
     );
   }
 }
@@ -596,20 +642,30 @@ Future<void> _showAdmissionDialog(BuildContext context, WidgetRef ref) async {
                       ),
                       TextFormField(
                         controller: firstName,
-                        decoration: const InputDecoration(labelText: 'First name'),
+                        decoration: const InputDecoration(
+                          labelText: 'First name',
+                        ),
                         validator: _required,
                       ),
                       TextFormField(
                         controller: lastName,
-                        decoration: const InputDecoration(labelText: 'Last name'),
+                        decoration: const InputDecoration(
+                          labelText: 'Last name',
+                        ),
                       ),
                       DropdownButtonFormField<String>(
                         initialValue: gender,
                         decoration: const InputDecoration(labelText: 'Gender'),
                         items: const [
                           DropdownMenuItem(value: 'MALE', child: Text('Male')),
-                          DropdownMenuItem(value: 'FEMALE', child: Text('Female')),
-                          DropdownMenuItem(value: 'OTHER', child: Text('Other')),
+                          DropdownMenuItem(
+                            value: 'FEMALE',
+                            child: Text('Female'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'OTHER',
+                            child: Text('Other'),
+                          ),
                         ],
                         onChanged: (value) => gender = value ?? gender,
                       ),
@@ -629,7 +685,9 @@ Future<void> _showAdmissionDialog(BuildContext context, WidgetRef ref) async {
                       ),
                       TextFormField(
                         controller: roll,
-                        decoration: const InputDecoration(labelText: 'Roll number'),
+                        decoration: const InputDecoration(
+                          labelText: 'Roll number',
+                        ),
                       ),
                       TextFormField(
                         controller: parentName,
@@ -801,7 +859,9 @@ Future<void> _showEditStudentDialog(
               if (!(formKey.currentState?.validate() ?? false)) {
                 return;
               }
-              final result = await ref.read(studentsRepositoryProvider).updateProfile(
+              final result = await ref
+                  .read(studentsRepositoryProvider)
+                  .updateProfile(
                     student.id,
                     student.toProfilePayload(
                       firstName: firstName.text.trim(),
@@ -898,6 +958,48 @@ String? _blankToNull(String value) {
 
 void _snack(BuildContext context, String message) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+}
+
+Future<void> _runStudentDownload(
+  BuildContext context,
+  Future<Result<void>> action,
+  String successMessage,
+) async {
+  final result = await action;
+  if (!context.mounted) {
+    return;
+  }
+  result.when(
+    success: (_) => _snack(context, successMessage),
+    failure: (failure) => _snack(context, failure.message),
+  );
+}
+
+Future<void> _runPickedStudentImport(
+  BuildContext context,
+  WidgetRef ref,
+  String format,
+) async {
+  final file = await pickUploadFile(
+    accept: format == 'csv' ? '.csv,text/csv' : '.xlsx,.xls',
+  );
+  if (file == null || !context.mounted) {
+    return;
+  }
+  final repository = ref.read(studentsRepositoryProvider);
+  final result = format == 'csv'
+      ? await repository.importCsv(file.bytes, file.name)
+      : await repository.importExcel(file.bytes, file.name);
+  if (!context.mounted) {
+    return;
+  }
+  result.when(
+    success: (_) {
+      _snack(context, 'Student import completed.');
+      ref.invalidate(studentsProvider);
+    },
+    failure: (failure) => _snack(context, failure.message),
+  );
 }
 
 Future<bool> _confirm(BuildContext context, String message) async {

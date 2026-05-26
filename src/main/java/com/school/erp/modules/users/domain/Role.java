@@ -57,4 +57,9 @@ public class Role extends BaseEntity {
 	public void addPermission(Permission permission) {
 		permissions.add(permission);
 	}
+
+	public void replacePermissions(Set<Permission> permissions) {
+		this.permissions.clear();
+		this.permissions.addAll(permissions);
+	}
 }

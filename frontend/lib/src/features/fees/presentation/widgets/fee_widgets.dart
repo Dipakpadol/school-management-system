@@ -38,11 +38,7 @@ class FeeStatusChip extends StatelessWidget {
 }
 
 class MoneyText extends StatelessWidget {
-  const MoneyText(
-    this.value, {
-    this.emphasized = false,
-    super.key,
-  });
+  const MoneyText(this.value, {this.emphasized = false, super.key});
 
   final double value;
   final bool emphasized;

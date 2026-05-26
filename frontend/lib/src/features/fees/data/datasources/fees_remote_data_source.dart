@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/api_paths.dart';
@@ -48,7 +49,9 @@ class FeesRemoteDataSource {
     return FeeStructureModel.fromJson(_unwrapData(response.data));
   }
 
-  Future<FeeStructureModel> createStructure(Map<String, dynamic> payload) async {
+  Future<FeeStructureModel> createStructure(
+    Map<String, dynamic> payload,
+  ) async {
     final response = await _apiClient.post<Map<String, dynamic>>(
       ApiPaths.feeStructures,
       data: payload,
@@ -105,6 +108,30 @@ class FeesRemoteDataSource {
     return FeeReceiptModel.fromJson(_unwrapData(response.data));
   }
 
+  Future<StudentFeeAssignmentModel> reversePayment(String paymentId) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.feePaymentReverse(paymentId),
+      data: {'reason': 'Reversed from admin panel'},
+    );
+    return StudentFeeAssignmentModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<StudentFeeAssignmentModel> voidPayment(String paymentId) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.feePaymentVoid(paymentId),
+      data: {'reason': 'Voided from admin panel'},
+    );
+    return StudentFeeAssignmentModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<StudentFeeAssignmentModel> refundPayment(String paymentId) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.feePaymentRefund(paymentId),
+      data: {'reason': 'Refunded from admin panel'},
+    );
+    return StudentFeeAssignmentModel.fromJson(_unwrapData(response.data));
+  }
+
   Future<PagePayload<FeeDefaulterModel>> defaulters() async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.feeDefaulters,
@@ -112,6 +139,59 @@ class FeesRemoteDataSource {
     return PagePayload.fromJson(
       _unwrapData(response.data),
       FeeDefaulterModel.fromJson,
+    );
+  }
+
+  Future<List<int>> exportStructuresExcel() {
+    return _apiClient.download(ApiPaths.feeStructuresExportExcel);
+  }
+
+  Future<List<int>> exportAssignmentsExcel() {
+    return _apiClient.download(ApiPaths.feeAssignmentsExportExcel);
+  }
+
+  Future<List<int>> structureTemplate() {
+    return _apiClient.download(ApiPaths.feeStructureTemplate);
+  }
+
+  Future<List<int>> assignmentTemplate() {
+    return _apiClient.download(ApiPaths.feeAssignmentTemplate);
+  }
+
+  Future<List<int>> receiptPdf(String receiptNumber) {
+    return _apiClient.download(ApiPaths.feeReceiptPdf(receiptNumber));
+  }
+
+  Future<List<int>> defaultersExport(String format) {
+    return _apiClient.download(ApiPaths.feeDefaultersExport(format));
+  }
+
+  Future<List<int>> collectionExport(String format) {
+    return _apiClient.download(ApiPaths.feeCollectionExport(format));
+  }
+
+  Future<void> importStructuresExcel(List<int> bytes, String filename) async {
+    await _postFile(ApiPaths.feeStructuresImportExcel, bytes, filename);
+  }
+
+  Future<void> importStructuresCsv(List<int> bytes, String filename) async {
+    await _postFile(ApiPaths.feeStructuresImportCsv, bytes, filename);
+  }
+
+  Future<void> importAssignmentsExcel(List<int> bytes, String filename) async {
+    await _postFile(ApiPaths.feeAssignmentsImportExcel, bytes, filename);
+  }
+
+  Future<void> importAssignmentsCsv(List<int> bytes, String filename) async {
+    await _postFile(ApiPaths.feeAssignmentsImportCsv, bytes, filename);
+  }
+
+  Future<void> _postFile(String path, List<int> bytes, String filename) async {
+    await _apiClient.post<Map<String, dynamic>>(
+      path,
+      data: FormData.fromMap({
+        'file': MultipartFile.fromBytes(bytes, filename: filename),
+      }),
     );
   }
 

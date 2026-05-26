@@ -5,6 +5,7 @@ abstract final class AppRoutes {
   static const fees = '/fees';
   static const users = '/users';
   static const auditLogs = '/audit-logs';
+  static const settings = '/settings';
   static const newFeeStructure = '/fees/structures/new';
   static const newFeeAssignment = '/fees/assignments/new';
   static const collectFeePayment = '/fees/payments/collect';
@@ -16,6 +17,7 @@ abstract final class AppRoutes {
       'fees' => fees,
       'users' => users,
       'audit-logs' => auditLogs,
+      'settings' => settings,
       _ => '/modules/$moduleId',
     };
   }
@@ -32,6 +34,7 @@ abstract final class AppRouteName {
   static const fees = 'fees';
   static const users = 'users';
   static const auditLogs = 'audit-logs';
+  static const settings = 'settings';
   static const newFeeStructure = 'new-fee-structure';
   static const editFeeStructure = 'edit-fee-structure';
   static const newFeeAssignment = 'new-fee-assignment';

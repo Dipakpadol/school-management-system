@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/download/file_downloader.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/result/result.dart';
 import '../../domain/repositories/users_repository.dart';
@@ -27,8 +28,7 @@ class UsersRepositoryImpl implements UsersRepository {
         query: query,
         role: role,
         status: status,
-      ))
-          .content,
+      )).content,
     );
   }
 
@@ -43,7 +43,10 @@ class UsersRepositoryImpl implements UsersRepository {
   }
 
   @override
-  Future<Result<UserModel>> update(String userId, Map<String, dynamic> payload) {
+  Future<Result<UserModel>> update(
+    String userId,
+    Map<String, dynamic> payload,
+  ) {
     return _guard(() => _remoteDataSource.update(userId, payload));
   }
 
@@ -65,6 +68,48 @@ class UsersRepositoryImpl implements UsersRepository {
   @override
   Future<Result<void>> delete(String userId) {
     return _guard(() => _remoteDataSource.delete(userId));
+  }
+
+  @override
+  Future<Result<void>> exportExcel() {
+    return _guard(() async {
+      final bytes = await _remoteDataSource.exportExcel();
+      await downloadBytes(
+        bytes,
+        'users.xlsx',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+    });
+  }
+
+  @override
+  Future<Result<void>> exportCsv() {
+    return _guard(() async {
+      final bytes = await _remoteDataSource.exportCsv();
+      await downloadBytes(bytes, 'users.csv', 'text/csv');
+    });
+  }
+
+  @override
+  Future<Result<void>> downloadTemplate() {
+    return _guard(() async {
+      final bytes = await _remoteDataSource.template();
+      await downloadBytes(
+        bytes,
+        'user-import-template.xlsx',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+    });
+  }
+
+  @override
+  Future<Result<void>> importExcel(List<int> bytes, String filename) {
+    return _guard(() => _remoteDataSource.importExcel(bytes, filename));
+  }
+
+  @override
+  Future<Result<void>> importCsv(List<int> bytes, String filename) {
+    return _guard(() => _remoteDataSource.importCsv(bytes, filename));
   }
 
   Future<Result<T>> _guard<T>(Future<T> Function() action) async {

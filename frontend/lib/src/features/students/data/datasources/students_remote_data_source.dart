@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/api_paths.dart';
@@ -5,8 +6,9 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/network/page_payload.dart';
 import '../models/student_models.dart';
 
-final studentsRemoteDataSourceProvider =
-    Provider<StudentsRemoteDataSource>((ref) {
+final studentsRemoteDataSourceProvider = Provider<StudentsRemoteDataSource>((
+  ref,
+) {
   return StudentsRemoteDataSource(ref.watch(apiClientProvider));
 });
 
@@ -75,6 +77,40 @@ class StudentsRemoteDataSource {
 
   Future<void> delete(String studentId) async {
     await _apiClient.delete<Map<String, dynamic>>(ApiPaths.student(studentId));
+  }
+
+  Future<List<int>> exportExcel() {
+    return _apiClient.download(ApiPaths.studentsExportExcel);
+  }
+
+  Future<List<int>> exportCsv() {
+    return _apiClient.download(ApiPaths.studentsExportCsv);
+  }
+
+  Future<List<int>> template() {
+    return _apiClient.download(ApiPaths.studentsTemplate);
+  }
+
+  Future<List<int>> profilePdf(String studentId) {
+    return _apiClient.download(ApiPaths.studentPdf(studentId));
+  }
+
+  Future<void> importExcel(List<int> bytes, String filename) async {
+    await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.studentsImportExcel,
+      data: FormData.fromMap({
+        'file': MultipartFile.fromBytes(bytes, filename: filename),
+      }),
+    );
+  }
+
+  Future<void> importCsv(List<int> bytes, String filename) async {
+    await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.studentsImportCsv,
+      data: FormData.fromMap({
+        'file': MultipartFile.fromBytes(bytes, filename: filename),
+      }),
+    );
   }
 
   Map<String, dynamic> _unwrapData(Map<String, dynamic>? body) {

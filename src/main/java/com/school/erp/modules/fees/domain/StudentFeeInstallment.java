@@ -103,6 +103,11 @@ public class StudentFeeInstallment extends BaseEntity {
 		recalculate();
 	}
 
+	public void reversePayment(BigDecimal amount) {
+		paidAmount = paidAmount.subtract(StudentFeeAssignment.money(amount)).max(BigDecimal.ZERO);
+		recalculate();
+	}
+
 	public void cancel() {
 		status = FeeInstallmentStatus.CANCELLED;
 	}

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/router/app_routes.dart';
-import '../../features/dashboard/domain/module_registry.dart';
+import '../../features/auth/presentation/controllers/auth_controller.dart';
+import '../../features/dashboard/domain/erp_module.dart';
+import '../../features/dashboard/domain/menu_policy.dart';
+import '../../features/dashboard/presentation/controllers/menu_controller.dart';
 import '../layout/responsive_breakpoints.dart';
 
-class AdminShell extends StatelessWidget {
+class AdminShell extends ConsumerWidget {
   const AdminShell({
     required this.title,
     required this.child,
@@ -20,8 +24,17 @@ class AdminShell extends StatelessWidget {
   final String? activeModuleId;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final compact = ResponsiveBreakpoints.isCompact(context);
+    final user = ref.watch(authControllerProvider).user;
+    final fallbackModules = visibleErpModules(user);
+    final modules = ref.watch(currentMenuProvider).maybeWhen(
+          data: (items) => visibleErpModulesFromMenuIds(
+            user,
+            items.map((item) => item.moduleId),
+          ),
+          orElse: () => fallbackModules,
+        );
 
     if (compact) {
       return Scaffold(
@@ -37,6 +50,7 @@ class AdminShell extends StatelessWidget {
         ),
         drawer: _ModuleDrawer(
           activeModuleId: activeModuleId,
+          modules: modules,
           onLogout: onLogout,
         ),
         body: child,
@@ -48,6 +62,7 @@ class AdminShell extends StatelessWidget {
         children: [
           _DesktopNavigation(
             activeModuleId: activeModuleId,
+            modules: modules,
             onLogout: onLogout,
           ),
           const VerticalDivider(width: 1),
@@ -104,10 +119,12 @@ class _TopBar extends StatelessWidget {
 class _DesktopNavigation extends StatelessWidget {
   const _DesktopNavigation({
     required this.onLogout,
+    required this.modules,
     this.activeModuleId,
   });
 
   final VoidCallback onLogout;
+  final List<ErpModule> modules;
   final String? activeModuleId;
 
   @override
@@ -134,7 +151,7 @@ class _DesktopNavigation extends StatelessWidget {
                         onTap: () => context.go(AppRoutes.dashboard),
                       ),
                       const SizedBox(height: 8),
-                      for (final module in erpModules)
+                      for (final module in modules)
                         _NavItem(
                           icon: module.icon,
                           label: module.title,
@@ -163,10 +180,12 @@ class _DesktopNavigation extends StatelessWidget {
 class _ModuleDrawer extends StatelessWidget {
   const _ModuleDrawer({
     required this.onLogout,
+    required this.modules,
     this.activeModuleId,
   });
 
   final VoidCallback onLogout;
+  final List<ErpModule> modules;
   final String? activeModuleId;
 
   @override
@@ -190,7 +209,7 @@ class _ModuleDrawer extends StatelessWidget {
                     onTap: () => context.go(AppRoutes.dashboard),
                   ),
                   const SizedBox(height: 8),
-                  for (final module in erpModules)
+                  for (final module in modules)
                     _NavItem(
                       icon: module.icon,
                       label: module.title,

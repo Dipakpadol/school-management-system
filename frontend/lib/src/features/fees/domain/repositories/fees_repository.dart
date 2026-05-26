@@ -10,7 +10,9 @@ abstract interface class FeesRepository {
 
   Future<Result<FeeStructureModel>> structure(String id);
 
-  Future<Result<FeeStructureModel>> createStructure(Map<String, dynamic> payload);
+  Future<Result<FeeStructureModel>> createStructure(
+    Map<String, dynamic> payload,
+  );
 
   Future<Result<FeeStructureModel>> updateStructure(
     String id,
@@ -31,4 +33,32 @@ abstract interface class FeesRepository {
   Future<Result<FeeReceiptModel>> receipt(String receiptNumber);
 
   Future<Result<List<FeeDefaulterModel>>> defaulters();
+
+  Future<Result<StudentFeeAssignmentModel>> reversePayment(String paymentId);
+
+  Future<Result<StudentFeeAssignmentModel>> voidPayment(String paymentId);
+
+  Future<Result<StudentFeeAssignmentModel>> refundPayment(String paymentId);
+
+  Future<Result<void>> exportStructuresExcel();
+
+  Future<Result<void>> exportAssignmentsExcel();
+
+  Future<Result<void>> downloadStructureTemplate();
+
+  Future<Result<void>> downloadAssignmentTemplate();
+
+  Future<Result<void>> downloadReceiptPdf(String receiptNumber);
+
+  Future<Result<void>> exportDefaulters(String format);
+
+  Future<Result<void>> exportCollection(String format);
+
+  Future<Result<void>> importStructuresExcel(List<int> bytes, String filename);
+
+  Future<Result<void>> importStructuresCsv(List<int> bytes, String filename);
+
+  Future<Result<void>> importAssignmentsExcel(List<int> bytes, String filename);
+
+  Future<Result<void>> importAssignmentsCsv(List<int> bytes, String filename);
 }

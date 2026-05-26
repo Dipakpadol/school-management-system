@@ -12,13 +12,16 @@ final feeStructuresProvider = FutureProvider<List<FeeStructureModel>>((ref) {
   return _resolve(ref.watch(feesRepositoryProvider).structures());
 });
 
-final feeStructureProvider =
-    FutureProvider.family<FeeStructureModel, String>((ref, id) {
+final feeStructureProvider = FutureProvider.family<FeeStructureModel, String>((
+  ref,
+  id,
+) {
   return _resolve(ref.watch(feesRepositoryProvider).structure(id));
 });
 
-final feeAssignmentsProvider =
-    FutureProvider<List<StudentFeeAssignmentModel>>((ref) {
+final feeAssignmentsProvider = FutureProvider<List<StudentFeeAssignmentModel>>((
+  ref,
+) {
   return _resolve(ref.watch(feesRepositoryProvider).assignments());
 });
 

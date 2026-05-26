@@ -6,22 +6,24 @@ import '../../data/repositories/audit_logs_repository_impl.dart';
 
 final auditModuleFilterProvider =
     NotifierProvider<AuditModuleFilterController, String>(
-  AuditModuleFilterController.new,
-);
+      AuditModuleFilterController.new,
+    );
 
 final auditActionFilterProvider =
     NotifierProvider<AuditActionFilterController, String>(
-  AuditActionFilterController.new,
-);
+      AuditActionFilterController.new,
+    );
 
 final auditUserFilterProvider =
     NotifierProvider<AuditUserFilterController, String>(
-  AuditUserFilterController.new,
-);
+      AuditUserFilterController.new,
+    );
 
 final auditLogsProvider = FutureProvider<List<AuditLogModel>>((ref) {
   return _resolve(
-    ref.watch(auditLogsRepositoryProvider).auditLogs(
+    ref
+        .watch(auditLogsRepositoryProvider)
+        .auditLogs(
           moduleName: ref.watch(auditModuleFilterProvider),
           action: ref.watch(auditActionFilterProvider),
           performedBy: ref.watch(auditUserFilterProvider),

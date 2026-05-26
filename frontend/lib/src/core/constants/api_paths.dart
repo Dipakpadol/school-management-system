@@ -1,6 +1,7 @@
 abstract final class ApiPaths {
   static const systemStatus = '/v1/system/status';
   static const dashboardSummary = '/v1/dashboard/summary';
+  static const currentMenu = '/v1/menus/current';
 
   static const login = '/v1/auth/login';
   static const logout = '/v1/auth/logout';
@@ -9,11 +10,24 @@ abstract final class ApiPaths {
 
   static const students = '/v1/students';
   static const studentAdmissions = '/v1/students/admissions';
+  static const studentsExportExcel = '/v1/students/export/excel';
+  static const studentsExportCsv = '/v1/students/export/csv';
+  static const studentsTemplate = '/v1/students/template';
+  static const studentsImportExcel = '/v1/students/import/excel';
+  static const studentsImportCsv = '/v1/students/import/csv';
 
   static const users = '/v1/users';
   static const roles = '/v1/users/roles';
+  static const usersExportExcel = '/v1/users/export/excel';
+  static const usersExportCsv = '/v1/users/export/csv';
+  static const usersTemplate = '/v1/users/template';
+  static const usersImportExcel = '/v1/users/import/excel';
+  static const usersImportCsv = '/v1/users/import/csv';
 
   static const auditLogs = '/v1/audit-logs';
+  static const auditLogsExportExcel = '/v1/audit-logs/export/excel';
+  static const auditLogsExportCsv = '/v1/audit-logs/export/csv';
+  static const auditLogsExportPdf = '/v1/audit-logs/export/pdf';
 
   static const feeCategories = '/v1/fees/categories';
   static const feeStructures = '/v1/fees/structures';
@@ -21,6 +35,15 @@ abstract final class ApiPaths {
   static const feeAssignments = '/v1/fees/assignments';
   static const feeDefaulters = '/v1/fees/reports/defaulters';
   static const feeSummary = '/v1/fees/reports/summary';
+  static const feeStructuresExportExcel = '/v1/fees/structures/export/excel';
+  static const feeAssignmentsExportExcel = '/v1/fees/assignments/export/excel';
+  static const feeStructureTemplate = '/v1/fees/structures/template';
+  static const feeAssignmentTemplate = '/v1/fees/assignments/template';
+  static const feeStructuresImportExcel = '/v1/fees/structures/import/excel';
+  static const feeStructuresImportCsv = '/v1/fees/structures/import/csv';
+  static const feeAssignmentsImportExcel =
+      '/v1/fees/assignments/import/excel';
+  static const feeAssignmentsImportCsv = '/v1/fees/assignments/import/csv';
 
   static String feeStructure(String id) => '/v1/fees/structures/$id';
 
@@ -32,7 +55,27 @@ abstract final class ApiPaths {
   static String feeReceipt(String receiptNumber) =>
       '/v1/fees/receipts/$receiptNumber';
 
+  static String feeReceiptPdf(String receiptNumber) =>
+      '/v1/fees/receipts/$receiptNumber/pdf';
+
+  static String feePaymentReverse(String paymentId) =>
+      '/v1/fees/payments/$paymentId/reverse';
+
+  static String feePaymentVoid(String paymentId) =>
+      '/v1/fees/payments/$paymentId/void';
+
+  static String feePaymentRefund(String paymentId) =>
+      '/v1/fees/payments/$paymentId/refund';
+
+  static String feeDefaultersExport(String format) =>
+      '/v1/fees/reports/defaulters/export/$format';
+
+  static String feeCollectionExport(String format) =>
+      '/v1/fees/reports/collection/export/$format';
+
   static String student(String id) => '/v1/students/$id';
+
+  static String studentPdf(String id) => '/v1/students/$id/pdf';
 
   static String studentProfile(String id) => '/v1/students/$id/profile';
 
@@ -47,6 +90,8 @@ abstract final class ApiPaths {
   static String userDeactivate(String id) => '/v1/users/$id/deactivate';
 
   static String userResetPassword(String id) => '/v1/users/$id/reset-password';
+
+  static String rolePermissions(String id) => '/v1/users/roles/$id/permissions';
 
   static String auditLog(String id) => '/v1/audit-logs/$id';
 }

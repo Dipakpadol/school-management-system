@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.school.erp.common.audit.application.AuditLogService;
 import com.school.erp.common.exception.BusinessException;
 import com.school.erp.common.exception.ErrorCode;
 import com.school.erp.common.security.JwtProperties;
@@ -64,6 +65,9 @@ class AuthServiceTest {
 	@Mock
 	private ApplicationEventPublisher eventPublisher;
 
+	@Mock
+	private AuditLogService auditLogService;
+
 	private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 	private final SecureTokenService secureTokenService = new SecureTokenService();
 	private AuthService authService;
@@ -89,7 +93,8 @@ class AuthServiceTest {
 				authMapper,
 				new AuthProperties(5, Duration.ofMinutes(15)),
 				jwtProperties,
-				eventPublisher);
+				eventPublisher,
+				auditLogService);
 	}
 
 	@Test

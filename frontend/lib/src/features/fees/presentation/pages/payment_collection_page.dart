@@ -91,7 +91,9 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
   }
 
   Widget _buildForm(List<StudentFeeAssignmentModel> assignments) {
-    final assignmentIds = assignments.map((assignment) => assignment.id).toSet();
+    final assignmentIds = assignments
+        .map((assignment) => assignment.id)
+        .toSet();
     final selectedAssignment = assignmentIds.contains(_assignmentId)
         ? _assignmentId
         : null;
@@ -156,8 +158,8 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
                               controller: _amountController,
                               keyboardType:
                                   const TextInputType.numberWithOptions(
-                                decimal: true,
-                              ),
+                                    decimal: true,
+                                  ),
                               inputFormatters: [_MoneyFormatter()],
                               validator: _positiveAmount,
                               decoration: const InputDecoration(
@@ -262,19 +264,18 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
       return;
     }
     setState(() => _saving = true);
-    final result = await ref.read(feesRepositoryProvider).collectPayment(
-      assignmentId,
-      {
-        'amount': double.tryParse(_amountController.text.trim()),
-        'paymentDate': _paymentDateController.text.trim(),
-        'paymentMode': _paymentMode,
-        'referenceNumber': _blankToNull(_referenceController.text),
-        'payerName': _payerController.text.trim(),
-        'collectedBy': _blankToNull(_collectedByController.text),
-        'remarks': _blankToNull(_remarksController.text),
-        'assessLateFee': _assessLateFee,
-      },
-    );
+    final result = await ref
+        .read(feesRepositoryProvider)
+        .collectPayment(assignmentId, {
+          'amount': double.tryParse(_amountController.text.trim()),
+          'paymentDate': _paymentDateController.text.trim(),
+          'paymentMode': _paymentMode,
+          'referenceNumber': _blankToNull(_referenceController.text),
+          'payerName': _payerController.text.trim(),
+          'collectedBy': _blankToNull(_collectedByController.text),
+          'remarks': _blankToNull(_remarksController.text),
+          'assessLateFee': _assessLateFee,
+        });
     if (!mounted) {
       return;
     }
@@ -297,9 +298,9 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
   }
 
   void _showSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -335,9 +336,9 @@ class _Header extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   'Collect payment',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ],
             ),
@@ -452,10 +453,7 @@ class _ReceiptPanel extends StatelessWidget {
 }
 
 class _Detail extends StatelessWidget {
-  const _Detail({
-    required this.label,
-    required this.value,
-  });
+  const _Detail({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -479,9 +477,9 @@ class _Detail extends StatelessWidget {
           Text(
             value,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
         ],
       ),

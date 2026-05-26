@@ -6,17 +6,19 @@ import '../../data/repositories/students_repository_impl.dart';
 
 final studentSearchQueryProvider =
     NotifierProvider<StudentSearchQueryController, String>(
-  StudentSearchQueryController.new,
-);
+      StudentSearchQueryController.new,
+    );
 
 final studentStatusFilterProvider =
     NotifierProvider<StudentStatusFilterController, String?>(
-  StudentStatusFilterController.new,
-);
+      StudentStatusFilterController.new,
+    );
 
 final studentsProvider = FutureProvider<List<StudentSummaryModel>>((ref) {
   return _resolve(
-    ref.watch(studentsRepositoryProvider).students(
+    ref
+        .watch(studentsRepositoryProvider)
+        .students(
           query: ref.watch(studentSearchQueryProvider),
           status: ref.watch(studentStatusFilterProvider),
         ),
@@ -25,8 +27,8 @@ final studentsProvider = FutureProvider<List<StudentSummaryModel>>((ref) {
 
 final studentProfileProvider =
     FutureProvider.family<StudentProfileModel, String>((ref, studentId) {
-  return _resolve(ref.watch(studentsRepositoryProvider).profile(studentId));
-});
+      return _resolve(ref.watch(studentsRepositoryProvider).profile(studentId));
+    });
 
 Future<T> _resolve<T>(Future<Result<T>> resultFuture) async {
   final result = await resultFuture;

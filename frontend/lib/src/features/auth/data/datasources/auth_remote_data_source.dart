@@ -37,6 +37,11 @@ class AuthRemoteDataSource {
     );
   }
 
+  Future<AuthUserDto> me() async {
+    final response = await _apiClient.get<Map<String, dynamic>>(ApiPaths.me);
+    return AuthUserDto.fromJson(_unwrapData(response.data));
+  }
+
   Map<String, dynamic> _unwrapData(Map<String, dynamic>? body) {
     final data = body?['data'];
     if (data is Map<String, dynamic>) {

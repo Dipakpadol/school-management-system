@@ -7,6 +7,8 @@ import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/result/result.dart';
+import '../../../../core/upload/file_picker.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/models/fee_models.dart';
 import '../../data/repositories/fees_repository_impl.dart';
@@ -51,11 +53,11 @@ class FeesManagementPage extends ConsumerWidget {
   }
 }
 
-class _FeesHeader extends StatelessWidget {
+class _FeesHeader extends ConsumerWidget {
   const _FeesHeader();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Material(
       color: Colors.white,
       child: Padding(
@@ -82,6 +84,99 @@ class _FeesHeader extends StatelessWidget {
                   icon: const Icon(Icons.point_of_sale_outlined),
                   label: const Text('Collect payment'),
                 ),
+                PopupMenuButton<String>(
+                  tooltip: 'Export fees',
+                  icon: const Icon(Icons.download_outlined),
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(
+                      value: 'structures',
+                      child: Text('Export structures'),
+                    ),
+                    PopupMenuItem(
+                      value: 'assignments',
+                      child: Text('Export assignments'),
+                    ),
+                    PopupMenuItem(
+                      value: 'defaulters-pdf',
+                      child: Text('Defaulters PDF'),
+                    ),
+                    PopupMenuItem(
+                      value: 'collection-pdf',
+                      child: Text('Collection PDF'),
+                    ),
+                  ],
+                  onSelected: (value) =>
+                      _runFeeDownload(context, switch (value) {
+                        'structures' =>
+                          ref
+                              .read(feesRepositoryProvider)
+                              .exportStructuresExcel(),
+                        'assignments' =>
+                          ref
+                              .read(feesRepositoryProvider)
+                              .exportAssignmentsExcel(),
+                        'defaulters-pdf' =>
+                          ref
+                              .read(feesRepositoryProvider)
+                              .exportDefaulters('pdf'),
+                        _ =>
+                          ref
+                              .read(feesRepositoryProvider)
+                              .exportCollection('pdf'),
+                      }, 'Fee export downloaded.'),
+                ),
+                PopupMenuButton<String>(
+                  tooltip: 'Download templates',
+                  icon: const Icon(Icons.table_view_outlined),
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(
+                      value: 'structure',
+                      child: Text('Structure template'),
+                    ),
+                    PopupMenuItem(
+                      value: 'assignment',
+                      child: Text('Assignment template'),
+                    ),
+                  ],
+                  onSelected: (value) => _runFeeDownload(
+                    context,
+                    value == 'structure'
+                        ? ref
+                              .read(feesRepositoryProvider)
+                              .downloadStructureTemplate()
+                        : ref
+                              .read(feesRepositoryProvider)
+                              .downloadAssignmentTemplate(),
+                    'Template downloaded.',
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  tooltip: 'Import fees',
+                  icon: const Icon(Icons.upload_file_outlined),
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(
+                      value: 'structures-excel',
+                      child: Text('Import structures Excel'),
+                    ),
+                    PopupMenuItem(
+                      value: 'structures-csv',
+                      child: Text('Import structures CSV'),
+                    ),
+                    PopupMenuItem(
+                      value: 'assignments-excel',
+                      child: Text('Import assignments Excel'),
+                    ),
+                    PopupMenuItem(
+                      value: 'assignments-csv',
+                      child: Text('Import assignments CSV'),
+                    ),
+                  ],
+                  onSelected: (value) => _runPickedFeeImport(
+                    context,
+                    ref,
+                    value,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 14),
@@ -89,10 +184,19 @@ class _FeesHeader extends StatelessWidget {
               isScrollable: true,
               tabs: [
                 Tab(icon: Icon(Icons.category_outlined), text: 'Categories'),
-                Tab(icon: Icon(Icons.account_tree_outlined), text: 'Structures'),
-                Tab(icon: Icon(Icons.assignment_ind_outlined), text: 'Assignments'),
+                Tab(
+                  icon: Icon(Icons.account_tree_outlined),
+                  text: 'Structures',
+                ),
+                Tab(
+                  icon: Icon(Icons.assignment_ind_outlined),
+                  text: 'Assignments',
+                ),
                 Tab(icon: Icon(Icons.receipt_long_outlined), text: 'Receipts'),
-                Tab(icon: Icon(Icons.warning_amber_outlined), text: 'Defaulters'),
+                Tab(
+                  icon: Icon(Icons.warning_amber_outlined),
+                  text: 'Defaulters',
+                ),
               ],
             ),
           ],
@@ -126,7 +230,9 @@ class _CategoryList extends ConsumerWidget {
               icon: Icons.category_outlined,
               title: category.name,
               subtitle: '${category.code} - sort ${category.sortOrder}',
-              trailing: FeeStatusChip(status: category.active ? 'ACTIVE' : 'INACTIVE'),
+              trailing: FeeStatusChip(
+                status: category.active ? 'ACTIVE' : 'INACTIVE',
+              ),
             );
           },
         ),
@@ -189,13 +295,15 @@ class _CategoryList extends ConsumerWidget {
                 if (!(formKey.currentState?.validate() ?? false)) {
                   return;
                 }
-                final result = await ref.read(feesRepositoryProvider).createCategory({
-                  'code': code.text.trim(),
-                  'name': name.text.trim(),
-                  'description': description.text.trim(),
-                  'active': true,
-                  'sortOrder': 0,
-                });
+                final result = await ref
+                    .read(feesRepositoryProvider)
+                    .createCategory({
+                      'code': code.text.trim(),
+                      'name': name.text.trim(),
+                      'description': description.text.trim(),
+                      'active': true,
+                      'sortOrder': 0,
+                    });
                 if (!context.mounted) {
                   return;
                 }
@@ -204,8 +312,9 @@ class _CategoryList extends ConsumerWidget {
                     ref.invalidate(feeCategoriesProvider);
                     Navigator.of(context).pop();
                   },
-                  failure: (failure) => ScaffoldMessenger.of(context)
-                      .showSnackBar(SnackBar(content: Text(failure.message))),
+                  failure: (failure) => ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(failure.message))),
                 );
               },
               child: const Text('Save'),
@@ -279,18 +388,59 @@ class _AssignmentList extends ConsumerWidget {
           itemCount: items.length,
           itemBuilder: (context, index) {
             final assignment = items[index];
+            final completedPayments = assignment.payments
+                .where((payment) => payment.status == 'COMPLETED')
+                .toList(growable: false);
+            final payment = completedPayments.isEmpty
+                ? null
+                : completedPayments.last;
             return _InfoCard(
               icon: Icons.assignment_ind_outlined,
               title: assignment.studentName,
               subtitle:
                   '${assignment.admissionNumber} - ${assignment.feeStructureName}',
-              trailing: Column(
+              trailing: Row(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  MoneyText(assignment.balanceAmount, emphasized: true),
-                  const SizedBox(height: 6),
-                  FeeStatusChip(status: assignment.status),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      MoneyText(assignment.balanceAmount, emphasized: true),
+                      const SizedBox(height: 6),
+                      FeeStatusChip(status: assignment.status),
+                    ],
+                  ),
+                  const SizedBox(width: 6),
+                  PopupMenuButton<String>(
+                    tooltip: 'Payment actions',
+                    icon: const Icon(Icons.more_vert),
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'reverse',
+                        enabled: payment != null,
+                        child: const Text('Reverse payment'),
+                      ),
+                      PopupMenuItem(
+                        value: 'void',
+                        enabled: payment != null,
+                        child: const Text('Void payment'),
+                      ),
+                      PopupMenuItem(
+                        value: 'refund',
+                        enabled: payment != null,
+                        child: const Text('Refund payment'),
+                      ),
+                    ],
+                    onSelected: payment == null
+                        ? null
+                        : (action) => _handlePaymentAction(
+                            context,
+                            ref,
+                            payment.id,
+                            action,
+                          ),
+                  ),
                 ],
               ),
               onTap: () => context.go(
@@ -368,7 +518,10 @@ class _ReceiptHistoryState extends ConsumerState<_ReceiptHistory> {
           ),
           const SizedBox(height: 18),
           if (_error != null)
-            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           if (_receipt != null)
             _InfoCard(
               icon: Icons.receipt_long_outlined,
@@ -385,6 +538,20 @@ class _ReceiptHistoryState extends ConsumerState<_ReceiptHistory> {
                 ],
               ),
             ),
+          if (_receipt != null) ...[
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () => _runFeeDownload(
+                context,
+                ref
+                    .read(feesRepositoryProvider)
+                    .downloadReceiptPdf(_receipt!.receiptNumber),
+                'Receipt PDF downloaded.',
+              ),
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              label: const Text('Download receipt PDF'),
+            ),
+          ],
         ],
       ),
     );
@@ -400,7 +567,9 @@ class _ReceiptHistoryState extends ConsumerState<_ReceiptHistory> {
       _error = null;
       _receipt = null;
     });
-    final result = await ref.read(feesRepositoryProvider).receipt(receiptNumber);
+    final result = await ref
+        .read(feesRepositoryProvider)
+        .receipt(receiptNumber);
     if (!mounted) {
       return;
     }
@@ -450,11 +619,7 @@ class _DefaulterList extends ConsumerWidget {
 }
 
 class _ListSurface extends StatelessWidget {
-  const _ListSurface({
-    required this.title,
-    required this.child,
-    this.action,
-  });
+  const _ListSurface({required this.title, required this.child, this.action});
 
   final String title;
   final Widget child;
@@ -470,9 +635,9 @@ class _ListSurface extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
             ),
             ?action,
@@ -509,9 +674,7 @@ class _ResponsiveList extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 1100
-            ? 2
-            : 1;
+        final columns = constraints.maxWidth >= 1100 ? 2 : 1;
         return GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -563,7 +726,10 @@ class _InfoCard extends StatelessWidget {
                     color: theme.colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(icon, color: theme.colorScheme.onPrimaryContainer),
+                  child: Icon(
+                    icon,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
                 ),
               ),
               const SizedBox(width: 14),
@@ -592,10 +758,7 @@ class _InfoCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (trailing != null) ...[
-                const SizedBox(width: 12),
-                trailing!,
-              ],
+              if (trailing != null) ...[const SizedBox(width: 12), trailing!],
             ],
           ),
         ),
@@ -614,10 +777,7 @@ class _LoadingBody extends StatelessWidget {
 }
 
 class _ErrorBody extends StatelessWidget {
-  const _ErrorBody({
-    required this.message,
-    required this.onRetry,
-  });
+  const _ErrorBody({required this.message, required this.onRetry});
 
   final String message;
   final VoidCallback onRetry;
@@ -637,4 +797,117 @@ String? _required(String? value) {
 
 String _message(Object error) {
   return error.toString().replaceFirst('Exception: ', '');
+}
+
+Future<void> _handlePaymentAction(
+  BuildContext context,
+  WidgetRef ref,
+  String paymentId,
+  String action,
+) async {
+  final confirmed = await _confirm(
+    context,
+    '${action[0].toUpperCase()}${action.substring(1)} this payment?',
+  );
+  if (!confirmed) {
+    return;
+  }
+  final repository = ref.read(feesRepositoryProvider);
+  final result = switch (action) {
+    'reverse' => await repository.reversePayment(paymentId),
+    'void' => await repository.voidPayment(paymentId),
+    _ => await repository.refundPayment(paymentId),
+  };
+  if (!context.mounted) {
+    return;
+  }
+  result.when(
+    success: (_) {
+      ref.invalidate(feeAssignmentsProvider);
+      ref.invalidate(feeDefaultersProvider);
+      _snack(context, 'Payment action completed.');
+    },
+    failure: (failure) => _snack(context, failure.message),
+  );
+}
+
+Future<void> _runFeeDownload(
+  BuildContext context,
+  Future<Result<void>> action,
+  String successMessage,
+) async {
+  final result = await action;
+  if (!context.mounted) {
+    return;
+  }
+  result.when(
+    success: (_) => _snack(context, successMessage),
+    failure: (failure) => _snack(context, failure.message),
+  );
+}
+
+Future<void> _runPickedFeeImport(
+  BuildContext context,
+  WidgetRef ref,
+  String value,
+) async {
+  final csv = value.endsWith('csv');
+  final file = await pickUploadFile(
+    accept: csv ? '.csv,text/csv' : '.xlsx,.xls',
+  );
+  if (file == null || !context.mounted) {
+    return;
+  }
+  final repository = ref.read(feesRepositoryProvider);
+  final result = switch (value) {
+    'structures-csv' => await repository.importStructuresCsv(
+      file.bytes,
+      file.name,
+    ),
+    'assignments-excel' => await repository.importAssignmentsExcel(
+      file.bytes,
+      file.name,
+    ),
+    'assignments-csv' => await repository.importAssignmentsCsv(
+      file.bytes,
+      file.name,
+    ),
+    _ => await repository.importStructuresExcel(file.bytes, file.name),
+  };
+  if (!context.mounted) {
+    return;
+  }
+  result.when(
+    success: (_) {
+      ref.invalidate(feeStructuresProvider);
+      ref.invalidate(feeAssignmentsProvider);
+      _snack(context, 'Fee import completed.');
+    },
+    failure: (failure) => _snack(context, failure.message),
+  );
+}
+
+Future<bool> _confirm(BuildContext context, String message) async {
+  final result = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Confirm action'),
+      content: Text(message),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Confirm'),
+        ),
+      ],
+    ),
+  );
+  return result ?? false;
+}
+
+void _snack(BuildContext context, String message) {
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
