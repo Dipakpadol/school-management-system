@@ -52,9 +52,29 @@ public final class StudentSpecifications {
 			}
 
 			Join<Student, StudentClassAssignment> assignmentJoin = null;
-			if (StringUtils.hasText(request.className()) || StringUtils.hasText(request.sectionName())) {
+			if (request.academicYearId() != null
+					|| request.classId() != null
+					|| request.sectionId() != null
+					|| StringUtils.hasText(request.className())
+					|| StringUtils.hasText(request.sectionName())) {
 				assignmentJoin = root.join("classAssignments", JoinType.LEFT);
 				predicates.add(criteriaBuilder.isTrue(assignmentJoin.get("active")));
+				predicates.add(criteriaBuilder.isFalse(assignmentJoin.get("deleted")));
+			}
+			if (request.academicYearId() != null) {
+				predicates.add(criteriaBuilder.equal(
+						assignmentJoin.get("academicYearEntity").get("id"),
+						request.academicYearId()));
+			}
+			if (request.classId() != null) {
+				predicates.add(criteriaBuilder.equal(
+						assignmentJoin.get("classEntity").get("id"),
+						request.classId()));
+			}
+			if (request.sectionId() != null) {
+				predicates.add(criteriaBuilder.equal(
+						assignmentJoin.get("sectionEntity").get("id"),
+						request.sectionId()));
 			}
 			if (StringUtils.hasText(request.className())) {
 				predicates.add(criteriaBuilder.equal(

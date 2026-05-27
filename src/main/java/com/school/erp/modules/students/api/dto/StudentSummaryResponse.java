@@ -14,6 +14,9 @@ public record StudentSummaryResponse(
 		String displayName,
 		StudentStatus status,
 		LocalDate admissionDate,
+		UUID academicYearId,
+		UUID classId,
+		UUID sectionId,
 		String className,
 		String sectionName,
 		String rollNumber) {

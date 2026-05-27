@@ -20,12 +20,19 @@ class StudentsRemoteDataSource {
   Future<PagePayload<StudentSummaryModel>> students({
     String? query,
     String? status,
+    String? academicYearId,
+    String? classId,
+    String? sectionId,
   }) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.students,
       queryParameters: {
         if (query != null && query.trim().isNotEmpty) 'query': query.trim(),
         if (status != null && status.isNotEmpty) 'status': status,
+        if (academicYearId != null && academicYearId.isNotEmpty)
+          'academicYearId': academicYearId,
+        if (classId != null && classId.isNotEmpty) 'classId': classId,
+        if (sectionId != null && sectionId.isNotEmpty) 'sectionId': sectionId,
         'size': 50,
       },
     );
@@ -37,9 +44,40 @@ class StudentsRemoteDataSource {
 
   Future<StudentProfileModel> profile(String studentId) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
-      ApiPaths.student(studentId),
+      ApiPaths.studentProfile(studentId),
     );
     return StudentProfileModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<List<AcademicYearModel>> academicYears() async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.academicYears,
+    );
+    return _unwrapList(response.data, AcademicYearModel.fromJson);
+  }
+
+  Future<List<SchoolClassModel>> classes(String academicYearId) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.academicYearClasses(academicYearId),
+    );
+    return _unwrapList(response.data, SchoolClassModel.fromJson);
+  }
+
+  Future<List<SectionModel>> sections(String classId) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.classSections(classId),
+    );
+    return _unwrapList(response.data, SectionModel.fromJson);
+  }
+
+  Future<ClassSectionTeachersModel> sectionTeachers(
+    String classId,
+    String sectionId,
+  ) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.classSectionTeachers(classId, sectionId),
+    );
+    return ClassSectionTeachersModel.fromJson(_unwrapData(response.data));
   }
 
   Future<StudentProfileModel> admit(Map<String, dynamic> payload) async {
@@ -117,6 +155,17 @@ class StudentsRemoteDataSource {
     final data = body?['data'];
     if (data is Map<String, dynamic>) {
       return data;
+    }
+    throw const FormatException('Response payload is invalid.');
+  }
+
+  List<T> _unwrapList<T>(
+    Map<String, dynamic>? body,
+    T Function(Map<String, dynamic>) mapper,
+  ) {
+    final data = body?['data'];
+    if (data is List) {
+      return data.whereType<Map<String, dynamic>>().map(mapper).toList();
     }
     throw const FormatException('Response payload is invalid.');
   }

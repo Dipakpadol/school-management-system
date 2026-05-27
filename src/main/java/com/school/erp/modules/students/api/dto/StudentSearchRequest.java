@@ -1,6 +1,7 @@
 package com.school.erp.modules.students.api.dto;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 import com.school.erp.modules.students.domain.StudentStatus;
 
@@ -14,6 +15,9 @@ public record StudentSearchRequest(
 		@Size(max = 120) @Schema(description = "Searches admission number, name, email, and phone.", example = "aarav")
 		String query,
 		@Schema(example = "ACTIVE") StudentStatus status,
+		@Schema(description = "Academic year UUID") UUID academicYearId,
+		@Schema(description = "Class UUID") UUID classId,
+		@Schema(description = "Section UUID") UUID sectionId,
 		@Size(max = 40) @Schema(example = "ADM-2026-0001") String admissionNumber,
 		@Size(max = 80) @Schema(example = "Class 6") String className,
 		@Size(max = 80) @Schema(example = "A") String sectionName,

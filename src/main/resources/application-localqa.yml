@@ -29,5 +29,5 @@ app:
       issuer: school-erp-localqa
       audiences: school-erp-api
       secret: localqa-secret-localqa-secret-32-bytes
-      access-token-ttl: 30m
+      access-token-ttl: 60m
       refresh-token-ttl: 7d

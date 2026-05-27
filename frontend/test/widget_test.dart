@@ -20,9 +20,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.text('School ERP'), findsWidgets);
+    expect(find.text('School Management System'), findsOneWidget);
     expect(find.text('Admin Panel'), findsOneWidget);
     expect(find.text('Email'), findsOneWidget);
+    expect(find.text('Password'), findsOneWidget);
+    expect(find.text('Sign in'), findsWidgets);
   });
 }
 

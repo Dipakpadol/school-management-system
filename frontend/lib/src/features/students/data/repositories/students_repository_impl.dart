@@ -21,13 +21,42 @@ class StudentsRepositoryImpl implements StudentsRepository {
   Future<Result<List<StudentSummaryModel>>> students({
     String? query,
     String? status,
+    String? academicYearId,
+    String? classId,
+    String? sectionId,
   }) {
     return _guard(
       () async => (await _remoteDataSource.students(
         query: query,
         status: status,
+        academicYearId: academicYearId,
+        classId: classId,
+        sectionId: sectionId,
       )).content,
     );
+  }
+
+  @override
+  Future<Result<List<AcademicYearModel>>> academicYears() {
+    return _guard(_remoteDataSource.academicYears);
+  }
+
+  @override
+  Future<Result<List<SchoolClassModel>>> classes(String academicYearId) {
+    return _guard(() => _remoteDataSource.classes(academicYearId));
+  }
+
+  @override
+  Future<Result<List<SectionModel>>> sections(String classId) {
+    return _guard(() => _remoteDataSource.sections(classId));
+  }
+
+  @override
+  Future<Result<ClassSectionTeachersModel>> sectionTeachers(
+    String classId,
+    String sectionId,
+  ) {
+    return _guard(() => _remoteDataSource.sectionTeachers(classId, sectionId));
   }
 
   @override

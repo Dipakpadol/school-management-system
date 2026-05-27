@@ -1,6 +1,7 @@
 package com.school.erp.modules.students.api;
 
 import java.util.UUID;
+import java.util.List;
 
 import com.school.erp.common.api.ApiResponse;
 import com.school.erp.common.api.PageRequestDto;
@@ -9,6 +10,7 @@ import com.school.erp.common.importexport.ImportResultDto;
 import com.school.erp.common.web.CorrelationIdFilter;
 import com.school.erp.modules.students.api.dto.ClassSectionAssignmentRequest;
 import com.school.erp.modules.students.api.dto.ParentMappingRequest;
+import com.school.erp.modules.students.api.dto.ParentMappingResponse;
 import com.school.erp.modules.students.api.dto.StudentAdmissionRequest;
 import com.school.erp.modules.students.api.dto.StudentDocumentRequest;
 import com.school.erp.modules.students.api.dto.StudentProfileRequest;
@@ -150,6 +152,24 @@ public class StudentController {
 			@Parameter(description = "Student UUID") @PathVariable UUID studentId,
 			HttpServletRequest httpRequest) {
 		return ok(studentService.getStudentProfile(studentId), "Student profile fetched successfully", httpRequest);
+	}
+
+	@GetMapping("/{studentId}/profile")
+	@PreAuthorize("hasAuthority('STUDENTS_READ')")
+	@Operation(summary = "Get student full profile", description = "Fetches full student profile for profile tabs.")
+	public ResponseEntity<ApiResponse<StudentResponse>> getStudentFullProfile(
+			@Parameter(description = "Student UUID") @PathVariable UUID studentId,
+			HttpServletRequest httpRequest) {
+		return ok(studentService.getStudentProfile(studentId), "Student profile fetched successfully", httpRequest);
+	}
+
+	@GetMapping("/{studentId}/parents")
+	@PreAuthorize("hasAuthority('STUDENTS_READ')")
+	@Operation(summary = "Get parents by student", description = "Fetches parent and guardian mappings for a student.")
+	public ResponseEntity<ApiResponse<List<ParentMappingResponse>>> getParents(
+			@PathVariable UUID studentId,
+			HttpServletRequest httpRequest) {
+		return ok(studentService.getParents(studentId), "Student parents fetched successfully", httpRequest);
 	}
 
 	@GetMapping("/{studentId}/pdf")

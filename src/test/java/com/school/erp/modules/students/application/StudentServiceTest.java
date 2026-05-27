@@ -17,6 +17,10 @@ import com.school.erp.common.api.PageResponse;
 import com.school.erp.common.audit.application.AuditLogService;
 import com.school.erp.common.exception.BusinessException;
 import com.school.erp.common.exception.ErrorCode;
+import com.school.erp.modules.academic.application.AcademicHierarchyService;
+import com.school.erp.modules.academic.domain.AcademicYear;
+import com.school.erp.modules.academic.domain.ClassEntity;
+import com.school.erp.modules.academic.domain.SectionEntity;
 import com.school.erp.modules.students.api.dto.ClassSectionAssignmentRequest;
 import com.school.erp.modules.students.api.dto.ParentGuardianRequest;
 import com.school.erp.modules.students.api.dto.ParentMappingRequest;
@@ -33,6 +37,7 @@ import com.school.erp.modules.students.domain.ParentRelation;
 import com.school.erp.modules.students.domain.Student;
 import com.school.erp.modules.students.domain.StudentStatus;
 import com.school.erp.modules.students.infrastructure.ParentGuardianRepository;
+import com.school.erp.modules.students.infrastructure.StudentClassAssignmentRepository;
 import com.school.erp.modules.students.infrastructure.StudentRepository;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -59,18 +64,50 @@ class StudentServiceTest {
 	private ParentGuardianRepository parentGuardianRepository;
 
 	@Mock
+	private StudentClassAssignmentRepository studentClassAssignmentRepository;
+
+	@Mock
+	private AcademicHierarchyService academicHierarchyService;
+
+	@Mock
 	private AuditLogService auditLogService;
 
 	private StudentService studentService;
+	private AcademicYear academicYear;
+	private ClassEntity classEntity;
+	private SectionEntity sectionA;
+	private SectionEntity sectionB;
 
 	@BeforeEach
 	void setUp() {
-		studentService = new StudentService(studentRepository, parentGuardianRepository, new StudentMapper(), auditLogService);
+		studentService = new StudentService(
+				studentRepository,
+				parentGuardianRepository,
+				studentClassAssignmentRepository,
+				academicHierarchyService,
+				new StudentMapper(),
+				auditLogService);
+		academicYear = new AcademicYear("AY-2026-27", "2026-2027", LocalDate.of(2026, 4, 1), LocalDate.of(2027, 3, 31));
+		classEntity = new ClassEntity(academicYear, "CLASS-6", "Class 6", 6);
+		sectionA = new SectionEntity(classEntity, "A", "Division A", 40, 1);
+		sectionB = new SectionEntity(classEntity, "B", "Division B", 40, 2);
+		setId(academicYear);
+		setId(classEntity);
+		setId(sectionA);
+		setId(sectionB);
 	}
 
 	@Test
 	void admitStudentCreatesProfileWithParentAssignmentAndDocuments() {
 		when(studentRepository.existsByAdmissionNumberIgnoreCaseAndDeletedFalse("ADM-2026-0001")).thenReturn(false);
+		mockHierarchy(sectionA);
+		when(studentClassAssignmentRepository.existsActiveRollNumber(
+				academicYear.getId(),
+				classEntity.getId(),
+				sectionA.getId(),
+				"23",
+				null))
+				.thenReturn(false);
 		when(parentGuardianRepository.findByEmailIgnoreCaseAndDeletedFalse("rajesh.sharma@example.com"))
 				.thenReturn(Optional.empty());
 		when(parentGuardianRepository.save(any(ParentGuardian.class))).thenAnswer(invocation -> {
@@ -94,6 +131,7 @@ class StudentServiceTest {
 		assertThat(response.parents().getFirst().primaryContact()).isTrue();
 		assertThat(response.documents()).hasSize(1);
 		assertThat(response.currentAssignment().className()).isEqualTo("Class 6");
+		assertThat(response.currentAssignment().academicYearId()).isEqualTo(academicYear.getId());
 
 		ArgumentCaptor<Student> studentCaptor = ArgumentCaptor.forClass(Student.class);
 		verify(studentRepository).save(studentCaptor.capture());
@@ -132,10 +170,18 @@ class StudentServiceTest {
 		student.assignClassSection("2026-2027", "Class 6", "A", "23", LocalDate.of(2026, 4, 1));
 		ReflectionTestUtils.setField(student, "id", studentId);
 		when(studentRepository.findProfileByIdAndDeletedFalse(studentId)).thenReturn(Optional.of(student));
+		mockHierarchy(sectionB);
+		when(studentClassAssignmentRepository.existsActiveRollNumber(
+				academicYear.getId(),
+				classEntity.getId(),
+				sectionB.getId(),
+				"24",
+				null))
+				.thenReturn(false);
 
 		StudentResponse response = studentService.assignClassSection(
 				studentId,
-				new ClassSectionAssignmentRequest("2026-2027", "Class 6", "B", "24", LocalDate.of(2026, 5, 1)));
+				new ClassSectionAssignmentRequest(null, null, null, "2026-2027", "Class 6", "B", "24", LocalDate.of(2026, 5, 1)));
 
 		assertThat(response.currentAssignment().sectionName()).isEqualTo("B");
 		assertThat(student.getClassAssignments()).hasSize(2);
@@ -158,7 +204,7 @@ class StudentServiceTest {
 				.thenReturn(new PageImpl<>(List.of(student), pageable, 1));
 
 		PageResponse<StudentSummaryResponse> response = studentService.search(
-				new StudentSearchRequest("aarav", StudentStatus.ACTIVE, null, "Class 6", "A", null, null),
+				new StudentSearchRequest("aarav", StudentStatus.ACTIVE, null, null, null, null, "Class 6", "A", null, null),
 				new PageRequestDto(0, 20, null, Sort.Direction.ASC));
 
 		assertThat(response.totalElements()).isEqualTo(1);
@@ -176,7 +222,7 @@ class StudentServiceTest {
 						true,
 						true,
 						parentRequest())),
-				new ClassSectionAssignmentRequest("2026-2027", "Class 6", "A", "23", LocalDate.of(2026, 4, 1)),
+				new ClassSectionAssignmentRequest(null, null, null, "2026-2027", "Class 6", "A", "23", LocalDate.of(2026, 4, 1)),
 				List.of(new StudentDocumentRequest(
 						DocumentType.BIRTH_CERTIFICATE,
 						"BC-2026-001",
@@ -254,5 +300,11 @@ class StudentServiceTest {
 
 	private void setId(Object entity) {
 		ReflectionTestUtils.setField(entity, "id", UUID.randomUUID());
+	}
+
+	private void mockHierarchy(SectionEntity section) {
+		when(academicHierarchyService.resolveAcademicYear("2026-2027")).thenReturn(academicYear);
+		when(academicHierarchyService.resolveClass(academicYear, "Class 6")).thenReturn(classEntity);
+		when(academicHierarchyService.resolveSection(classEntity, section.getCode())).thenReturn(section);
 	}
 }

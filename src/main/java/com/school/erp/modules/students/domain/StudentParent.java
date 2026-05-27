@@ -22,7 +22,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(name = "student_parents")
+@Table(name = "student_parent_mapping")
 @SQLRestriction("deleted = false")
 public class StudentParent extends BaseEntity {
 

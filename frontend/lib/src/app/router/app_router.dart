@@ -12,6 +12,9 @@ import '../../features/fees/presentation/pages/fees_management_page.dart';
 import '../../features/fees/presentation/pages/payment_collection_page.dart';
 import '../../features/fees/presentation/pages/student_fee_assignment_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
+import '../../features/students/presentation/pages/student_profile_page.dart';
+import '../../features/students/presentation/pages/student_section_detail_page.dart';
+import '../../features/students/presentation/pages/student_sections_page.dart';
 import '../../features/students/presentation/pages/students_page.dart';
 import '../../features/users/presentation/pages/users_page.dart';
 import 'app_routes.dart';
@@ -55,6 +58,41 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.students,
         name: AppRouteName.students,
         builder: (context, state) => const StudentsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.studentClasses,
+        name: AppRouteName.studentClasses,
+        builder: (context, state) => const StudentsPage(),
+      ),
+      GoRoute(
+        path: '/students/classes/:classId/sections',
+        name: AppRouteName.studentSections,
+        builder: (context, state) {
+          return StudentSectionsPage(
+            classId: state.pathParameters['classId'] ?? '',
+            academicYearId: state.uri.queryParameters['academicYearId'],
+          );
+        },
+      ),
+      GoRoute(
+        path: '/students/classes/:classId/sections/:sectionId',
+        name: AppRouteName.studentSectionDetail,
+        builder: (context, state) {
+          return StudentSectionDetailPage(
+            classId: state.pathParameters['classId'] ?? '',
+            sectionId: state.pathParameters['sectionId'] ?? '',
+            academicYearId: state.uri.queryParameters['academicYearId'],
+          );
+        },
+      ),
+      GoRoute(
+        path: '/students/:studentId/profile',
+        name: AppRouteName.studentProfile,
+        builder: (context, state) {
+          return StudentProfilePage(
+            studentId: state.pathParameters['studentId'] ?? '',
+          );
+        },
       ),
       GoRoute(
         path: AppRoutes.fees,

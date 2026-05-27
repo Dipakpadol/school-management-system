@@ -64,6 +64,6 @@ app:
       issuer: ${JWT_ISSUER:school-erp}
       audiences: ${JWT_AUDIENCES:school-erp-api}
       secret: ${JWT_SECRET:change-me-change-me-change-me-change-me}
-      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:15m}
+      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:60m}
       refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:7d}
       password-reset-token-ttl: ${JWT_PASSWORD_RESET_TOKEN_TTL:30m}

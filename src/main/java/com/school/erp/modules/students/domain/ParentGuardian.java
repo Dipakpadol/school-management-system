@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(name = "parent_guardians")
+@Table(name = "parents")
 @SQLRestriction("deleted = false")
 public class ParentGuardian extends BaseEntity {
 

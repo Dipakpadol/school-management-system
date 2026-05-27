@@ -11,9 +11,14 @@ import com.school.erp.common.audit.application.AuditLogService;
 import com.school.erp.common.exception.BusinessException;
 import com.school.erp.common.exception.ErrorCode;
 import com.school.erp.common.exception.ResourceNotFoundException;
+import com.school.erp.modules.academic.application.AcademicHierarchyService;
+import com.school.erp.modules.academic.domain.AcademicYear;
+import com.school.erp.modules.academic.domain.ClassEntity;
+import com.school.erp.modules.academic.domain.SectionEntity;
 import com.school.erp.modules.students.api.dto.ClassSectionAssignmentRequest;
 import com.school.erp.modules.students.api.dto.ParentGuardianRequest;
 import com.school.erp.modules.students.api.dto.ParentMappingRequest;
+import com.school.erp.modules.students.api.dto.ParentMappingResponse;
 import com.school.erp.modules.students.api.dto.StudentAdmissionRequest;
 import com.school.erp.modules.students.api.dto.StudentDocumentRequest;
 import com.school.erp.modules.students.api.dto.StudentProfileRequest;
@@ -28,6 +33,7 @@ import com.school.erp.modules.students.domain.StudentDocument;
 import com.school.erp.modules.students.domain.StudentParent;
 import com.school.erp.modules.students.domain.StudentStatus;
 import com.school.erp.modules.students.infrastructure.ParentGuardianRepository;
+import com.school.erp.modules.students.infrastructure.StudentClassAssignmentRepository;
 import com.school.erp.modules.students.infrastructure.StudentRepository;
 import com.school.erp.modules.students.infrastructure.StudentSpecifications;
 
@@ -48,6 +54,8 @@ public class StudentService {
 
 	private final StudentRepository studentRepository;
 	private final ParentGuardianRepository parentGuardianRepository;
+	private final StudentClassAssignmentRepository studentClassAssignmentRepository;
+	private final AcademicHierarchyService academicHierarchyService;
 	private final StudentMapper studentMapper;
 	private final AuditLogService auditLogService;
 
@@ -69,6 +77,15 @@ public class StudentService {
 	@Transactional(readOnly = true)
 	public StudentResponse getStudentProfile(UUID studentId) {
 		return studentMapper.toProfileResponse(loadProfile(studentId));
+	}
+
+	@Transactional(readOnly = true)
+	public List<ParentMappingResponse> getParents(UUID studentId) {
+		Student student = loadProfile(studentId);
+		return student.getParents().stream()
+				.filter(mapping -> !mapping.isDeleted())
+				.map(studentMapper::toParentMappingResponse)
+				.toList();
 	}
 
 	@Transactional
@@ -177,16 +194,19 @@ public class StudentService {
 		Student student = loadProfile(studentId);
 		StudentResponse oldValue = studentMapper.toProfileResponse(student);
 		StudentClassAssignment assignment = findClassAssignment(student, assignmentId);
+		ResolvedClassAssignment resolved = resolveClassAssignment(request);
+		ensureRollNumberAvailable(request.rollNumber(), resolved, assignmentId);
 		if (assignment.isActive()) {
 			student.getClassAssignments().stream()
 					.filter(existing -> !existing.getId().equals(assignmentId))
 					.filter(StudentClassAssignment::isActive)
+					.filter(existing -> existing.isForAcademicYear(resolved.academicYear()))
 					.forEach(existing -> existing.deactivate(request.effectiveFrom().minusDays(1)));
 		}
 		assignment.update(
-				request.academicYear(),
-				request.className(),
-				request.sectionName(),
+				resolved.academicYear(),
+				resolved.classEntity(),
+				resolved.section(),
 				request.rollNumber(),
 				request.effectiveFrom(),
 				null,
@@ -274,7 +294,8 @@ public class StudentService {
 	private StudentParent findParentMapping(Student student, UUID mappingId) {
 		return student.getParents().stream()
 				.filter(mapping -> !mapping.isDeleted())
-				.filter(mapping -> mapping.getId().equals(mappingId))
+				.filter(mapping -> mapping.getId().equals(mappingId)
+						|| (mapping.getParent().getId() != null && mapping.getParent().getId().equals(mappingId)))
 				.findFirst()
 				.orElseThrow(() -> new ResourceNotFoundException("Student parent mapping", mappingId));
 	}
@@ -308,10 +329,12 @@ public class StudentService {
 	}
 
 	private void assignClassSection(Student student, ClassSectionAssignmentRequest request) {
+		ResolvedClassAssignment resolved = resolveClassAssignment(request);
+		ensureRollNumberAvailable(request.rollNumber(), resolved, null);
 		student.assignClassSection(
-				request.academicYear(),
-				request.className(),
-				request.sectionName(),
+				resolved.academicYear(),
+				resolved.classEntity(),
+				resolved.section(),
 				request.rollNumber(),
 				request.effectiveFrom());
 	}
@@ -374,6 +397,51 @@ public class StudentService {
 		}
 	}
 
+	private ResolvedClassAssignment resolveClassAssignment(ClassSectionAssignmentRequest request) {
+		boolean anyIdProvided = request.academicYearId() != null || request.classId() != null || request.sectionId() != null;
+		boolean allIdsProvided = request.academicYearId() != null && request.classId() != null && request.sectionId() != null;
+		if (anyIdProvided && !allIdsProvided) {
+			throw new BusinessException(
+					ErrorCode.VALIDATION_ERROR,
+					"Academic year, class, and section IDs must be provided together.");
+		}
+
+		AcademicYear academicYear = request.academicYearId() == null
+				? academicHierarchyService.resolveAcademicYear(request.academicYear())
+				: academicHierarchyService.loadAcademicYear(request.academicYearId());
+		ClassEntity classEntity = request.classId() == null
+				? academicHierarchyService.resolveClass(academicYear, request.className())
+				: academicHierarchyService.loadClass(request.classId());
+		if (!classEntity.getAcademicYear().getId().equals(academicYear.getId())) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Class does not belong to the selected academic year.");
+		}
+		SectionEntity section = request.sectionId() == null
+				? academicHierarchyService.resolveSection(classEntity, request.sectionName())
+				: academicHierarchyService.loadSectionForClass(classEntity.getId(), request.sectionId());
+		return new ResolvedClassAssignment(academicYear, classEntity, section);
+	}
+
+	private void ensureRollNumberAvailable(
+			String rollNumber,
+			ResolvedClassAssignment assignment,
+			UUID excludedAssignmentId) {
+		if (!StringUtils.hasText(rollNumber)) {
+			return;
+		}
+		if (studentClassAssignmentRepository.existsActiveRollNumber(
+				assignment.academicYear().getId(),
+				assignment.classEntity().getId(),
+				assignment.section().getId(),
+				rollNumber.trim(),
+				excludedAssignmentId)) {
+			throw new BusinessException(
+					ErrorCode.CONFLICT,
+					"Roll number already exists for the selected academic year, class, and section.");
+		}
+	}
+
 	private List<StudentDocumentRequest> optionalDocuments(List<StudentDocumentRequest> documents) {
 		return documents == null ? List.of() : documents;
 	}
@@ -394,5 +462,11 @@ public class StudentService {
 				action,
 				oldValue,
 				newValue));
+	}
+
+	private record ResolvedClassAssignment(
+			AcademicYear academicYear,
+			ClassEntity classEntity,
+			SectionEntity section) {
 	}
 }

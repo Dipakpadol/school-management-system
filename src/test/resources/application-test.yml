@@ -26,6 +26,6 @@ app:
       issuer: school-erp-test
       audiences: school-erp-api
       secret: test-secret-test-secret-test-secret-32
-      access-token-ttl: 15m
+      access-token-ttl: 60m
       refresh-token-ttl: 7d
       password-reset-token-ttl: 30m

@@ -9,6 +9,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "Class and section assignment details.")
 public record ClassSectionAssignmentResponse(
 		UUID id,
+		UUID academicYearId,
+		UUID classId,
+		UUID sectionId,
 		String academicYear,
 		String className,
 		String sectionName,

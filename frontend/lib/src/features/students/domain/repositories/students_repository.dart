@@ -5,7 +5,21 @@ abstract interface class StudentsRepository {
   Future<Result<List<StudentSummaryModel>>> students({
     String? query,
     String? status,
+    String? academicYearId,
+    String? classId,
+    String? sectionId,
   });
+
+  Future<Result<List<AcademicYearModel>>> academicYears();
+
+  Future<Result<List<SchoolClassModel>>> classes(String academicYearId);
+
+  Future<Result<List<SectionModel>>> sections(String classId);
+
+  Future<Result<ClassSectionTeachersModel>> sectionTeachers(
+    String classId,
+    String sectionId,
+  );
 
   Future<Result<StudentProfileModel>> profile(String studentId);
 

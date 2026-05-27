@@ -140,6 +140,17 @@ class FeeServiceTest {
 	}
 
 	@Test
+	void createFeeStructureRejectsDuplicateActiveClassSectionStructure() {
+		FeeCategory tuition = category("TUITION");
+		when(feeStructureRepository.existsActiveStructureForClass("2026-2027", "Class 6", "A")).thenReturn(true);
+
+		assertThatThrownBy(() -> feeService.createFeeStructure(structureRequest(tuition.getId(), true)))
+				.isInstanceOf(BusinessException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.CONFLICT);
+	}
+
+	@Test
 	void updateFeeStructureReplacesLinesWhenStructureIsUnassigned() {
 		FeeCategory tuition = category("TUITION");
 		FeeCategory transport = category("TRANSPORT");
@@ -275,6 +286,27 @@ class FeeServiceTest {
 				.isInstanceOf(BusinessException.class)
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.VALIDATION_ERROR);
+	}
+
+	@Test
+	void collectPaymentRejectsOverpayment() {
+		StudentFeeAssignment assignment = assignment();
+		when(assignmentRepository.findDetailedByIdAndDeletedFalse(assignment.getId())).thenReturn(Optional.of(assignment));
+
+		assertThatThrownBy(() -> feeService.collectPayment(
+				assignment.getId(),
+				new PaymentCollectionRequest(
+						money("30000.01"),
+						LocalDate.of(2026, 6, 20),
+						PaymentMode.CASH,
+						null,
+						"Rajesh Sharma",
+						"accountant@school.test",
+						null,
+						false)))
+				.isInstanceOf(BusinessException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.BUSINESS_RULE_VIOLATION);
 	}
 
 	@Test

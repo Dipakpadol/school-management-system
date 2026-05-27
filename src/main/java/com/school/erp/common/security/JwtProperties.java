@@ -18,7 +18,7 @@ public record JwtProperties(
 	public JwtProperties {
 		issuer = StringUtils.hasText(issuer) ? issuer : "school-erp";
 		audiences = audiences == null ? List.of() : List.copyOf(audiences);
-		accessTokenTtl = accessTokenTtl == null ? Duration.ofMinutes(15) : accessTokenTtl;
+		accessTokenTtl = accessTokenTtl == null ? Duration.ofMinutes(60) : accessTokenTtl;
 		refreshTokenTtl = refreshTokenTtl == null ? Duration.ofDays(7) : refreshTokenTtl;
 		passwordResetTokenTtl = passwordResetTokenTtl == null ? Duration.ofMinutes(30) : passwordResetTokenTtl;
 		if (!StringUtils.hasText(secret)) {

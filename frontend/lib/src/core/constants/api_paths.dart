@@ -15,6 +15,7 @@ abstract final class ApiPaths {
   static const studentsTemplate = '/v1/students/template';
   static const studentsImportExcel = '/v1/students/import/excel';
   static const studentsImportCsv = '/v1/students/import/csv';
+  static const academicYears = '/v1/academic-years';
 
   static const users = '/v1/users';
   static const roles = '/v1/users/roles';
@@ -41,8 +42,7 @@ abstract final class ApiPaths {
   static const feeAssignmentTemplate = '/v1/fees/assignments/template';
   static const feeStructuresImportExcel = '/v1/fees/structures/import/excel';
   static const feeStructuresImportCsv = '/v1/fees/structures/import/csv';
-  static const feeAssignmentsImportExcel =
-      '/v1/fees/assignments/import/excel';
+  static const feeAssignmentsImportExcel = '/v1/fees/assignments/import/excel';
   static const feeAssignmentsImportCsv = '/v1/fees/assignments/import/csv';
 
   static String feeStructure(String id) => '/v1/fees/structures/$id';
@@ -78,6 +78,26 @@ abstract final class ApiPaths {
   static String studentPdf(String id) => '/v1/students/$id/pdf';
 
   static String studentProfile(String id) => '/v1/students/$id/profile';
+
+  static String studentParents(String id) => '/v1/students/$id/parents';
+
+  static String academicYearClasses(String academicYearId) =>
+      '/v1/academic-years/$academicYearId/classes';
+
+  static String classSections(String classId) =>
+      '/v1/classes/$classId/sections';
+
+  static String classSectionTeachers(String classId, String sectionId) =>
+      '/v1/classes/$classId/sections/$sectionId/teachers';
+
+  static String classTeacher(String classId, String sectionId) =>
+      '/v1/classes/$classId/sections/$sectionId/class-teacher';
+
+  static String subjectTeacher(
+    String classId,
+    String sectionId,
+    String subjectId,
+  ) => '/v1/classes/$classId/sections/$sectionId/subjects/$subjectId/teacher';
 
   static String studentActivate(String id) => '/v1/students/$id/activate';
 

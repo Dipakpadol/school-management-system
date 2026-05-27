@@ -65,6 +65,8 @@ Health:     http://localhost:8080/api/actuator/health
 Status:     http://localhost:8080/api/v1/system/status
 ```
 
+The default access-token session timeout is 60 minutes. Override it per environment with `JWT_ACCESS_TOKEN_TTL`, for example `$env:JWT_ACCESS_TOKEN_TTL = "2h"`.
+
 In a second terminal, start the Flutter admin panel:
 
 ```powershell
@@ -112,6 +114,7 @@ $env:SPRING_DATASOURCE_URL = "jdbc:postgresql://localhost:5432/school_erp"
 $env:SPRING_DATASOURCE_USERNAME = "school_erp"
 $env:SPRING_DATASOURCE_PASSWORD = "school_erp"
 $env:JWT_SECRET = "replace-this-with-a-strong-32-character-secret"
+$env:JWT_ACCESS_TOKEN_TTL = "60m"
 $env:BOOTSTRAP_SUPER_ADMIN_ENABLED = "true"
 $env:BOOTSTRAP_SUPER_ADMIN_EMAIL = "admin@school.test"
 $env:BOOTSTRAP_SUPER_ADMIN_PASSWORD = "Admin@12345678"

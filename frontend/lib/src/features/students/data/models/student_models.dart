@@ -1,3 +1,93 @@
+class AcademicYearModel {
+  const AcademicYearModel({
+    required this.id,
+    required this.code,
+    required this.name,
+    required this.startDate,
+    required this.endDate,
+    required this.active,
+  });
+
+  factory AcademicYearModel.fromJson(Map<String, dynamic> json) {
+    return AcademicYearModel(
+      id: json['id'] as String,
+      code: json['code'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      startDate: DateTime.parse(json['startDate'] as String),
+      endDate: DateTime.parse(json['endDate'] as String),
+      active: json['active'] as bool? ?? true,
+    );
+  }
+
+  final String id;
+  final String code;
+  final String name;
+  final DateTime startDate;
+  final DateTime endDate;
+  final bool active;
+}
+
+class SchoolClassModel {
+  const SchoolClassModel({
+    required this.id,
+    required this.academicYearId,
+    required this.code,
+    required this.name,
+    required this.displayOrder,
+    required this.active,
+  });
+
+  factory SchoolClassModel.fromJson(Map<String, dynamic> json) {
+    return SchoolClassModel(
+      id: json['id'] as String,
+      academicYearId: json['academicYearId'] as String,
+      code: json['code'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      displayOrder: json['displayOrder'] as int? ?? 0,
+      active: json['active'] as bool? ?? true,
+    );
+  }
+
+  final String id;
+  final String academicYearId;
+  final String code;
+  final String name;
+  final int displayOrder;
+  final bool active;
+}
+
+class SectionModel {
+  const SectionModel({
+    required this.id,
+    required this.classId,
+    required this.code,
+    required this.name,
+    required this.displayOrder,
+    required this.active,
+    this.capacity,
+  });
+
+  factory SectionModel.fromJson(Map<String, dynamic> json) {
+    return SectionModel(
+      id: json['id'] as String,
+      classId: json['classId'] as String,
+      code: json['code'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      capacity: json['capacity'] as int?,
+      displayOrder: json['displayOrder'] as int? ?? 0,
+      active: json['active'] as bool? ?? true,
+    );
+  }
+
+  final String id;
+  final String classId;
+  final String code;
+  final String name;
+  final int? capacity;
+  final int displayOrder;
+  final bool active;
+}
+
 class StudentSummaryModel {
   const StudentSummaryModel({
     required this.id,
@@ -5,6 +95,9 @@ class StudentSummaryModel {
     required this.displayName,
     required this.status,
     required this.admissionDate,
+    this.academicYearId,
+    this.classId,
+    this.sectionId,
     this.className,
     this.sectionName,
     this.rollNumber,
@@ -17,6 +110,9 @@ class StudentSummaryModel {
       displayName: json['displayName'] as String? ?? '',
       status: json['status'] as String? ?? 'ACTIVE',
       admissionDate: DateTime.parse(json['admissionDate'] as String),
+      academicYearId: json['academicYearId'] as String?,
+      classId: json['classId'] as String?,
+      sectionId: json['sectionId'] as String?,
       className: json['className'] as String?,
       sectionName: json['sectionName'] as String?,
       rollNumber: json['rollNumber'] as String?,
@@ -28,6 +124,9 @@ class StudentSummaryModel {
   final String displayName;
   final String status;
   final DateTime admissionDate;
+  final String? academicYearId;
+  final String? classId;
+  final String? sectionId;
   final String? className;
   final String? sectionName;
   final String? rollNumber;
@@ -209,12 +308,18 @@ class ClassAssignmentModel {
     required this.sectionName,
     required this.effectiveFrom,
     required this.active,
+    this.academicYearId,
+    this.classId,
+    this.sectionId,
     this.rollNumber,
   });
 
   factory ClassAssignmentModel.fromJson(Map<String, dynamic> json) {
     return ClassAssignmentModel(
       id: json['id'] as String,
+      academicYearId: json['academicYearId'] as String?,
+      classId: json['classId'] as String?,
+      sectionId: json['sectionId'] as String?,
       academicYear: json['academicYear'] as String? ?? '',
       className: json['className'] as String? ?? '',
       sectionName: json['sectionName'] as String? ?? '',
@@ -225,12 +330,100 @@ class ClassAssignmentModel {
   }
 
   final String id;
+  final String? academicYearId;
+  final String? classId;
+  final String? sectionId;
   final String academicYear;
   final String className;
   final String sectionName;
   final String? rollNumber;
   final DateTime effectiveFrom;
   final bool active;
+}
+
+class TeacherSummaryModel {
+  const TeacherSummaryModel({
+    required this.id,
+    required this.employeeNumber,
+    required this.displayName,
+    this.email,
+    this.phoneNumber,
+  });
+
+  factory TeacherSummaryModel.fromJson(Map<String, dynamic> json) {
+    return TeacherSummaryModel(
+      id: json['id'] as String,
+      employeeNumber: json['employeeNumber'] as String? ?? '',
+      displayName: json['displayName'] as String? ?? '',
+      email: json['email'] as String?,
+      phoneNumber: json['phoneNumber'] as String?,
+    );
+  }
+
+  final String id;
+  final String employeeNumber;
+  final String displayName;
+  final String? email;
+  final String? phoneNumber;
+}
+
+class SubjectTeacherModel {
+  const SubjectTeacherModel({
+    required this.subjectId,
+    required this.subjectCode,
+    required this.subjectName,
+    required this.teachers,
+  });
+
+  factory SubjectTeacherModel.fromJson(Map<String, dynamic> json) {
+    return SubjectTeacherModel(
+      subjectId: json['subjectId'] as String,
+      subjectCode: json['subjectCode'] as String? ?? '',
+      subjectName: json['subjectName'] as String? ?? '',
+      teachers: _list(json['teachers'], TeacherSummaryModel.fromJson),
+    );
+  }
+
+  final String subjectId;
+  final String subjectCode;
+  final String subjectName;
+  final List<TeacherSummaryModel> teachers;
+}
+
+class ClassSectionTeachersModel {
+  const ClassSectionTeachersModel({
+    required this.classId,
+    required this.className,
+    required this.sectionId,
+    required this.sectionName,
+    required this.subjectTeachers,
+    this.classTeacher,
+  });
+
+  factory ClassSectionTeachersModel.fromJson(Map<String, dynamic> json) {
+    return ClassSectionTeachersModel(
+      classId: json['classId'] as String,
+      className: json['className'] as String? ?? '',
+      sectionId: json['sectionId'] as String,
+      sectionName: json['sectionName'] as String? ?? '',
+      classTeacher: json['classTeacher'] is Map<String, dynamic>
+          ? TeacherSummaryModel.fromJson(
+              json['classTeacher'] as Map<String, dynamic>,
+            )
+          : null,
+      subjectTeachers: _list(
+        json['subjectTeachers'],
+        SubjectTeacherModel.fromJson,
+      ),
+    );
+  }
+
+  final String classId;
+  final String className;
+  final String sectionId;
+  final String sectionName;
+  final TeacherSummaryModel? classTeacher;
+  final List<SubjectTeacherModel> subjectTeachers;
 }
 
 List<T> _list<T>(Object? value, T Function(Map<String, dynamic>) mapper) {

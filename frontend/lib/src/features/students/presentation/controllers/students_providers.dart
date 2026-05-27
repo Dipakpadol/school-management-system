@@ -14,6 +14,58 @@ final studentStatusFilterProvider =
       StudentStatusFilterController.new,
     );
 
+final selectedAcademicYearIdProvider =
+    NotifierProvider<SelectedAcademicYearController, String?>(
+      SelectedAcademicYearController.new,
+    );
+
+final academicYearsProvider = FutureProvider<List<AcademicYearModel>>((ref) {
+  return _resolve(ref.watch(studentsRepositoryProvider).academicYears());
+});
+
+final classesByAcademicYearProvider =
+    FutureProvider.family<List<SchoolClassModel>, String>((
+      ref,
+      academicYearId,
+    ) {
+      return _resolve(
+        ref.watch(studentsRepositoryProvider).classes(academicYearId),
+      );
+    });
+
+final sectionsByClassProvider =
+    FutureProvider.family<List<SectionModel>, String>((ref, classId) {
+      return _resolve(ref.watch(studentsRepositoryProvider).sections(classId));
+    });
+
+final sectionStudentsProvider =
+    FutureProvider.family<List<StudentSummaryModel>, StudentSectionFilter>((
+      ref,
+      filter,
+    ) {
+      return _resolve(
+        ref
+            .watch(studentsRepositoryProvider)
+            .students(
+              academicYearId: filter.academicYearId,
+              classId: filter.classId,
+              sectionId: filter.sectionId,
+            ),
+      );
+    });
+
+final classSectionTeachersProvider =
+    FutureProvider.family<ClassSectionTeachersModel, ClassSectionKey>((
+      ref,
+      key,
+    ) {
+      return _resolve(
+        ref
+            .watch(studentsRepositoryProvider)
+            .sectionTeachers(key.classId, key.sectionId),
+      );
+    });
+
 final studentsProvider = FutureProvider<List<StudentSummaryModel>>((ref) {
   return _resolve(
     ref
@@ -54,4 +106,53 @@ class StudentStatusFilterController extends Notifier<String?> {
   void set(String? value) {
     state = value;
   }
+}
+
+class SelectedAcademicYearController extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void set(String? value) {
+    state = value;
+  }
+}
+
+class StudentSectionFilter {
+  const StudentSectionFilter({
+    required this.classId,
+    required this.sectionId,
+    this.academicYearId,
+  });
+
+  final String? academicYearId;
+  final String classId;
+  final String sectionId;
+
+  @override
+  bool operator ==(Object other) {
+    return other is StudentSectionFilter &&
+        other.academicYearId == academicYearId &&
+        other.classId == classId &&
+        other.sectionId == sectionId;
+  }
+
+  @override
+  int get hashCode => Object.hash(academicYearId, classId, sectionId);
+}
+
+class ClassSectionKey {
+  const ClassSectionKey({required this.classId, required this.sectionId});
+
+  final String classId;
+  final String sectionId;
+
+  @override
+  bool operator ==(Object other) {
+    return other is ClassSectionKey &&
+        other.classId == classId &&
+        other.sectionId == sectionId;
+  }
+
+  @override
+  int get hashCode => Object.hash(classId, sectionId);
 }

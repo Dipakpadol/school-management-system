@@ -1,11 +1,15 @@
 package com.school.erp.modules.students.domain;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
 
 import com.school.erp.common.domain.BaseEntity;
+import com.school.erp.modules.academic.domain.AcademicYear;
+import com.school.erp.modules.academic.domain.ClassEntity;
+import com.school.erp.modules.academic.domain.SectionEntity;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -122,7 +126,9 @@ public class Student extends BaseEntity {
 		return classAssignments.stream()
 				.filter(assignment -> !assignment.isDeleted())
 				.filter(StudentClassAssignment::isActive)
-				.findFirst();
+				.max(Comparator.comparing(
+						StudentClassAssignment::getEffectiveFrom,
+						Comparator.nullsLast(Comparator.naturalOrder())));
 	}
 
 	public void updateProfile(
@@ -206,12 +212,35 @@ public class Student extends BaseEntity {
 		LocalDate previousEffectiveTo = effectiveFrom == null ? null : effectiveFrom.minusDays(1);
 		classAssignments.stream()
 				.filter(StudentClassAssignment::isActive)
+				.filter(assignment -> assignment.isForAcademicYear(academicYear))
 				.forEach(assignment -> assignment.deactivate(previousEffectiveTo));
 		StudentClassAssignment assignment = new StudentClassAssignment(
 				this,
 				academicYear,
 				className,
 				sectionName,
+				rollNumber,
+				effectiveFrom);
+		classAssignments.add(assignment);
+		return assignment;
+	}
+
+	public StudentClassAssignment assignClassSection(
+			AcademicYear academicYear,
+			ClassEntity classEntity,
+			SectionEntity sectionEntity,
+			String rollNumber,
+			LocalDate effectiveFrom) {
+		LocalDate previousEffectiveTo = effectiveFrom == null ? null : effectiveFrom.minusDays(1);
+		classAssignments.stream()
+				.filter(StudentClassAssignment::isActive)
+				.filter(assignment -> assignment.isForAcademicYear(academicYear))
+				.forEach(assignment -> assignment.deactivate(previousEffectiveTo));
+		StudentClassAssignment assignment = new StudentClassAssignment(
+				this,
+				academicYear,
+				classEntity,
+				sectionEntity,
 				rollNumber,
 				effectiveFrom);
 		classAssignments.add(assignment);

@@ -283,6 +283,9 @@ public class StudentImportExportService {
 				firstText(value(values, "country"), "India"),
 				null);
 		ClassSectionAssignmentRequest assignment = new ClassSectionAssignmentRequest(
+				null,
+				null,
+				null,
 				value(values, "academicYear"),
 				value(values, "className"),
 				value(values, "sectionName"),

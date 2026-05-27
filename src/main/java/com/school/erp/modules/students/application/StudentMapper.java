@@ -118,18 +118,25 @@ public class StudentMapper {
 	}
 
 	public StudentSummaryResponse toSummaryResponse(Student student) {
-		ClassSectionAssignmentResponse assignment = student.getCurrentAssignment()
-				.map(this::toClassSectionAssignmentResponse)
-				.orElse(null);
+		StudentClassAssignment assignment = student.getCurrentAssignment().orElse(null);
 		return new StudentSummaryResponse(
 				student.getId(),
 				student.getAdmissionNumber(),
 				student.getDisplayName(),
 				student.getStatus(),
 				student.getAdmissionDate(),
-				assignment == null ? null : assignment.className(),
-				assignment == null ? null : assignment.sectionName(),
-				assignment == null ? null : assignment.rollNumber());
+				assignment == null || assignment.getAcademicYearEntity() == null
+						? null
+						: assignment.getAcademicYearEntity().getId(),
+				assignment == null || assignment.getClassEntity() == null
+						? null
+						: assignment.getClassEntity().getId(),
+				assignment == null || assignment.getSectionEntity() == null
+						? null
+						: assignment.getSectionEntity().getId(),
+				assignment == null ? null : assignment.getClassName(),
+				assignment == null ? null : assignment.getSectionName(),
+				assignment == null ? null : assignment.getRollNumber());
 	}
 
 	public ParentMappingResponse toParentMappingResponse(StudentParent mapping) {
@@ -171,6 +178,9 @@ public class StudentMapper {
 	public ClassSectionAssignmentResponse toClassSectionAssignmentResponse(StudentClassAssignment assignment) {
 		return new ClassSectionAssignmentResponse(
 				assignment.getId(),
+				assignment.getAcademicYearEntity() == null ? null : assignment.getAcademicYearEntity().getId(),
+				assignment.getClassEntity() == null ? null : assignment.getClassEntity().getId(),
+				assignment.getSectionEntity() == null ? null : assignment.getSectionEntity().getId(),
 				assignment.getAcademicYear(),
 				assignment.getClassName(),
 				assignment.getSectionName(),

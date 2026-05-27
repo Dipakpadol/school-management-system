@@ -19,10 +19,17 @@ import com.school.erp.modules.fees.domain.StudentFeeAssignment;
 import com.school.erp.modules.fees.infrastructure.FeeCategoryRepository;
 import com.school.erp.modules.fees.infrastructure.FeeStructureRepository;
 import com.school.erp.modules.fees.infrastructure.StudentFeeAssignmentRepository;
+import com.school.erp.modules.academic.domain.AcademicYear;
+import com.school.erp.modules.academic.domain.ClassEntity;
+import com.school.erp.modules.academic.domain.SectionEntity;
+import com.school.erp.modules.academic.infrastructure.AcademicYearRepository;
+import com.school.erp.modules.academic.infrastructure.ClassEntityRepository;
+import com.school.erp.modules.academic.infrastructure.SectionEntityRepository;
 import com.school.erp.modules.students.domain.Gender;
 import com.school.erp.modules.students.domain.ParentGuardian;
 import com.school.erp.modules.students.domain.ParentRelation;
 import com.school.erp.modules.students.domain.Student;
+import com.school.erp.modules.students.domain.StudentClassAssignment;
 import com.school.erp.modules.students.infrastructure.ParentGuardianRepository;
 import com.school.erp.modules.students.infrastructure.StudentRepository;
 import com.school.erp.modules.users.domain.Permission;
@@ -64,6 +71,9 @@ public class DatabaseMasterDataSeeder {
 	private final PasswordEncoder passwordEncoder;
 	private final StudentRepository studentRepository;
 	private final ParentGuardianRepository parentGuardianRepository;
+	private final AcademicYearRepository academicYearRepository;
+	private final ClassEntityRepository classEntityRepository;
+	private final SectionEntityRepository sectionEntityRepository;
 	private final FeeCategoryRepository feeCategoryRepository;
 	private final FeeStructureRepository feeStructureRepository;
 	private final StudentFeeAssignmentRepository assignmentRepository;
@@ -86,6 +96,7 @@ public class DatabaseMasterDataSeeder {
 				user("parent1@school.com", "parent1", "Rajesh", "Sharma", "9999999992", DEFAULT_DEMO_PASSWORD, RoleName.PARENT))
 				.forEach(this::seedUser);
 
+		seedAcademicHierarchy();
 		List<Student> students = seedDemoStudents();
 		FeeStructure feeStructure = seedDemoFees();
 		students.forEach(student -> seedFeeAssignment(student, feeStructure));
@@ -280,6 +291,9 @@ public class DatabaseMasterDataSeeder {
 	}
 
 	private Student seedStudent(StudentSeed seed) {
+		AcademicYear academicYear = seedAcademicYear();
+		ClassEntity classEntity = seedClass(academicYear, 6);
+		SectionEntity section = seedSection(classEntity, "A", "Division A", 1);
 		Student student = studentRepository.findByAdmissionNumberIgnoreCaseAndDeletedFalse(seed.admissionNumber())
 				.orElseGet(() -> {
 					Student created = new Student(
@@ -305,9 +319,9 @@ public class DatabaseMasterDataSeeder {
 							"Karnataka",
 							"560001",
 							"India");
-					created.assignClassSection(DEMO_ACADEMIC_YEAR, DEMO_CLASS_NAME, DEMO_SECTION_NAME, seed.rollNumber(), LocalDate.of(2026, 4, 1));
 					return studentRepository.save(created);
 				});
+		linkDemoAssignment(student, academicYear, classEntity, section, seed.rollNumber());
 
 		ParentGuardian parent = seedParent(seed);
 		if (!student.hasParentMapping(parent, seed.parentRelation())) {
@@ -335,6 +349,67 @@ public class DatabaseMasterDataSeeder {
 				"India",
 				null);
 		return parentGuardianRepository.save(parent);
+	}
+
+	private void seedAcademicHierarchy() {
+		AcademicYear academicYear = seedAcademicYear();
+		for (int grade = 1; grade <= 10; grade++) {
+			ClassEntity classEntity = seedClass(academicYear, grade);
+			seedSection(classEntity, "A", "Division A", 1);
+			seedSection(classEntity, "B", "Division B", 2);
+			seedSection(classEntity, "C", "Division C", 3);
+		}
+	}
+
+	private AcademicYear seedAcademicYear() {
+		return academicYearRepository.findByNameIgnoreCaseAndDeletedFalse(DEMO_ACADEMIC_YEAR)
+				.or(() -> academicYearRepository.findByCodeIgnoreCaseAndDeletedFalse("AY-2026-27"))
+				.orElseGet(() -> academicYearRepository.save(new AcademicYear(
+						"AY-2026-27",
+						DEMO_ACADEMIC_YEAR,
+						LocalDate.of(2026, 4, 1),
+						LocalDate.of(2027, 3, 31))));
+	}
+
+	private ClassEntity seedClass(AcademicYear academicYear, int grade) {
+		String name = "Class " + grade;
+		return classEntityRepository.findByAcademicYearIdAndNameIgnoreCaseAndDeletedFalse(academicYear.getId(), name)
+				.orElseGet(() -> classEntityRepository.save(new ClassEntity(
+						academicYear,
+						"CLASS-" + grade,
+						name,
+						grade)));
+	}
+
+	private SectionEntity seedSection(ClassEntity classEntity, String code, String name, int displayOrder) {
+		return sectionEntityRepository.findByClassEntityIdAndCodeIgnoreCaseAndDeletedFalse(classEntity.getId(), code)
+				.orElseGet(() -> sectionEntityRepository.save(new SectionEntity(
+						classEntity,
+						code,
+						name,
+						40,
+						displayOrder)));
+	}
+
+	private void linkDemoAssignment(
+			Student student,
+			AcademicYear academicYear,
+			ClassEntity classEntity,
+			SectionEntity section,
+			String rollNumber) {
+		StudentClassAssignment assignment = student.getClassAssignments().stream()
+				.filter(existing -> !existing.isDeleted())
+				.filter(StudentClassAssignment::isActive)
+				.filter(existing -> existing.isForAcademicYear(academicYear))
+				.findFirst()
+				.orElse(null);
+		if (assignment == null) {
+			student.assignClassSection(academicYear, classEntity, section, rollNumber, LocalDate.of(2026, 4, 1));
+		}
+		else {
+			assignment.update(academicYear, classEntity, section, rollNumber, LocalDate.of(2026, 4, 1), null, true);
+		}
+		studentRepository.save(student);
 	}
 
 	private FeeStructure seedDemoFees() {

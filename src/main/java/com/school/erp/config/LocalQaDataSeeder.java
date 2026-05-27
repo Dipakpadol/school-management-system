@@ -19,8 +19,15 @@ import com.school.erp.modules.fees.domain.StudentFeeAssignment;
 import com.school.erp.modules.fees.infrastructure.FeeCategoryRepository;
 import com.school.erp.modules.fees.infrastructure.FeeStructureRepository;
 import com.school.erp.modules.fees.infrastructure.StudentFeeAssignmentRepository;
+import com.school.erp.modules.academic.domain.AcademicYear;
+import com.school.erp.modules.academic.domain.ClassEntity;
+import com.school.erp.modules.academic.domain.SectionEntity;
+import com.school.erp.modules.academic.infrastructure.AcademicYearRepository;
+import com.school.erp.modules.academic.infrastructure.ClassEntityRepository;
+import com.school.erp.modules.academic.infrastructure.SectionEntityRepository;
 import com.school.erp.modules.students.domain.Gender;
 import com.school.erp.modules.students.domain.Student;
+import com.school.erp.modules.students.domain.StudentClassAssignment;
 import com.school.erp.modules.students.infrastructure.StudentRepository;
 import com.school.erp.modules.users.domain.Permission;
 import com.school.erp.modules.users.domain.Role;
@@ -57,6 +64,9 @@ public class LocalQaDataSeeder {
 	private final UserAccountRepository userAccountRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final StudentRepository studentRepository;
+	private final AcademicYearRepository academicYearRepository;
+	private final ClassEntityRepository classEntityRepository;
+	private final SectionEntityRepository sectionEntityRepository;
 	private final FeeCategoryRepository feeCategoryRepository;
 	private final FeeStructureRepository feeStructureRepository;
 	private final StudentFeeAssignmentRepository assignmentRepository;
@@ -69,6 +79,7 @@ public class LocalQaDataSeeder {
 		Map<RoleName, Role> roles = seedRoles(permissions);
 		seedAdminUser(roles.get(RoleName.SUPER_ADMIN));
 		seedDemoUsers(roles);
+		seedAcademicHierarchy();
 		List<Student> students = seedStudents();
 		FeeStructure structure = seedFees();
 		students.forEach(student -> seedFeeAssignment(student, structure));
@@ -219,7 +230,10 @@ public class LocalQaDataSeeder {
 	}
 
 	private Student seedStudent(StudentSeed seed) {
-		return studentRepository.findByAdmissionNumberIgnoreCaseAndDeletedFalse(seed.admissionNumber())
+		AcademicYear academicYear = seedAcademicYear();
+		ClassEntity classEntity = seedClass(academicYear, 6);
+		SectionEntity section = seedSection(classEntity, "A", "Division A", 1);
+		Student student = studentRepository.findByAdmissionNumberIgnoreCaseAndDeletedFalse(seed.admissionNumber())
 				.orElseGet(() -> {
 					Student student = new Student(
 							seed.admissionNumber(),
@@ -244,9 +258,71 @@ public class LocalQaDataSeeder {
 							"Karnataka",
 							"560001",
 							"India");
-					student.assignClassSection(QA_ACADEMIC_YEAR, QA_CLASS_NAME, QA_SECTION_NAME, seed.rollNumber(), LocalDate.of(2026, 4, 1));
 					return studentRepository.save(student);
 				});
+		linkDemoAssignment(student, academicYear, classEntity, section, seed.rollNumber());
+		return student;
+	}
+
+	private void seedAcademicHierarchy() {
+		AcademicYear academicYear = seedAcademicYear();
+		for (int grade = 1; grade <= 10; grade++) {
+			ClassEntity classEntity = seedClass(academicYear, grade);
+			seedSection(classEntity, "A", "Division A", 1);
+			seedSection(classEntity, "B", "Division B", 2);
+			seedSection(classEntity, "C", "Division C", 3);
+		}
+	}
+
+	private AcademicYear seedAcademicYear() {
+		return academicYearRepository.findByNameIgnoreCaseAndDeletedFalse(QA_ACADEMIC_YEAR)
+				.or(() -> academicYearRepository.findByCodeIgnoreCaseAndDeletedFalse("AY-2026-27"))
+				.orElseGet(() -> academicYearRepository.save(new AcademicYear(
+						"AY-2026-27",
+						QA_ACADEMIC_YEAR,
+						LocalDate.of(2026, 4, 1),
+						LocalDate.of(2027, 3, 31))));
+	}
+
+	private ClassEntity seedClass(AcademicYear academicYear, int grade) {
+		String name = "Class " + grade;
+		return classEntityRepository.findByAcademicYearIdAndNameIgnoreCaseAndDeletedFalse(academicYear.getId(), name)
+				.orElseGet(() -> classEntityRepository.save(new ClassEntity(
+						academicYear,
+						"CLASS-" + grade,
+						name,
+						grade)));
+	}
+
+	private SectionEntity seedSection(ClassEntity classEntity, String code, String name, int displayOrder) {
+		return sectionEntityRepository.findByClassEntityIdAndCodeIgnoreCaseAndDeletedFalse(classEntity.getId(), code)
+				.orElseGet(() -> sectionEntityRepository.save(new SectionEntity(
+						classEntity,
+						code,
+						name,
+						40,
+						displayOrder)));
+	}
+
+	private void linkDemoAssignment(
+			Student student,
+			AcademicYear academicYear,
+			ClassEntity classEntity,
+			SectionEntity section,
+			String rollNumber) {
+		StudentClassAssignment assignment = student.getClassAssignments().stream()
+				.filter(existing -> !existing.isDeleted())
+				.filter(StudentClassAssignment::isActive)
+				.filter(existing -> existing.isForAcademicYear(academicYear))
+				.findFirst()
+				.orElse(null);
+		if (assignment == null) {
+			student.assignClassSection(academicYear, classEntity, section, rollNumber, LocalDate.of(2026, 4, 1));
+		}
+		else {
+			assignment.update(academicYear, classEntity, section, rollNumber, LocalDate.of(2026, 4, 1), null, true);
+		}
+		studentRepository.save(student);
 	}
 
 	private FeeStructure seedFees() {
