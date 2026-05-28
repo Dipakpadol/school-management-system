@@ -2,6 +2,7 @@ package com.school.erp.modules.fees.infrastructure;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,6 +24,12 @@ public interface StudentFeeAssignmentRepository
 	boolean existsByStudentIdAndFeeStructureIdAndDeletedFalse(UUID studentId, UUID feeStructureId);
 
 	boolean existsByFeeStructureIdAndDeletedFalse(UUID feeStructureId);
+
+	Optional<StudentFeeAssignment> findByStudentIdAndFeeStructureIdAndDeletedFalse(UUID studentId, UUID feeStructureId);
+
+	List<StudentFeeAssignment> findByStudentIdAndDeletedFalseOrderByAssignedDateDesc(UUID studentId);
+
+	List<StudentFeeAssignment> findByClassEntityIdAndDeletedFalseOrderByAssignedDateDesc(UUID classId);
 
 	@EntityGraph(attributePaths = {
 			"student",

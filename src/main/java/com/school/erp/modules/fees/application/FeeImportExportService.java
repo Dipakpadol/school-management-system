@@ -360,7 +360,8 @@ public class FeeImportExportService {
 							value(values, "categoryName"),
 							"Imported fee category",
 							true,
-							0));
+							0,
+							true));
 					return feeCategoryRepository.findByCodeIgnoreCaseAndDeletedFalse(code)
 							.orElseThrow(() -> new ResourceNotFoundException("Fee category", code));
 				});

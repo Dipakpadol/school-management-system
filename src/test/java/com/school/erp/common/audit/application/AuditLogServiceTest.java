@@ -94,7 +94,7 @@ class AuditLogServiceTest {
 				.thenReturn(new PageImpl<>(List.of(auditLog)));
 
 		PageResponse<AuditLogDto> response = auditLogService.search(
-				new AuditLogSearchRequest(null, "FEES", null, null, null, null, null, null),
+				new AuditLogSearchRequest(null, "FEES", null, null, null, null, null, null, null, null),
 				new PageRequestDto(0, 20, null, null));
 
 		assertThat(response.totalElements()).isEqualTo(1);
@@ -112,7 +112,7 @@ class AuditLogServiceTest {
 		Instant earlier = Instant.parse("2026-05-24T09:00:00Z");
 
 		assertThatThrownBy(() -> auditLogService.search(
-				new AuditLogSearchRequest(null, null, null, null, null, null, later, earlier),
+				new AuditLogSearchRequest(null, null, null, null, null, null, later, earlier, null, null),
 				new PageRequestDto(0, 20, null, null)))
 				.isInstanceOf(BusinessException.class);
 

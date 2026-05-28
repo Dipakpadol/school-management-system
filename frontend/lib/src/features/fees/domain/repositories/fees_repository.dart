@@ -6,7 +6,17 @@ abstract interface class FeesRepository {
 
   Future<Result<FeeCategoryModel>> createCategory(Map<String, dynamic> payload);
 
-  Future<Result<List<FeeStructureModel>>> structures();
+  Future<Result<FeeCategoryModel>> updateCategory(
+    String id,
+    Map<String, dynamic> payload,
+  );
+
+  Future<Result<FeeCategoryModel>> deleteCategory(String id);
+
+  Future<Result<List<FeeStructureModel>>> structures({
+    String? academicYearId,
+    String? classId,
+  });
 
   Future<Result<FeeStructureModel>> structure(String id);
 
@@ -19,9 +29,18 @@ abstract interface class FeesRepository {
     Map<String, dynamic> payload,
   );
 
+  Future<Result<FeeStructureModel>> deleteStructure(String id);
+
   Future<Result<List<StudentFeeAssignmentModel>>> assignments();
 
   Future<Result<StudentFeeAssignmentModel>> createAssignment(
+    Map<String, dynamic> payload,
+  );
+
+  Future<Result<List<ClassStudentFeeModel>>> classStudents(String classId);
+
+  Future<Result<ClassFeeAssignmentModel>> assignClassFee(
+    String classId,
     Map<String, dynamic> payload,
   );
 

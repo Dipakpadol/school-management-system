@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 
 import org.slf4j.MDC;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -85,6 +86,21 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler({ HttpRequestMethodNotSupportedException.class, HttpMediaTypeNotSupportedException.class })
 	ResponseEntity<ErrorResponse> handleBadHttpContract(Exception ex, HttpServletRequest request) {
 		return build(ErrorCode.MALFORMED_REQUEST, ex.getMessage(), request, List.of());
+	}
+
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	ResponseEntity<ErrorResponse> handleDataIntegrityViolation(
+			DataIntegrityViolationException ex,
+			HttpServletRequest request) {
+		String message = ex.getMostSpecificCause() == null ? ex.getMessage() : ex.getMostSpecificCause().getMessage();
+		if (message != null && message.contains("ux_fee_payments_reference_active")) {
+			return build(
+					ErrorCode.VALIDATION_ERROR,
+					"Reference number already exists for this payment mode.",
+					request,
+					List.of());
+		}
+		return build(ErrorCode.CONFLICT, ErrorCode.CONFLICT.defaultMessage(), request, List.of());
 	}
 
 	@ExceptionHandler(Exception.class)

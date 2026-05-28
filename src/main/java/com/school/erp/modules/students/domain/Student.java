@@ -89,6 +89,18 @@ public class Student extends BaseEntity {
 	@Column(length = 80)
 	private String country;
 
+	@Column(name = "photo_storage_key", length = 300)
+	private String photoStorageKey;
+
+	@Column(name = "photo_url", length = 500)
+	private String photoUrl;
+
+	@Column(name = "photo_content_type", length = 120)
+	private String photoContentType;
+
+	@Column(name = "photo_file_name", length = 180)
+	private String photoFileName;
+
 	@OneToMany(mappedBy = "student", cascade = CascadeType.ALL)
 	private Set<StudentParent> parents = new LinkedHashSet<>();
 
@@ -120,6 +132,10 @@ public class Student extends BaseEntity {
 			displayName.append(" ").append(lastName);
 		}
 		return displayName.toString();
+	}
+
+	public String getFullName() {
+		return getDisplayName();
 	}
 
 	public Optional<StudentClassAssignment> getCurrentAssignment() {
@@ -249,6 +265,17 @@ public class Student extends BaseEntity {
 
 	public void changeStatus(StudentStatus status) {
 		this.status = status;
+	}
+
+	public void updatePhoto(
+			String photoStorageKey,
+			String photoUrl,
+			String photoContentType,
+			String photoFileName) {
+		this.photoStorageKey = trimToNull(photoStorageKey);
+		this.photoUrl = trimToNull(photoUrl);
+		this.photoContentType = trimToNull(photoContentType);
+		this.photoFileName = trimToNull(photoFileName);
 	}
 
 	public boolean hasParentMapping(ParentGuardian parent, ParentRelation relationType) {

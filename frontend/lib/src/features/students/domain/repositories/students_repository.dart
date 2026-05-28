@@ -23,9 +23,53 @@ abstract interface class StudentsRepository {
 
   Future<Result<StudentProfileModel>> profile(String studentId);
 
+  Future<Result<List<StudentParentModel>>> parents(String studentId);
+
   Future<Result<StudentProfileModel>> admit(Map<String, dynamic> payload);
 
   Future<Result<StudentProfileModel>> updateProfile(
+    String studentId,
+    Map<String, dynamic> payload,
+  );
+
+  Future<Result<StudentProfileModel>> updatePhoto(
+    String studentId,
+    Map<String, dynamic> payload,
+  );
+
+  Future<Result<StudentProfileModel>> addParent(
+    String studentId,
+    Map<String, dynamic> payload,
+  );
+
+  Future<Result<StudentProfileModel>> updateParent(
+    String studentId,
+    String mappingId,
+    Map<String, dynamic> payload,
+  );
+
+  Future<Result<StudentProfileModel>> deleteParent(
+    String studentId,
+    String mappingId,
+  );
+
+  Future<Result<StudentProfileModel>> addDocument(
+    String studentId,
+    Map<String, dynamic> payload,
+  );
+
+  Future<Result<StudentProfileModel>> updateDocument(
+    String studentId,
+    String documentId,
+    Map<String, dynamic> payload,
+  );
+
+  Future<Result<StudentProfileModel>> deleteDocument(
+    String studentId,
+    String documentId,
+  );
+
+  Future<Result<StudentProfileModel>> assignClass(
     String studentId,
     Map<String, dynamic> payload,
   );

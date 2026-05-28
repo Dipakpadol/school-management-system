@@ -18,6 +18,8 @@ public record StudentFeeAssignmentResponse(
 		String studentName,
 		UUID feeStructureId,
 		String feeStructureName,
+		UUID academicYearId,
+		UUID classId,
 		String academicYear,
 		String className,
 		String sectionName,

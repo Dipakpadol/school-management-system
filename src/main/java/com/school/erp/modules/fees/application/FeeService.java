@@ -17,7 +17,13 @@ import com.school.erp.common.audit.application.AuditLogService;
 import com.school.erp.common.exception.BusinessException;
 import com.school.erp.common.exception.ErrorCode;
 import com.school.erp.common.exception.ResourceNotFoundException;
+import com.school.erp.modules.academic.application.AcademicHierarchyService;
+import com.school.erp.modules.academic.domain.AcademicYear;
+import com.school.erp.modules.academic.domain.ClassEntity;
 import com.school.erp.modules.fees.api.dto.AssessLateFeeRequest;
+import com.school.erp.modules.fees.api.dto.ClassFeeAssignmentRequest;
+import com.school.erp.modules.fees.api.dto.ClassFeeAssignmentResponse;
+import com.school.erp.modules.fees.api.dto.ClassStudentFeeResponse;
 import com.school.erp.modules.fees.api.dto.DefaulterSearchRequest;
 import com.school.erp.modules.fees.api.dto.FeeAssignmentSearchRequest;
 import com.school.erp.modules.fees.api.dto.FeeCategoryRequest;
@@ -35,6 +41,7 @@ import com.school.erp.modules.fees.api.dto.PaymentCollectionRequest;
 import com.school.erp.modules.fees.api.dto.PaymentActionRequest;
 import com.school.erp.modules.fees.api.dto.StudentFeeAssignmentRequest;
 import com.school.erp.modules.fees.api.dto.StudentFeeAssignmentResponse;
+import com.school.erp.modules.fees.api.dto.StudentFeeSummaryResponse;
 import com.school.erp.modules.fees.domain.DiscountCalculationType;
 import com.school.erp.modules.fees.domain.FeeCategory;
 import com.school.erp.modules.fees.domain.FeeDiscount;
@@ -80,6 +87,7 @@ public class FeeService {
 	private final FeeReceiptRepository feeReceiptRepository;
 	private final FeePaymentRepository feePaymentRepository;
 	private final StudentRepository studentRepository;
+	private final AcademicHierarchyService academicHierarchyService;
 	private final FeeMapper feeMapper;
 	private final AuditLogService auditLogService;
 
@@ -90,7 +98,7 @@ public class FeeService {
 			throw new BusinessException(ErrorCode.CONFLICT, "Fee category already exists: " + code);
 		}
 		FeeCategory category = new FeeCategory(code, request.name(), request.description(), request.sortOrder());
-		category.update(code, request.name(), request.description(), request.active(), request.sortOrder());
+		category.update(code, request.name(), request.description(), request.active(), request.sortOrder(), mandatory(request));
 		FeeCategoryResponse response = feeMapper.toCategoryResponse(feeCategoryRepository.save(category));
 		audit("FeeCategory", response.id(), "CREATE", null, response);
 		return response;
@@ -118,7 +126,7 @@ public class FeeService {
 				.ifPresent(existing -> {
 					throw new BusinessException(ErrorCode.CONFLICT, "Fee category already exists: " + code);
 				});
-		category.update(code, request.name(), request.description(), request.active(), request.sortOrder());
+		category.update(code, request.name(), request.description(), request.active(), request.sortOrder(), mandatory(request));
 		FeeCategoryResponse response = feeMapper.toCategoryResponse(category);
 		audit("FeeCategory", categoryId, "UPDATE", oldValue, response);
 		return response;
@@ -142,6 +150,8 @@ public class FeeService {
 				request.sectionName(),
 				request.name(),
 				request.description());
+		ResolvedFeeStructureClass mapping = resolveFeeStructureClass(request.academicYear(), request.className());
+		structure.updateAcademicMapping(mapping.academicYear(), mapping.classEntity());
 		applyFeeStructureLines(structure, request);
 		if (request.activate()) {
 			structure.activate();
@@ -177,6 +187,8 @@ public class FeeService {
 				request.sectionName(),
 				request.name(),
 				request.description());
+		ResolvedFeeStructureClass mapping = resolveFeeStructureClass(request.academicYear(), request.className());
+		structure.updateAcademicMapping(mapping.academicYear(), mapping.classEntity());
 		String actor = currentActor();
 		structure.clearItems(actor);
 		structure.clearInstallments(actor);
@@ -204,6 +216,43 @@ public class FeeService {
 				feeMapper::toStructureResponse);
 	}
 
+	@Transactional(readOnly = true)
+	public PageResponse<FeeStructureResponse> listFeeStructures(
+			UUID academicYearId,
+			UUID classId,
+			PageRequestDto pageRequest) {
+		if (academicYearId == null && classId == null) {
+			return listFeeStructures(pageRequest);
+		}
+		AcademicYear academicYear = academicYearId == null
+				? null
+				: academicHierarchyService.loadAcademicYear(academicYearId);
+		ClassEntity classEntity = classId == null
+				? null
+				: academicHierarchyService.loadClass(classId);
+		var pageable = pageRequest.toPageable("academicYear");
+		if (academicYearId != null && classId != null) {
+			return PageResponse.from(
+					feeStructureRepository.findByAcademicYearAndClassMappingOrLegacy(
+							academicYearId,
+							academicYear.getName(),
+							academicYear.getCode(),
+							classId,
+							classEntity.getName(),
+							classEntity.getCode(),
+							pageable),
+					feeMapper::toStructureResponse);
+		}
+		if (academicYearId != null) {
+			return PageResponse.from(
+					feeStructureRepository.findByAcademicYearEntityIdAndDeletedFalse(academicYearId, pageable),
+					feeMapper::toStructureResponse);
+		}
+		return PageResponse.from(
+				feeStructureRepository.findByClassEntityIdAndDeletedFalse(classId, pageable),
+				feeMapper::toStructureResponse);
+	}
+
 	@Transactional
 	public StudentFeeAssignmentResponse assignFeeToStudent(StudentFeeAssignmentRequest request) {
 		Student student = studentRepository.findByIdAndDeletedFalse(request.studentId())
@@ -216,17 +265,135 @@ public class FeeService {
 			throw new BusinessException(ErrorCode.CONFLICT, "Fee structure is already assigned to this student.");
 		}
 
-		StudentFeeAssignment assignment = new StudentFeeAssignment(student, structure, request.assignedDate(), request.notes());
-		for (FeeStructureInstallment installment : structure.orderedInstallments()) {
-			assignment.addInstallment(
-					installment.getSequenceNo(),
-					installment.getTitle(),
-					installment.getDueDate(),
-					installment.getAmount());
-		}
+		StudentFeeAssignment assignment = buildAssignment(student, structure, request.assignedDate(), request.notes());
 		StudentFeeAssignmentResponse response = feeMapper.toAssignmentResponse(assignmentRepository.save(assignment));
 		audit("StudentFeeAssignment", response.id(), "CREATE", null, response);
 		return response;
+	}
+
+	@Transactional(readOnly = true)
+	public List<ClassStudentFeeResponse> studentsForClass(UUID classId) {
+		ClassEntity classEntity = academicHierarchyService.loadClass(classId);
+		return studentRepository.findActiveStudentsByClassId(classId).stream()
+				.map(student -> toClassStudentFeeResponse(student, classEntity))
+				.toList();
+	}
+
+	@Transactional
+	public ClassFeeAssignmentResponse assignFeeToClass(UUID classId, ClassFeeAssignmentRequest request) {
+		ClassEntity classEntity = academicHierarchyService.loadClass(classId);
+		FeeStructure structure = loadStructure(request.feeStructureId());
+		if (!structure.isActive()) {
+			throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Only active fee structures can be assigned.");
+		}
+		if (structure.getClassEntity() != null && !structure.getClassEntity().getId().equals(classId)) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Fee structure does not belong to the selected class.");
+		}
+		if (structure.getClassEntity() == null
+				&& !matchesIgnoringCase(structure.getClassName(), classEntity.getName(), classEntity.getCode())) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Fee structure class name does not match the selected class.");
+		}
+		if (structure.getAcademicYearEntity() != null
+				&& !structure.getAcademicYearEntity().getId().equals(classEntity.getAcademicYear().getId())) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Fee structure academic year does not match the selected class.");
+		}
+		if (structure.getAcademicYearEntity() == null
+				&& !matchesIgnoringCase(
+						structure.getAcademicYear(),
+						classEntity.getAcademicYear().getName(),
+						classEntity.getAcademicYear().getCode())) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Fee structure academic year does not match the selected class.");
+		}
+		if (structure.getAcademicYearEntity() == null || structure.getClassEntity() == null) {
+			structure.updateAcademicMapping(classEntity.getAcademicYear(), classEntity);
+		}
+
+		List<Student> students = studentRepository.findActiveStudentsByClassId(classId);
+		List<StudentFeeAssignmentResponse> created = new java.util.ArrayList<>();
+		int skipped = 0;
+		for (Student student : students) {
+			if (assignmentRepository.existsByStudentIdAndFeeStructureIdAndDeletedFalse(student.getId(), structure.getId())) {
+				if (!request.skipExisting()) {
+					throw new BusinessException(
+							ErrorCode.CONFLICT,
+							"Fee structure is already assigned to one or more students in this class.");
+				}
+				skipped++;
+				continue;
+			}
+			StudentFeeAssignment assignment = buildAssignment(student, structure, request.assignedDate(), request.notes());
+			StudentFeeAssignmentResponse response = feeMapper.toAssignmentResponse(assignmentRepository.save(assignment));
+			created.add(response);
+		}
+		ClassFeeAssignmentResponse response = new ClassFeeAssignmentResponse(
+				classId,
+				structure.getId(),
+				students.size(),
+				created.size(),
+				skipped,
+				created);
+		audit(
+				"ClassFeeAssignment",
+				classId,
+				"CLASS_FEE_ASSIGNED",
+				null,
+				response);
+		return response;
+	}
+
+	@Transactional(readOnly = true)
+	public StudentFeeSummaryResponse studentFeeSummary(UUID studentId) {
+		Student student = studentRepository.findByIdAndDeletedFalse(studentId)
+				.orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
+		List<StudentFeeAssignmentResponse> assignments = assignmentRepository
+				.findByStudentIdAndDeletedFalseOrderByAssignedDateDesc(studentId)
+				.stream()
+				.map(feeMapper::toAssignmentResponse)
+				.toList();
+		BigDecimal gross = assignments.stream().map(StudentFeeAssignmentResponse::grossAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+		BigDecimal discount = assignments.stream().map(StudentFeeAssignmentResponse::discountAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+		BigDecimal lateFee = assignments.stream().map(StudentFeeAssignmentResponse::lateFeeAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+		BigDecimal paid = assignments.stream().map(StudentFeeAssignmentResponse::paidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+		BigDecimal balance = assignments.stream().map(StudentFeeAssignmentResponse::balanceAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+		return new StudentFeeSummaryResponse(
+				student.getId(),
+				student.getAdmissionNumber(),
+				student.getDisplayName(),
+				gross,
+				discount,
+				lateFee,
+				paid,
+				balance,
+				assignments);
+	}
+
+	@Transactional(readOnly = true)
+	public List<com.school.erp.modules.fees.api.dto.FeePaymentResponse> studentPaymentHistory(UUID studentId) {
+		studentRepository.findByIdAndDeletedFalse(studentId)
+				.orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
+		return assignmentRepository.findByStudentIdAndDeletedFalseOrderByAssignedDateDesc(studentId).stream()
+				.flatMap(assignment -> feeMapper.toAssignmentResponse(assignment).payments().stream())
+				.sorted(Comparator.comparing(com.school.erp.modules.fees.api.dto.FeePaymentResponse::paymentDate).reversed())
+				.toList();
+	}
+
+	@Transactional
+	public FeeReceiptResponse collectStudentPayment(UUID studentId, PaymentCollectionRequest request) {
+		studentRepository.findByIdAndDeletedFalse(studentId)
+				.orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
+		StudentFeeAssignment assignment = assignmentRepository.findByStudentIdAndDeletedFalseOrderByAssignedDateDesc(studentId).stream()
+				.filter(existing -> existing.getBalanceAmount().signum() > 0)
+				.findFirst()
+				.orElseThrow(() -> new ResourceNotFoundException("Open fee assignment for student", studentId));
+		return collectPayment(assignment.getId(), request);
 	}
 
 	@Transactional(readOnly = true)
@@ -331,6 +498,13 @@ public class FeeService {
 				.orElseThrow(() -> new ResourceNotFoundException("Fee receipt", receiptNumber)));
 	}
 
+	@Transactional(readOnly = true)
+	public FeeReceiptResponse getPaymentReceipt(UUID paymentId) {
+		FeePayment payment = feePaymentRepository.findDetailedByIdAndDeletedFalse(paymentId)
+				.orElseThrow(() -> new ResourceNotFoundException("Fee payment", paymentId));
+		return feeMapper.toReceiptResponse(payment.getReceipt());
+	}
+
 	@Transactional
 	public StudentFeeAssignmentResponse reversePayment(UUID paymentId, PaymentActionRequest request) {
 		return processPaymentAction(paymentId, request, FeePaymentStatus.REVERSED, "PAYMENT_REVERSAL");
@@ -350,9 +524,29 @@ public class FeeService {
 	public FeeCategoryResponse deleteCategory(UUID categoryId) {
 		FeeCategory category = loadCategory(categoryId);
 		FeeCategoryResponse oldValue = feeMapper.toCategoryResponse(category);
+		if (feeStructureRepository.existsByCategoryId(categoryId)) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Fee category is already used in a fee structure.");
+		}
 		category.softDelete(currentActor());
 		FeeCategoryResponse response = feeMapper.toCategoryResponse(category);
 		audit("FeeCategory", categoryId, "DELETE", oldValue, Map.of("deleted", true, "categoryId", categoryId));
+		return response;
+	}
+
+	@Transactional
+	public FeeStructureResponse deleteFeeStructure(UUID structureId) {
+		FeeStructure structure = loadStructure(structureId);
+		FeeStructureResponse oldValue = feeMapper.toStructureResponse(structure);
+		if (assignmentRepository.existsByFeeStructureIdAndDeletedFalse(structureId)) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Assigned fee structures cannot be deleted.");
+		}
+		structure.softDelete(currentActor());
+		FeeStructureResponse response = feeMapper.toStructureResponse(structure);
+		audit("FeeStructure", structureId, "DELETE", oldValue, Map.of("deleted", true, "structureId", structureId));
 		return response;
 	}
 
@@ -458,6 +652,68 @@ public class FeeService {
 				blankToNull(request.className()),
 				blankToNull(request.sectionName()),
 				request.status()));
+	}
+
+	private StudentFeeAssignment buildAssignment(
+			Student student,
+			FeeStructure structure,
+			LocalDate assignedDate,
+			String notes) {
+		StudentFeeAssignment assignment = new StudentFeeAssignment(student, structure, assignedDate, notes);
+		for (FeeStructureInstallment installment : structure.orderedInstallments()) {
+			assignment.addInstallment(
+					installment.getSequenceNo(),
+					installment.getTitle(),
+					installment.getDueDate(),
+					installment.getAmount());
+		}
+		return assignment;
+	}
+
+	private ClassStudentFeeResponse toClassStudentFeeResponse(Student student, ClassEntity classEntity) {
+		StudentFeeAssignment assignment = assignmentRepository.findByStudentIdAndDeletedFalseOrderByAssignedDateDesc(student.getId()).stream()
+				.filter(existing -> assignmentBelongsToClass(existing, classEntity))
+				.findFirst()
+				.orElse(null);
+		String rollNumber = student.getCurrentAssignment().map(current -> current.getRollNumber()).orElse(null);
+		return new ClassStudentFeeResponse(
+				student.getId(),
+				student.getAdmissionNumber(),
+				student.getDisplayName(),
+				rollNumber,
+				assignment == null ? null : assignment.getId(),
+				assignment == null ? null : assignment.getFeeStructure().getId(),
+				assignment == null ? null : assignment.getFeeStructure().getName(),
+				assignment == null ? BigDecimal.ZERO : assignment.getGrossAmount(),
+				assignment == null ? BigDecimal.ZERO : assignment.getDiscountAmount(),
+				assignment == null ? BigDecimal.ZERO : assignment.getPaidAmount(),
+				assignment == null ? BigDecimal.ZERO : assignment.getBalanceAmount(),
+				assignment == null ? null : assignment.getStatus());
+	}
+
+	private boolean assignmentBelongsToClass(StudentFeeAssignment assignment, ClassEntity classEntity) {
+		if (assignment.getClassEntity() != null) {
+			return assignment.getClassEntity().getId().equals(classEntity.getId());
+		}
+		return matchesIgnoringCase(assignment.getClassName(), classEntity.getName(), classEntity.getCode());
+	}
+
+	private boolean matchesIgnoringCase(String candidate, String... expectedValues) {
+		if (!StringUtils.hasText(candidate)) {
+			return false;
+		}
+		for (String expectedValue : expectedValues) {
+			if (StringUtils.hasText(expectedValue) && candidate.trim().equalsIgnoreCase(expectedValue.trim())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private ResolvedFeeStructureClass resolveFeeStructureClass(String academicYearValue, String classNameValue) {
+		AcademicYear academicYear = academicHierarchyService.resolveAcademicYear(academicYearValue);
+		ClassEntity classEntity = academicHierarchyService.resolveClass(academicYear, classNameValue);
+		return new ResolvedFeeStructureClass(academicYear, classEntity);
 	}
 
 	private FeeCategory loadCategory(UUID categoryId) {
@@ -567,10 +823,17 @@ public class FeeService {
 	}
 
 	private void validatePaymentReference(PaymentMode mode, String referenceNumber) {
-		if (mode != PaymentMode.CASH && !StringUtils.hasText(referenceNumber)) {
+		String normalizedReference = blankToNull(referenceNumber);
+		if (mode != PaymentMode.CASH && normalizedReference == null) {
 			throw new BusinessException(
 					ErrorCode.VALIDATION_ERROR,
 					"Reference number is required for non-cash payments.");
+		}
+		if (normalizedReference != null
+				&& feePaymentRepository.existsByPaymentModeAndReferenceNumberAndDeletedFalse(mode, normalizedReference)) {
+			throw new BusinessException(
+					ErrorCode.VALIDATION_ERROR,
+					"Reference number already exists for this payment mode.");
 		}
 	}
 
@@ -597,6 +860,10 @@ public class FeeService {
 		return value == null ? null : value.trim().toUpperCase(Locale.ROOT);
 	}
 
+	private boolean mandatory(FeeCategoryRequest request) {
+		return request.mandatory() == null || request.mandatory();
+	}
+
 	private String blankToNull(String value) {
 		return StringUtils.hasText(value) ? value.trim() : null;
 	}
@@ -621,5 +888,8 @@ public class FeeService {
 				action,
 				oldValue,
 				newValue));
+	}
+
+	private record ResolvedFeeStructureClass(AcademicYear academicYear, ClassEntity classEntity) {
 	}
 }

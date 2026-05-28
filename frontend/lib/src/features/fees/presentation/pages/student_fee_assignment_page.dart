@@ -8,9 +8,12 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../students/data/models/student_models.dart';
+import '../../../students/presentation/controllers/students_providers.dart';
 import '../../data/models/fee_models.dart';
 import '../../data/repositories/fees_repository_impl.dart';
 import '../controllers/fees_providers.dart';
+import '../widgets/fee_widgets.dart';
 
 class StudentFeeAssignmentPage extends ConsumerStatefulWidget {
   const StudentFeeAssignmentPage({super.key});
@@ -24,10 +27,11 @@ class StudentFeeAssignmentPage extends ConsumerStatefulWidget {
 class _StudentFeeAssignmentPageState
     extends ConsumerState<StudentFeeAssignmentPage> {
   final _formKey = GlobalKey<FormState>();
-  final _studentIdController = TextEditingController();
   final _assignedDateController = TextEditingController();
   final _notesController = TextEditingController();
 
+  String? _academicYearId;
+  String? _classId;
   String? _feeStructureId;
   bool _saving = false;
 
@@ -39,7 +43,6 @@ class _StudentFeeAssignmentPageState
 
   @override
   void dispose() {
-    _studentIdController.dispose();
     _assignedDateController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -47,10 +50,10 @@ class _StudentFeeAssignmentPageState
 
   @override
   Widget build(BuildContext context) {
-    final structures = ref.watch(feeStructuresProvider);
+    final years = ref.watch(academicYearsProvider);
 
     return AdminShell(
-      title: 'Student fee assignment',
+      title: 'Class fee assignment',
       activeModuleId: 'fees',
       onLogout: () async {
         await ref.read(authControllerProvider.notifier).logout();
@@ -58,22 +61,81 @@ class _StudentFeeAssignmentPageState
           context.go(AppRoutes.login);
         }
       },
-      child: structures.when(
-        data: _buildForm,
+      child: years.when(
+        data: _buildForYears,
         error: (error, _) => AppErrorState(
           message: _message(error),
-          onRetry: () => ref.invalidate(feeStructuresProvider),
+          onRetry: () => ref.invalidate(academicYearsProvider),
         ),
-        loading: () => const AppLoadingState(label: 'Loading structures'),
+        loading: () => const AppLoadingState(label: 'Loading academic years'),
       ),
     );
   }
 
-  Widget _buildForm(List<FeeStructureModel> structures) {
-    final structureIds = structures.map((structure) => structure.id).toSet();
-    final selectedStructure = structureIds.contains(_feeStructureId)
-        ? _feeStructureId
+  Widget _buildForYears(List<AcademicYearModel> years) {
+    if (years.isEmpty) {
+      return const _EmptyPanel(
+        icon: Icons.calendar_month_outlined,
+        title: 'No academic years available',
+        message: 'Create an academic year before assigning class fees.',
+      );
+    }
+    final selectedYear = years.any((year) => year.id == _academicYearId)
+        ? _academicYearId!
+        : years.first.id;
+    if (_academicYearId != selectedYear) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _academicYearId = selectedYear;
+            _classId = null;
+            _feeStructureId = null;
+          });
+        }
+      });
+    }
+
+    final classes = ref.watch(classesByAcademicYearProvider(selectedYear));
+
+    return classes.when(
+      data: (items) => _buildForm(years, items, selectedYear),
+      error: (error, _) => AppErrorState(
+        message: _message(error),
+        onRetry: () => ref.invalidate(
+          classesByAcademicYearProvider(selectedYear),
+        ),
+      ),
+      loading: () => const AppLoadingState(label: 'Loading classes'),
+    );
+  }
+
+  Widget _buildForm(
+    List<AcademicYearModel> years,
+    List<SchoolClassModel> classes,
+    String selectedYear,
+  ) {
+    final selectedClass = classes.isEmpty
+        ? null
+        : classes.any((item) => item.id == _classId)
+            ? _classId
+            : classes.first.id;
+    if (selectedClass != null && _classId != selectedClass) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _classId != selectedClass) {
+          setState(() {
+            _classId = selectedClass;
+            _feeStructureId = null;
+          });
+        }
+      });
+    }
+    final key = selectedClass != null
+        ? FeeClassKey(academicYearId: selectedYear, classId: selectedClass)
         : null;
+    final structures = key == null ? null : ref.watch(feeStructuresByClassProvider(key));
+    final students = selectedClass == null
+        ? null
+        : ref.watch(classFeeStudentsProvider(selectedClass));
 
     return Form(
       key: _formKey,
@@ -81,13 +143,18 @@ class _StudentFeeAssignmentPageState
         padding: const EdgeInsets.all(24),
         children: [
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 860),
+            constraints: const BoxConstraints(maxWidth: 980),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _Header(
                   onBack: () => context.go(AppRoutes.fees),
-                  onSave: _saving ? null : _submit,
+                  onSave: _saving ||
+                          selectedClass == null ||
+                          _classId != selectedClass ||
+                          _feeStructureId == null
+                      ? null
+                      : _submit,
                   saving: _saving,
                 ),
                 const SizedBox(height: 12),
@@ -96,63 +163,109 @@ class _StudentFeeAssignmentPageState
                     padding: const EdgeInsets.all(18),
                     child: Column(
                       children: [
-                        DropdownButtonFormField<String>(
-                          initialValue: selectedStructure,
-                          isExpanded: true,
-                          items: [
-                            for (final structure in structures)
-                              DropdownMenuItem(
-                                value: structure.id,
-                                child: Text(
-                                  '${structure.name} - ${structure.academicYear}',
-                                  overflow: TextOverflow.ellipsis,
+                        _ResponsiveFields(
+                          children: [
+                            DropdownButtonFormField<String>(
+                              initialValue: selectedYear,
+                              isExpanded: true,
+                              items: [
+                                for (final year in years)
+                                  DropdownMenuItem(
+                                    value: year.id,
+                                    child: Text(year.name),
+                                  ),
+                              ],
+                              onChanged: (value) {
+                                setState(() {
+                                  _academicYearId = value;
+                                  _classId = null;
+                                  _feeStructureId = null;
+                                });
+                              },
+                              validator: _required,
+                              decoration: const InputDecoration(
+                                labelText: 'Academic year',
+                                prefixIcon: Icon(
+                                  Icons.calendar_month_outlined,
+                                ),
+                              ),
+                            ),
+                            if (classes.isNotEmpty)
+                              DropdownButtonFormField<String>(
+                                initialValue: selectedClass,
+                                isExpanded: true,
+                                items: [
+                                  for (final schoolClass in classes)
+                                    DropdownMenuItem(
+                                      value: schoolClass.id,
+                                      child: Text(schoolClass.name),
+                                    ),
+                                ],
+                                onChanged: (value) {
+                                  setState(() {
+                                    _classId = value;
+                                    _feeStructureId = null;
+                                  });
+                                },
+                                validator: _required,
+                                decoration: const InputDecoration(
+                                  labelText: 'Class',
+                                  prefixIcon: Icon(Icons.school_outlined),
                                 ),
                               ),
                           ],
-                          onChanged: (value) {
-                            setState(() => _feeStructureId = value);
-                          },
-                          validator: _required,
-                          decoration: const InputDecoration(
-                            labelText: 'Fee structure',
-                            prefixIcon: Icon(Icons.account_tree_outlined),
-                          ),
                         ),
                         const SizedBox(height: 12),
-                        _ResponsiveFields(
-                          children: [
-                            TextFormField(
-                              controller: _studentIdController,
-                              validator: _uuid,
-                              decoration: const InputDecoration(
-                                labelText: 'Student ID',
-                                prefixIcon: Icon(Icons.badge_outlined),
+                        if (classes.isEmpty)
+                          const _InlineEmptyMessage(
+                            icon: Icons.school_outlined,
+                            title: 'No classes available',
+                            message:
+                                'Create classes for the selected academic year first.',
+                          )
+                        else ...[
+                          structures == null
+                              ? const SizedBox.shrink()
+                              : structures.when(
+                                  data: _structureDropdown,
+                                  error: (error, _) => Text(_message(error)),
+                                  loading: () =>
+                                      const LinearProgressIndicator(),
+                                ),
+                          const SizedBox(height: 12),
+                          _ResponsiveFields(
+                            children: [
+                              TextFormField(
+                                controller: _assignedDateController,
+                                validator: _date,
+                                decoration: const InputDecoration(
+                                  labelText: 'Assigned date',
+                                  hintText: 'YYYY-MM-DD',
+                                  prefixIcon: Icon(Icons.event_outlined),
+                                ),
                               ),
-                            ),
-                            TextFormField(
-                              controller: _assignedDateController,
-                              validator: _date,
-                              decoration: const InputDecoration(
-                                labelText: 'Assigned date',
-                                hintText: 'YYYY-MM-DD',
-                                prefixIcon: Icon(Icons.event_outlined),
+                              TextFormField(
+                                controller: _notesController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Notes',
+                                  prefixIcon: Icon(Icons.notes_outlined),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _notesController,
-                          maxLines: 3,
-                          decoration: const InputDecoration(
-                            labelText: 'Notes',
-                            alignLabelWithHint: true,
+                            ],
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
                 ),
+                const SizedBox(height: 14),
+                if (students != null)
+                  students.when(
+                    data: (items) => _ClassStudentsPanel(students: items),
+                    error: (error, _) => AppErrorState(message: _message(error)),
+                    loading: () =>
+                        const AppLoadingState(label: 'Loading students'),
+                  ),
               ],
             ),
           ),
@@ -161,26 +274,78 @@ class _StudentFeeAssignmentPageState
     );
   }
 
+  Widget _structureDropdown(List<FeeStructureModel> structures) {
+    final selected = structures.any((item) => item.id == _feeStructureId)
+        ? _feeStructureId
+        : null;
+    if (structures.isEmpty) {
+      return const Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          'No fee structure available. Please create a fee structure first.',
+        ),
+      );
+    }
+    if (selected == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted &&
+            !structures.any((structure) => structure.id == _feeStructureId)) {
+          setState(() => _feeStructureId = structures.first.id);
+        }
+      });
+    }
+    return DropdownButtonFormField<String>(
+      initialValue: selected ?? structures.first.id,
+      isExpanded: true,
+      items: [
+        for (final structure in structures)
+          DropdownMenuItem(
+            value: structure.id,
+            child: Text(
+              '${structure.name} - INR ${structure.totalAmount.toStringAsFixed(2)}',
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+      ],
+      onChanged: (value) => setState(() => _feeStructureId = value),
+      validator: _required,
+      decoration: const InputDecoration(
+        labelText: 'Class fee structure',
+        prefixIcon: Icon(Icons.account_tree_outlined),
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
+    final classId = _classId;
+    final feeStructureId = _feeStructureId;
+    if (classId == null || feeStructureId == null) {
+      return;
+    }
     setState(() => _saving = true);
-    final result = await ref.read(feesRepositoryProvider).createAssignment({
-      'studentId': _studentIdController.text.trim(),
-      'feeStructureId': _feeStructureId,
-      'assignedDate': _assignedDateController.text.trim(),
-      'notes': _blankToNull(_notesController.text),
-    });
+    final result = await ref.read(feesRepositoryProvider).assignClassFee(
+      classId,
+      {
+        'feeStructureId': feeStructureId,
+        'assignedDate': _assignedDateController.text.trim(),
+        'notes': _blankToNull(_notesController.text),
+        'skipExisting': true,
+      },
+    );
     if (!mounted) {
       return;
     }
     setState(() => _saving = false);
     result.when<void>(
-      success: (_) {
+      success: (summary) {
         ref.invalidate(feeAssignmentsProvider);
-        ref.invalidate(feeDefaultersProvider);
-        context.go(AppRoutes.fees);
+        ref.invalidate(classFeeStudentsProvider(classId));
+        _showSnack(
+          'Created ${summary.createdAssignments}, skipped ${summary.skippedAssignments}.',
+        );
       },
       failure: (failure) => _showSnack(failure.message),
     );
@@ -224,7 +389,7 @@ class _Header extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Assign fee structure',
+                  'Assign fee to class',
                   style: Theme.of(
                     context,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
@@ -233,10 +398,154 @@ class _Header extends StatelessWidget {
             ),
             AppButton(
               label: 'Assign',
-              icon: Icons.assignment_ind_outlined,
+              icon: Icons.groups_outlined,
               isLoading: saving,
               onPressed: onSave,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyPanel extends StatelessWidget {
+  const _EmptyPanel({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Row(
+          children: [
+            Icon(icon, size: 34, color: Theme.of(context).colorScheme.outline),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(message),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InlineEmptyMessage extends StatelessWidget {
+  const _InlineEmptyMessage({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 30, color: Theme.of(context).colorScheme.outline),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(message),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ClassStudentsPanel extends StatelessWidget {
+  const _ClassStudentsPanel({required this.students});
+
+  final List<ClassStudentFeeModel> students;
+
+  @override
+  Widget build(BuildContext context) {
+    if (students.isEmpty) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(18),
+          child: Text('No students found in this class.'),
+        ),
+      );
+    }
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Students in class',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 10),
+            for (final student in students)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(student.studentName),
+                subtitle: Text(
+                  '${student.admissionNumber} - Roll ${student.rollNumber ?? '-'}',
+                ),
+                trailing: student.assignmentId == null
+                    ? const FeeStatusChip(status: 'UNASSIGNED')
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          MoneyText(student.balanceAmount, emphasized: true),
+                          const SizedBox(height: 4),
+                          FeeStatusChip(status: student.status ?? 'PENDING'),
+                        ],
+                      ),
+              ),
           ],
         ),
       ),
@@ -273,17 +582,6 @@ String? _required(String? value) {
     return 'Required';
   }
   return null;
-}
-
-String? _uuid(String? value) {
-  final text = value?.trim() ?? '';
-  if (text.isEmpty) {
-    return 'Required';
-  }
-  final uuidPattern = RegExp(
-    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
-  );
-  return uuidPattern.hasMatch(text) ? null : 'Enter a valid UUID';
 }
 
 String? _date(String? value) {

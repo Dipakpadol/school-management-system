@@ -1,0 +1,5 @@
+ALTER TABLE students
+    ADD COLUMN IF NOT EXISTS photo_storage_key VARCHAR(300),
+    ADD COLUMN IF NOT EXISTS photo_url VARCHAR(500),
+    ADD COLUMN IF NOT EXISTS photo_content_type VARCHAR(120),
+    ADD COLUMN IF NOT EXISTS photo_file_name VARCHAR(180);

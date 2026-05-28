@@ -40,6 +40,7 @@ class FeeCategoryModel {
     required this.name,
     required this.active,
     required this.sortOrder,
+    required this.isMandatory,
     this.description,
   });
 
@@ -51,6 +52,8 @@ class FeeCategoryModel {
       description: json['description'] as String?,
       active: json['active'] as bool? ?? false,
       sortOrder: json['sortOrder'] as int? ?? 0,
+      isMandatory:
+          (json['isMandatory'] as bool?) ?? (json['mandatory'] as bool?) ?? true,
     );
   }
 
@@ -60,6 +63,7 @@ class FeeCategoryModel {
   final String? description;
   final bool active;
   final int sortOrder;
+  final bool isMandatory;
 }
 
 class FeeStructureModel {
@@ -72,6 +76,8 @@ class FeeStructureModel {
     required this.totalAmount,
     required this.items,
     required this.installments,
+    this.academicYearId,
+    this.classId,
     this.sectionName,
     this.description,
   });
@@ -79,6 +85,8 @@ class FeeStructureModel {
   factory FeeStructureModel.fromJson(Map<String, dynamic> json) {
     return FeeStructureModel(
       id: json['id'] as String,
+      academicYearId: json['academicYearId'] as String?,
+      classId: json['classId'] as String?,
       academicYear: json['academicYear'] as String,
       className: json['className'] as String,
       sectionName: json['sectionName'] as String?,
@@ -95,6 +103,8 @@ class FeeStructureModel {
   }
 
   final String id;
+  final String? academicYearId;
+  final String? classId;
   final String academicYear;
   final String className;
   final String? sectionName;
@@ -182,6 +192,8 @@ class StudentFeeAssignmentModel {
     required this.balanceAmount,
     required this.installments,
     required this.payments,
+    this.academicYearId,
+    this.classId,
     this.sectionName,
   });
 
@@ -193,6 +205,8 @@ class StudentFeeAssignmentModel {
       studentName: json['studentName'] as String? ?? '',
       feeStructureId: json['feeStructureId'] as String,
       feeStructureName: json['feeStructureName'] as String? ?? '',
+      academicYearId: json['academicYearId'] as String?,
+      classId: json['classId'] as String?,
       academicYear: json['academicYear'] as String? ?? '',
       className: json['className'] as String? ?? '',
       sectionName: json['sectionName'] as String?,
@@ -213,6 +227,8 @@ class StudentFeeAssignmentModel {
   final String studentName;
   final String feeStructureId;
   final String feeStructureName;
+  final String? academicYearId;
+  final String? classId;
   final String academicYear;
   final String className;
   final String? sectionName;
@@ -368,6 +384,79 @@ class FeeDefaulterModel {
   final double balanceAmount;
   final DateTime? oldestDueDate;
   final int overdueInstallments;
+}
+
+class ClassStudentFeeModel {
+  const ClassStudentFeeModel({
+    required this.studentId,
+    required this.admissionNumber,
+    required this.studentName,
+    required this.grossAmount,
+    required this.discountAmount,
+    required this.paidAmount,
+    required this.balanceAmount,
+    this.rollNumber,
+    this.assignmentId,
+    this.feeStructureId,
+    this.feeStructureName,
+    this.status,
+  });
+
+  factory ClassStudentFeeModel.fromJson(Map<String, dynamic> json) {
+    return ClassStudentFeeModel(
+      studentId: json['studentId'] as String,
+      admissionNumber: json['admissionNumber'] as String? ?? '',
+      studentName: json['studentName'] as String? ?? '',
+      rollNumber: json['rollNumber'] as String?,
+      assignmentId: json['assignmentId'] as String?,
+      feeStructureId: json['feeStructureId'] as String?,
+      feeStructureName: json['feeStructureName'] as String?,
+      grossAmount: _money(json['grossAmount']),
+      discountAmount: _money(json['discountAmount']),
+      paidAmount: _money(json['paidAmount']),
+      balanceAmount: _money(json['balanceAmount']),
+      status: json['status'] as String?,
+    );
+  }
+
+  final String studentId;
+  final String admissionNumber;
+  final String studentName;
+  final String? rollNumber;
+  final String? assignmentId;
+  final String? feeStructureId;
+  final String? feeStructureName;
+  final double grossAmount;
+  final double discountAmount;
+  final double paidAmount;
+  final double balanceAmount;
+  final String? status;
+}
+
+class ClassFeeAssignmentModel {
+  const ClassFeeAssignmentModel({
+    required this.classId,
+    required this.feeStructureId,
+    required this.totalStudents,
+    required this.createdAssignments,
+    required this.skippedAssignments,
+  });
+
+  factory ClassFeeAssignmentModel.fromJson(Map<String, dynamic> json) {
+    return ClassFeeAssignmentModel(
+      classId: json['classId'] as String,
+      feeStructureId: json['feeStructureId'] as String,
+      totalStudents: json['totalStudents'] as int? ?? 0,
+      createdAssignments: json['createdAssignments'] as int? ?? 0,
+      skippedAssignments: json['skippedAssignments'] as int? ?? 0,
+    );
+  }
+
+  final String classId;
+  final String feeStructureId;
+  final int totalStudents;
+  final int createdAssignments;
+  final int skippedAssignments;
 }
 
 List<T> _list<T>(Object? value, T Function(Map<String, dynamic>) mapper) {

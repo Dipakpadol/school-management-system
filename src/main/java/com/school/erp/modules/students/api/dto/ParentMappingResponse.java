@@ -21,5 +21,11 @@ public record ParentMappingResponse(
 		String phoneNumber,
 		String alternatePhoneNumber,
 		String occupation,
+		String addressLine1,
+		String addressLine2,
+		String city,
+		String state,
+		String postalCode,
+		String country,
 		UUID userAccountId) {
 }

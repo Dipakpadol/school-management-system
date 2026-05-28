@@ -138,6 +138,7 @@ class StudentProfileModel {
     required this.admissionNumber,
     required this.firstName,
     required this.displayName,
+    required this.fullName,
     required this.dateOfBirth,
     required this.gender,
     required this.status,
@@ -157,6 +158,10 @@ class StudentProfileModel {
     this.state,
     this.postalCode,
     this.country,
+    this.photoStorageKey,
+    this.photoUrl,
+    this.photoContentType,
+    this.photoFileName,
     this.currentAssignment,
   });
 
@@ -168,6 +173,10 @@ class StudentProfileModel {
       middleName: json['middleName'] as String?,
       lastName: json['lastName'] as String?,
       displayName: json['displayName'] as String? ?? '',
+      fullName:
+          (json['fullName'] as String?) ??
+          (json['displayName'] as String?) ??
+          '',
       dateOfBirth: DateTime.parse(json['dateOfBirth'] as String),
       gender: json['gender'] as String? ?? 'UNSPECIFIED',
       bloodGroup: json['bloodGroup'] as String?,
@@ -182,6 +191,10 @@ class StudentProfileModel {
       state: json['state'] as String?,
       postalCode: json['postalCode'] as String?,
       country: json['country'] as String?,
+      photoStorageKey: json['photoStorageKey'] as String?,
+      photoUrl: json['photoUrl'] as String?,
+      photoContentType: json['photoContentType'] as String?,
+      photoFileName: json['photoFileName'] as String?,
       parents: _list(json['parents'], StudentParentModel.fromJson),
       documents: _list(json['documents'], StudentDocumentModel.fromJson),
       currentAssignment: json['currentAssignment'] is Map<String, dynamic>
@@ -202,6 +215,7 @@ class StudentProfileModel {
   final String? middleName;
   final String? lastName;
   final String displayName;
+  final String fullName;
   final DateTime dateOfBirth;
   final String gender;
   final String? bloodGroup;
@@ -216,6 +230,10 @@ class StudentProfileModel {
   final String? state;
   final String? postalCode;
   final String? country;
+  final String? photoStorageKey;
+  final String? photoUrl;
+  final String? photoContentType;
+  final String? photoFileName;
   final List<StudentParentModel> parents;
   final List<StudentDocumentModel> documents;
   final ClassAssignmentModel? currentAssignment;
@@ -251,30 +269,69 @@ class StudentProfileModel {
 class StudentParentModel {
   const StudentParentModel({
     required this.mappingId,
+    required this.parentId,
     required this.displayName,
+    required this.firstName,
     required this.relationType,
     required this.primaryContact,
+    required this.emergencyContact,
+    required this.pickupAllowed,
     required this.phoneNumber,
+    this.lastName,
     this.email,
+    this.alternatePhoneNumber,
+    this.occupation,
+    this.addressLine1,
+    this.addressLine2,
+    this.city,
+    this.state,
+    this.postalCode,
+    this.country,
   });
 
   factory StudentParentModel.fromJson(Map<String, dynamic> json) {
     return StudentParentModel(
       mappingId: json['mappingId'] as String,
+      parentId: json['parentId'] as String? ?? '',
       displayName: json['displayName'] as String? ?? '',
+      firstName: json['firstName'] as String? ?? '',
+      lastName: json['lastName'] as String?,
       relationType: json['relationType'] as String? ?? 'GUARDIAN',
       primaryContact: json['primaryContact'] as bool? ?? false,
+      emergencyContact: json['emergencyContact'] as bool? ?? false,
+      pickupAllowed: json['pickupAllowed'] as bool? ?? false,
       phoneNumber: json['phoneNumber'] as String? ?? '',
       email: json['email'] as String?,
+      alternatePhoneNumber: json['alternatePhoneNumber'] as String?,
+      occupation: json['occupation'] as String?,
+      addressLine1: json['addressLine1'] as String?,
+      addressLine2: json['addressLine2'] as String?,
+      city: json['city'] as String?,
+      state: json['state'] as String?,
+      postalCode: json['postalCode'] as String?,
+      country: json['country'] as String?,
     );
   }
 
   final String mappingId;
+  final String parentId;
   final String displayName;
+  final String firstName;
+  final String? lastName;
   final String relationType;
   final bool primaryContact;
+  final bool emergencyContact;
+  final bool pickupAllowed;
   final String phoneNumber;
   final String? email;
+  final String? alternatePhoneNumber;
+  final String? occupation;
+  final String? addressLine1;
+  final String? addressLine2;
+  final String? city;
+  final String? state;
+  final String? postalCode;
+  final String? country;
 }
 
 class StudentDocumentModel {
@@ -283,21 +340,32 @@ class StudentDocumentModel {
     required this.documentType,
     required this.fileName,
     required this.verificationStatus,
+    this.documentNumber,
+    this.fileUrl,
+    this.createdAt,
   });
 
   factory StudentDocumentModel.fromJson(Map<String, dynamic> json) {
     return StudentDocumentModel(
       id: json['id'] as String,
       documentType: json['documentType'] as String? ?? '',
+      documentNumber: json['documentNumber'] as String?,
       fileName: json['fileName'] as String? ?? '',
+      fileUrl: json['fileUrl'] as String?,
       verificationStatus: json['verificationStatus'] as String? ?? 'PENDING',
+      createdAt: json['createdAt'] == null
+          ? null
+          : DateTime.parse(json['createdAt'] as String),
     );
   }
 
   final String id;
   final String documentType;
+  final String? documentNumber;
   final String fileName;
+  final String? fileUrl;
   final String verificationStatus;
+  final DateTime? createdAt;
 }
 
 class ClassAssignmentModel {

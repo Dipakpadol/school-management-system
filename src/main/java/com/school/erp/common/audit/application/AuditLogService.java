@@ -91,12 +91,27 @@ public class AuditLogService {
 
 	@Transactional(readOnly = true)
 	public PageResponse<AuditLogDto> findByModule(String moduleName, PageRequestDto pageRequest) {
-		return search(new AuditLogSearchRequest(null, moduleName, null, null, null, null, null, null), pageRequest);
+		return search(new AuditLogSearchRequest(null, moduleName, null, null, null, null, null, null, null, null), pageRequest);
 	}
 
 	@Transactional(readOnly = true)
 	public PageResponse<AuditLogDto> findByEntity(String entityName, String entityId, PageRequestDto pageRequest) {
-		return search(new AuditLogSearchRequest(null, null, entityName, entityId, null, null, null, null), pageRequest);
+		return search(new AuditLogSearchRequest(null, null, entityName, entityId, null, null, null, null, null, null), pageRequest);
+	}
+
+	@Transactional(readOnly = true)
+	public java.util.List<String> filterModules() {
+		return auditLogRepository.findDistinctModuleNames();
+	}
+
+	@Transactional(readOnly = true)
+	public java.util.List<String> filterActions() {
+		return auditLogRepository.findDistinctActions();
+	}
+
+	@Transactional(readOnly = true)
+	public java.util.List<String> filterUsers() {
+		return auditLogRepository.findDistinctPerformedBy();
 	}
 
 	private void validateDateRange(AuditLogSearchRequest request) {
@@ -106,6 +121,13 @@ public class AuditLogService {
 			throw new BusinessException(
 					ErrorCode.VALIDATION_ERROR,
 					"Audit performedFrom must be before or equal to performedTo.");
+		}
+		if (request.fromDate() != null
+				&& request.toDate() != null
+				&& request.fromDate().isAfter(request.toDate())) {
+			throw new BusinessException(
+					ErrorCode.VALIDATION_ERROR,
+					"Audit fromDate must be before or equal to toDate.");
 		}
 	}
 

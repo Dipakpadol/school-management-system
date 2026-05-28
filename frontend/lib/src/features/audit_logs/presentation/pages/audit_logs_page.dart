@@ -20,18 +20,6 @@ class AuditLogsPage extends ConsumerStatefulWidget {
 }
 
 class _AuditLogsPageState extends ConsumerState<AuditLogsPage> {
-  final _moduleController = TextEditingController();
-  final _actionController = TextEditingController();
-  final _userController = TextEditingController();
-
-  @override
-  void dispose() {
-    _moduleController.dispose();
-    _actionController.dispose();
-    _userController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final logs = ref.watch(auditLogsProvider);
@@ -47,22 +35,7 @@ class _AuditLogsPageState extends ConsumerState<AuditLogsPage> {
       },
       child: Column(
         children: [
-          _AuditHeader(
-            moduleController: _moduleController,
-            actionController: _actionController,
-            userController: _userController,
-            onApply: () {
-              ref
-                  .read(auditModuleFilterProvider.notifier)
-                  .set(_moduleController.text.trim());
-              ref
-                  .read(auditActionFilterProvider.notifier)
-                  .set(_actionController.text.trim());
-              ref
-                  .read(auditUserFilterProvider.notifier)
-                  .set(_userController.text.trim());
-            },
-          ),
+          const _AuditHeader(),
           const Divider(height: 1),
           Expanded(
             child: logs.when(
@@ -81,23 +54,18 @@ class _AuditLogsPageState extends ConsumerState<AuditLogsPage> {
 }
 
 class _AuditHeader extends ConsumerWidget {
-  const _AuditHeader({
-    required this.moduleController,
-    required this.actionController,
-    required this.userController,
-    required this.onApply,
-  });
-
-  final TextEditingController moduleController;
-  final TextEditingController actionController;
-  final TextEditingController userController;
-  final VoidCallback onApply;
+  const _AuditHeader();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final moduleName = ref.watch(auditModuleFilterProvider);
     final action = ref.watch(auditActionFilterProvider);
     final performedBy = ref.watch(auditUserFilterProvider);
+    final fromDate = ref.watch(auditFromDateFilterProvider);
+    final toDate = ref.watch(auditToDateFilterProvider);
+    final moduleOptions = ref.watch(auditModuleOptionsProvider);
+    final actionOptions = ref.watch(auditActionOptionsProvider);
+    final userOptions = ref.watch(auditUserOptionsProvider);
 
     return Material(
       color: Colors.white,
@@ -110,50 +78,58 @@ class _AuditHeader extends ConsumerWidget {
           children: [
             SizedBox(
               width: 210,
-              child: TextField(
-                controller: moduleController,
-                decoration: const InputDecoration(
-                  labelText: 'Module',
-                  prefixIcon: Icon(Icons.apps_outlined),
-                ),
+              child: _FilterDropdown(
+                label: 'Module',
+                icon: Icons.apps_outlined,
+                value: moduleName,
+                options: moduleOptions,
+                onChanged: (value) => ref
+                    .read(auditModuleFilterProvider.notifier)
+                    .set(value ?? ''),
               ),
             ),
             SizedBox(
               width: 210,
-              child: TextField(
-                controller: actionController,
-                decoration: const InputDecoration(
-                  labelText: 'Action',
-                  prefixIcon: Icon(Icons.bolt_outlined),
-                ),
+              child: _FilterDropdown(
+                label: 'Action',
+                icon: Icons.bolt_outlined,
+                value: action,
+                options: actionOptions,
+                onChanged: (value) => ref
+                    .read(auditActionFilterProvider.notifier)
+                    .set(value ?? ''),
               ),
             ),
             SizedBox(
               width: 240,
-              child: TextField(
-                controller: userController,
-                decoration: const InputDecoration(
-                  labelText: 'Performed by',
-                  prefixIcon: Icon(Icons.person_search_outlined),
-                ),
+              child: _FilterDropdown(
+                label: 'Performed by',
+                icon: Icons.person_search_outlined,
+                value: performedBy,
+                options: userOptions,
+                onChanged: (value) =>
+                    ref.read(auditUserFilterProvider.notifier).set(value ?? ''),
               ),
             ),
-            FilledButton.icon(
-              onPressed: onApply,
-              icon: const Icon(Icons.filter_alt_outlined),
-              label: const Text('Apply'),
+            OutlinedButton.icon(
+              onPressed: () => _pickDateRange(context, ref),
+              icon: const Icon(Icons.date_range_outlined),
+              label: Text(
+                fromDate.isEmpty || toDate.isEmpty
+                    ? 'Date range'
+                    : '$fromDate to $toDate',
+              ),
             ),
             OutlinedButton.icon(
               onPressed: () {
-                moduleController.clear();
-                actionController.clear();
-                userController.clear();
                 ref.read(auditModuleFilterProvider.notifier).set('');
                 ref.read(auditActionFilterProvider.notifier).set('');
                 ref.read(auditUserFilterProvider.notifier).set('');
+                ref.read(auditFromDateFilterProvider.notifier).set('');
+                ref.read(auditToDateFilterProvider.notifier).set('');
               },
               icon: const Icon(Icons.clear),
-              label: const Text('Clear'),
+              label: const Text('Reset filters'),
             ),
             OutlinedButton.icon(
               onPressed: () => ref.invalidate(auditLogsProvider),
@@ -170,16 +146,22 @@ class _AuditHeader extends ConsumerWidget {
                     moduleName: moduleName,
                     action: action,
                     performedBy: performedBy,
+                    fromDate: fromDate,
+                    toDate: toDate,
                   ),
                   'csv' => repository.exportCsv(
                     moduleName: moduleName,
                     action: action,
                     performedBy: performedBy,
+                    fromDate: fromDate,
+                    toDate: toDate,
                   ),
                   _ => repository.exportPdf(
                     moduleName: moduleName,
                     action: action,
                     performedBy: performedBy,
+                    fromDate: fromDate,
+                    toDate: toDate,
                   ),
                 };
                 _runAuditDownload(context, download);
@@ -195,6 +177,55 @@ class _AuditHeader extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _FilterDropdown extends StatelessWidget {
+  const _FilterDropdown({
+    required this.label,
+    required this.icon,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+  });
+
+  final String label;
+  final IconData icon;
+  final String value;
+  final AsyncValue<List<String>> options;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = options.maybeWhen(data: (data) => data, orElse: () => const []);
+    final selected = value.isEmpty || !items.contains(value) ? null : value;
+    return DropdownButtonFormField<String>(
+      initialValue: selected,
+      isExpanded: true,
+      decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
+      items: [
+        const DropdownMenuItem(value: '', child: Text('All')),
+        for (final item in items)
+          DropdownMenuItem(value: item, child: Text(item)),
+      ],
+      onChanged: onChanged,
+    );
+  }
+}
+
+Future<void> _pickDateRange(BuildContext context, WidgetRef ref) async {
+  final now = DateTime.now();
+  final range = await showDateRangePicker(
+    context: context,
+    firstDate: DateTime(now.year - 5),
+    lastDate: DateTime(now.year + 1, 12, 31),
+  );
+  if (range == null) {
+    return;
+  }
+  ref
+      .read(auditFromDateFilterProvider.notifier)
+      .set(_dateOnlyLabel(range.start));
+  ref.read(auditToDateFilterProvider.notifier).set(_dateOnlyLabel(range.end));
 }
 
 class _AuditLogList extends StatelessWidget {
@@ -434,6 +465,10 @@ String _dateTimeLabel(DateTime value) {
   final date = local.toIso8601String().split('T').first;
   final time = local.toIso8601String().split('T').last.substring(0, 8);
   return '$date $time';
+}
+
+String _dateOnlyLabel(DateTime value) {
+  return value.toIso8601String().split('T').first;
 }
 
 String _message(Object error) {

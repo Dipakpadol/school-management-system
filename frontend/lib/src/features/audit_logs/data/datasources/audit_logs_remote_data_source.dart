@@ -20,6 +20,8 @@ class AuditLogsRemoteDataSource {
     String? moduleName,
     String? action,
     String? performedBy,
+    String? fromDate,
+    String? toDate,
   }) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.auditLogs,
@@ -29,6 +31,8 @@ class AuditLogsRemoteDataSource {
         if (action != null && action.trim().isNotEmpty) 'action': action.trim(),
         if (performedBy != null && performedBy.trim().isNotEmpty)
           'performedBy': performedBy.trim(),
+        if (fromDate != null && fromDate.isNotEmpty) 'fromDate': fromDate,
+        if (toDate != null && toDate.isNotEmpty) 'toDate': toDate,
         'size': 50,
         'sort': 'performedAt,desc',
       },
@@ -50,6 +54,8 @@ class AuditLogsRemoteDataSource {
     String? moduleName,
     String? action,
     String? performedBy,
+    String? fromDate,
+    String? toDate,
   }) {
     return _apiClient.download(
       ApiPaths.auditLogsExportExcel,
@@ -57,6 +63,8 @@ class AuditLogsRemoteDataSource {
         moduleName: moduleName,
         action: action,
         performedBy: performedBy,
+        fromDate: fromDate,
+        toDate: toDate,
       ),
     );
   }
@@ -65,6 +73,8 @@ class AuditLogsRemoteDataSource {
     String? moduleName,
     String? action,
     String? performedBy,
+    String? fromDate,
+    String? toDate,
   }) {
     return _apiClient.download(
       ApiPaths.auditLogsExportCsv,
@@ -72,6 +82,8 @@ class AuditLogsRemoteDataSource {
         moduleName: moduleName,
         action: action,
         performedBy: performedBy,
+        fromDate: fromDate,
+        toDate: toDate,
       ),
     );
   }
@@ -80,6 +92,8 @@ class AuditLogsRemoteDataSource {
     String? moduleName,
     String? action,
     String? performedBy,
+    String? fromDate,
+    String? toDate,
   }) {
     return _apiClient.download(
       ApiPaths.auditLogsExportPdf,
@@ -87,14 +101,30 @@ class AuditLogsRemoteDataSource {
         moduleName: moduleName,
         action: action,
         performedBy: performedBy,
+        fromDate: fromDate,
+        toDate: toDate,
       ),
     );
   }
+
+  Future<List<String>> filterModules() => _filterOptions(
+    ApiPaths.auditLogFilterModules,
+  );
+
+  Future<List<String>> filterActions() => _filterOptions(
+    ApiPaths.auditLogFilterActions,
+  );
+
+  Future<List<String>> filterUsers() => _filterOptions(
+    ApiPaths.auditLogFilterUsers,
+  );
 
   Map<String, dynamic> _filterParams({
     String? moduleName,
     String? action,
     String? performedBy,
+    String? fromDate,
+    String? toDate,
   }) {
     return {
       if (moduleName != null && moduleName.trim().isNotEmpty)
@@ -102,7 +132,18 @@ class AuditLogsRemoteDataSource {
       if (action != null && action.trim().isNotEmpty) 'action': action.trim(),
       if (performedBy != null && performedBy.trim().isNotEmpty)
         'performedBy': performedBy.trim(),
+      if (fromDate != null && fromDate.isNotEmpty) 'fromDate': fromDate,
+      if (toDate != null && toDate.isNotEmpty) 'toDate': toDate,
     };
+  }
+
+  Future<List<String>> _filterOptions(String path) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(path);
+    final data = response.data?['data'];
+    if (data is List) {
+      return data.whereType<String>().toList(growable: false);
+    }
+    throw const FormatException('Response payload is invalid.');
   }
 
   Map<String, dynamic> _unwrapData(Map<String, dynamic>? body) {

@@ -1,6 +1,7 @@
 package com.school.erp.common.audit.api;
 
 import java.util.UUID;
+import java.util.List;
 
 import com.school.erp.common.api.ApiResponse;
 import com.school.erp.common.api.PageRequestDto;
@@ -58,6 +59,27 @@ public class AuditLogController {
 			@Parameter(description = "Audit log UUID") @PathVariable UUID id,
 			HttpServletRequest httpRequest) {
 		return ok(auditLogService.getById(id), "Audit log fetched successfully", httpRequest);
+	}
+
+	@GetMapping("/filter-options/modules")
+	@PreAuthorize("hasAuthority('AUDIT_LOGS_READ')")
+	@Operation(summary = "Get audit module filter options")
+	public ResponseEntity<ApiResponse<List<String>>> filterModules(HttpServletRequest httpRequest) {
+		return ok(auditLogService.filterModules(), "Audit module filter options fetched successfully", httpRequest);
+	}
+
+	@GetMapping("/filter-options/actions")
+	@PreAuthorize("hasAuthority('AUDIT_LOGS_READ')")
+	@Operation(summary = "Get audit action filter options")
+	public ResponseEntity<ApiResponse<List<String>>> filterActions(HttpServletRequest httpRequest) {
+		return ok(auditLogService.filterActions(), "Audit action filter options fetched successfully", httpRequest);
+	}
+
+	@GetMapping("/filter-options/users")
+	@PreAuthorize("hasAuthority('AUDIT_LOGS_READ')")
+	@Operation(summary = "Get audit performed-by filter options")
+	public ResponseEntity<ApiResponse<List<String>>> filterUsers(HttpServletRequest httpRequest) {
+		return ok(auditLogService.filterUsers(), "Audit user filter options fetched successfully", httpRequest);
 	}
 
 	@GetMapping("/export/excel")

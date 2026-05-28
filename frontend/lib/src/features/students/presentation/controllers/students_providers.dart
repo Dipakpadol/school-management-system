@@ -82,6 +82,11 @@ final studentProfileProvider =
       return _resolve(ref.watch(studentsRepositoryProvider).profile(studentId));
     });
 
+final studentParentsProvider =
+    FutureProvider.family<List<StudentParentModel>, String>((ref, studentId) {
+      return _resolve(ref.watch(studentsRepositoryProvider).parents(studentId));
+    });
+
 Future<T> _resolve<T>(Future<Result<T>> resultFuture) async {
   final result = await resultFuture;
   return result.when(

@@ -1,5 +1,8 @@
 package com.school.erp.common.audit.application;
 
+import java.time.Instant;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,11 +55,21 @@ final class AuditLogSpecifications {
 						criteriaBuilder.lower(root.get("performedBy")),
 						request.performedBy().trim().toLowerCase()));
 			}
-			if (request.performedFrom() != null) {
-				predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("performedAt"), request.performedFrom()));
+			Instant performedFrom = request.performedFrom() != null
+					? request.performedFrom()
+					: request.fromDate() == null
+							? null
+							: request.fromDate().atStartOfDay().toInstant(ZoneOffset.UTC);
+			Instant performedTo = request.performedTo() != null
+					? request.performedTo()
+					: request.toDate() == null
+							? null
+							: request.toDate().atTime(LocalTime.MAX).toInstant(ZoneOffset.UTC);
+			if (performedFrom != null) {
+				predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("performedAt"), performedFrom));
 			}
-			if (request.performedTo() != null) {
-				predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("performedAt"), request.performedTo()));
+			if (performedTo != null) {
+				predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("performedAt"), performedTo));
 			}
 
 			return criteriaBuilder.and(predicates.toArray(Predicate[]::new));

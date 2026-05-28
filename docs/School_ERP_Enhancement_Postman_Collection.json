@@ -1,0 +1,126 @@
+{
+  "info": {
+    "name": "School ERP Enhancement APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/api" },
+    { "key": "accessToken", "value": "" },
+    { "key": "studentId", "value": "" },
+    { "key": "academicYearId", "value": "" },
+    { "key": "classId", "value": "" },
+    { "key": "feeStructureId", "value": "" },
+    { "key": "paymentId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Students - Full Profile",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/v1/students/{{studentId}}/profile"
+      }
+    },
+    {
+      "name": "Students - Update Photo",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/v1/students/{{studentId}}/photo",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"photoUrl\": \"https://files.school.test/students/ADM-2026-0001/photo.jpg\",\n  \"photoStorageKey\": \"students/ADM-2026-0001/photo.jpg\",\n  \"photoContentType\": \"image/jpeg\",\n  \"photoFileName\": \"photo.jpg\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Fees - Structures By Year/Class",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/v1/fees/structures?academicYearId={{academicYearId}}&classId={{classId}}"
+      }
+    },
+    {
+      "name": "Fees - Class Students",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/v1/fees/classes/{{classId}}/students"
+      }
+    },
+    {
+      "name": "Fees - Assign Class Fee",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/v1/fees/classes/{{classId}}/assign",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"feeStructureId\": \"{{feeStructureId}}\",\n  \"assignedDate\": \"2026-04-01\",\n  \"notes\": \"Generated from class fee assignment\",\n  \"skipExisting\": true\n}"
+        }
+      }
+    },
+    {
+      "name": "Fees - Student Summary",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/v1/fees/students/{{studentId}}/summary"
+      }
+    },
+    {
+      "name": "Fees - Student Payment History",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/v1/fees/students/{{studentId}}/payment-history"
+      }
+    },
+    {
+      "name": "Fees - Student Payment",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/v1/fees/students/{{studentId}}/payments",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 1000.00,\n  \"paymentDate\": \"2026-06-20\",\n  \"paymentMode\": \"CASH\",\n  \"referenceNumber\": null,\n  \"payerName\": \"Parent\",\n  \"collectedBy\": \"accountant@school.test\",\n  \"remarks\": \"Partial payment\",\n  \"assessLateFee\": true\n}"
+        }
+      }
+    },
+    {
+      "name": "Fees - Receipt By Payment",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/v1/fees/payments/{{paymentId}}/receipt"
+      }
+    },
+    {
+      "name": "Audit - Filter Modules",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/v1/audit-logs/filter-options/modules"
+      }
+    },
+    {
+      "name": "Audit - Filtered Search",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/v1/audit-logs?moduleName=STUDENTS&fromDate=2026-05-01&toDate=2026-05-28"
+      }
+    }
+  ]
+}

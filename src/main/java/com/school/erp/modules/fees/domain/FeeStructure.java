@@ -7,12 +7,17 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 import com.school.erp.common.domain.BaseEntity;
+import com.school.erp.modules.academic.domain.AcademicYear;
+import com.school.erp.modules.academic.domain.ClassEntity;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
@@ -38,6 +43,14 @@ public class FeeStructure extends BaseEntity {
 
 	@Column(name = "section_name", length = 80)
 	private String sectionName;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "academic_year_id")
+	private AcademicYear academicYearEntity;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "class_id")
+	private ClassEntity classEntity;
 
 	@Column(nullable = false, length = 140)
 	private String name;
@@ -95,6 +108,17 @@ public class FeeStructure extends BaseEntity {
 		this.sectionName = trimToNull(sectionName);
 		this.name = trim(name);
 		this.description = trimToNull(description);
+	}
+
+	public void updateAcademicMapping(AcademicYear academicYearEntity, ClassEntity classEntity) {
+		this.academicYearEntity = academicYearEntity;
+		this.classEntity = classEntity;
+		if (academicYearEntity != null) {
+			this.academicYear = academicYearEntity.getName();
+		}
+		if (classEntity != null) {
+			this.className = classEntity.getName();
+		}
 	}
 
 	public void clearItems(String actor) {

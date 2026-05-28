@@ -12,6 +12,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "Fee structure response.")
 public record FeeStructureResponse(
 		UUID id,
+		UUID academicYearId,
+		UUID classId,
 		String academicYear,
 		String className,
 		String sectionName,

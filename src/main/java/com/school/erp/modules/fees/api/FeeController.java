@@ -8,6 +8,9 @@ import com.school.erp.common.api.PageResponse;
 import com.school.erp.common.importexport.ImportResultDto;
 import com.school.erp.common.web.CorrelationIdFilter;
 import com.school.erp.modules.fees.api.dto.AssessLateFeeRequest;
+import com.school.erp.modules.fees.api.dto.ClassFeeAssignmentRequest;
+import com.school.erp.modules.fees.api.dto.ClassFeeAssignmentResponse;
+import com.school.erp.modules.fees.api.dto.ClassStudentFeeResponse;
 import com.school.erp.modules.fees.api.dto.DefaulterSearchRequest;
 import com.school.erp.modules.fees.api.dto.FeeAssignmentSearchRequest;
 import com.school.erp.modules.fees.api.dto.FeeCategoryRequest;
@@ -25,6 +28,7 @@ import com.school.erp.modules.fees.api.dto.PaymentActionRequest;
 import com.school.erp.modules.fees.api.dto.PaymentCollectionRequest;
 import com.school.erp.modules.fees.api.dto.StudentFeeAssignmentRequest;
 import com.school.erp.modules.fees.api.dto.StudentFeeAssignmentResponse;
+import com.school.erp.modules.fees.api.dto.StudentFeeSummaryResponse;
 import com.school.erp.modules.fees.application.FeeImportExportService;
 import com.school.erp.modules.fees.application.FeeService;
 
@@ -124,9 +128,11 @@ public class FeeController {
 	@PreAuthorize("hasAuthority('FEES_READ')")
 	@Operation(summary = "List fee structures")
 	public ResponseEntity<ApiResponse<PageResponse<FeeStructureResponse>>> listFeeStructures(
+			@RequestParam(required = false) UUID academicYearId,
+			@RequestParam(required = false) UUID classId,
 			@Valid @ParameterObject PageRequestDto pageRequest,
 			HttpServletRequest httpRequest) {
-		return ok(feeService.listFeeStructures(pageRequest), "Fee structures fetched successfully", httpRequest);
+		return ok(feeService.listFeeStructures(academicYearId, classId, pageRequest), "Fee structures fetched successfully", httpRequest);
 	}
 
 	@GetMapping("/structures/{structureId}")
@@ -200,6 +206,15 @@ public class FeeController {
 		return ok(feeService.updateFeeStructure(structureId, request), "Fee structure updated successfully", httpRequest);
 	}
 
+	@DeleteMapping("/structures/{structureId}")
+	@PreAuthorize("hasAuthority('FEES_MANAGE')")
+	@Operation(summary = "Soft delete fee structure")
+	public ResponseEntity<ApiResponse<FeeStructureResponse>> deleteFeeStructure(
+			@PathVariable UUID structureId,
+			HttpServletRequest httpRequest) {
+		return ok(feeService.deleteFeeStructure(structureId), "Fee structure deleted successfully", httpRequest);
+	}
+
 	@PostMapping("/late-fee-rules")
 	@PreAuthorize("hasAuthority('FEES_MANAGE')")
 	@Operation(summary = "Create late fee rule")
@@ -263,6 +278,53 @@ public class FeeController {
 			@Valid @ParameterObject PageRequestDto pageRequest,
 			HttpServletRequest httpRequest) {
 		return ok(feeService.searchAssignments(searchRequest, pageRequest), "Fee assignments fetched successfully", httpRequest);
+	}
+
+	@GetMapping("/classes/{classId}/students")
+	@PreAuthorize("hasAuthority('FEES_READ')")
+	@Operation(summary = "Get class students with fee status")
+	public ResponseEntity<ApiResponse<java.util.List<ClassStudentFeeResponse>>> classStudents(
+			@PathVariable UUID classId,
+			HttpServletRequest httpRequest) {
+		return ok(feeService.studentsForClass(classId), "Class fee students fetched successfully", httpRequest);
+	}
+
+	@PostMapping("/classes/{classId}/assign")
+	@PreAuthorize("hasAuthority('FEES_MANAGE')")
+	@Operation(summary = "Assign class fee structure to all students in a class")
+	public ResponseEntity<ApiResponse<ClassFeeAssignmentResponse>> assignFeeToClass(
+			@PathVariable UUID classId,
+			@Valid @RequestBody ClassFeeAssignmentRequest request,
+			HttpServletRequest httpRequest) {
+		return created(feeService.assignFeeToClass(classId, request), "Class fee assigned successfully", httpRequest);
+	}
+
+	@GetMapping("/students/{studentId}/summary")
+	@PreAuthorize("hasAuthority('FEES_READ')")
+	@Operation(summary = "Get student fee summary")
+	public ResponseEntity<ApiResponse<StudentFeeSummaryResponse>> studentFeeSummary(
+			@PathVariable UUID studentId,
+			HttpServletRequest httpRequest) {
+		return ok(feeService.studentFeeSummary(studentId), "Student fee summary fetched successfully", httpRequest);
+	}
+
+	@GetMapping("/students/{studentId}/payment-history")
+	@PreAuthorize("hasAuthority('FEES_READ')")
+	@Operation(summary = "Get student payment history")
+	public ResponseEntity<ApiResponse<java.util.List<com.school.erp.modules.fees.api.dto.FeePaymentResponse>>> studentPaymentHistory(
+			@PathVariable UUID studentId,
+			HttpServletRequest httpRequest) {
+		return ok(feeService.studentPaymentHistory(studentId), "Student payment history fetched successfully", httpRequest);
+	}
+
+	@PostMapping("/students/{studentId}/payments")
+	@PreAuthorize("hasAuthority('FEES_MANAGE')")
+	@Operation(summary = "Collect payment for the latest open student fee assignment")
+	public ResponseEntity<ApiResponse<FeeReceiptResponse>> collectStudentPayment(
+			@PathVariable UUID studentId,
+			@Valid @RequestBody PaymentCollectionRequest request,
+			HttpServletRequest httpRequest) {
+		return created(feeService.collectStudentPayment(studentId, request), "Payment collected successfully", httpRequest);
 	}
 
 	@GetMapping("/assignments/{assignmentId}")
@@ -389,6 +451,14 @@ public class FeeController {
 	@Operation(summary = "Download fee receipt PDF")
 	public ResponseEntity<byte[]> receiptPdf(@PathVariable String receiptNumber) {
 		return file(feeImportExportService.receiptPdf(receiptNumber), "fee-receipt-" + receiptNumber + ".pdf", "application/pdf");
+	}
+
+	@GetMapping("/payments/{paymentId}/receipt")
+	@PreAuthorize("hasAuthority('FEES_READ')")
+	@Operation(summary = "Download receipt PDF by payment ID")
+	public ResponseEntity<byte[]> paymentReceiptPdf(@PathVariable UUID paymentId) {
+		FeeReceiptResponse receipt = feeService.getPaymentReceipt(paymentId);
+		return file(feeImportExportService.receiptPdf(receipt.receiptNumber()), "fee-receipt-" + receipt.receiptNumber() + ".pdf", "application/pdf");
 	}
 
 	@GetMapping("/import-errors/{batchId}")

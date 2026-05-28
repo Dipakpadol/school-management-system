@@ -17,6 +17,7 @@ import com.school.erp.modules.fees.domain.FeeStructure;
 import com.school.erp.modules.fees.domain.PaymentMode;
 import com.school.erp.modules.fees.domain.StudentFeeAssignment;
 import com.school.erp.modules.fees.infrastructure.FeeCategoryRepository;
+import com.school.erp.modules.fees.infrastructure.FeePaymentRepository;
 import com.school.erp.modules.fees.infrastructure.FeeStructureRepository;
 import com.school.erp.modules.fees.infrastructure.StudentFeeAssignmentRepository;
 import com.school.erp.modules.academic.domain.AcademicYear;
@@ -68,6 +69,7 @@ public class LocalQaDataSeeder {
 	private final ClassEntityRepository classEntityRepository;
 	private final SectionEntityRepository sectionEntityRepository;
 	private final FeeCategoryRepository feeCategoryRepository;
+	private final FeePaymentRepository feePaymentRepository;
 	private final FeeStructureRepository feeStructureRepository;
 	private final StudentFeeAssignmentRepository assignmentRepository;
 	private final FeeService feeService;
@@ -397,6 +399,9 @@ public class LocalQaDataSeeder {
 			BigDecimal amount,
 			String referenceNumber,
 			String payerName) {
+		if (feePaymentRepository.existsByPaymentModeAndReferenceNumberAndDeletedFalse(PaymentMode.UPI, referenceNumber)) {
+			return;
+		}
 		assignmentRepository.findAll().stream()
 				.filter(assignment -> !assignment.isDeleted())
 				.filter(assignment -> assignment.getStudent().getId().equals(student.getId()))

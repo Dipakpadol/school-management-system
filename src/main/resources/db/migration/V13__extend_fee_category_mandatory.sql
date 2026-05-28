@@ -1,0 +1,2 @@
+ALTER TABLE fee_categories
+    ADD COLUMN IF NOT EXISTS is_mandatory BOOLEAN NOT NULL DEFAULT TRUE;

@@ -142,6 +142,59 @@ class StudentServiceTest {
 	}
 
 	@Test
+	void getParentsReturnsMappedParentGuardianDetails() {
+		Student student = student();
+		ParentGuardian parent = new ParentGuardian(
+				"Rajesh",
+				"Sharma",
+				"rajesh.sharma@example.com",
+				"+919812345678");
+		setId(parent);
+		student.addParent(parent, ParentRelation.FATHER, true, true, true);
+		student.getParents().forEach(this::setId);
+		when(studentRepository.findProfileByIdAndDeletedFalse(student.getId())).thenReturn(Optional.of(student));
+
+		var response = studentService.getParents(student.getId());
+
+		assertThat(response).hasSize(1);
+		assertThat(response.getFirst().displayName()).isEqualTo("Rajesh Sharma");
+		assertThat(response.getFirst().relationType()).isEqualTo(ParentRelation.FATHER);
+		assertThat(response.getFirst().phoneNumber()).isEqualTo("+919812345678");
+		assertThat(response.getFirst().primaryContact()).isTrue();
+	}
+
+	@Test
+	void addParentFlushesMappingBeforeReturningResponse() {
+		Student student = student();
+		when(studentRepository.findProfileByIdAndDeletedFalse(student.getId())).thenReturn(Optional.of(student));
+		when(parentGuardianRepository.findByEmailIgnoreCaseAndDeletedFalse("rajesh.sharma@example.com"))
+				.thenReturn(Optional.empty());
+		when(parentGuardianRepository.save(any(ParentGuardian.class))).thenAnswer(invocation -> {
+			ParentGuardian parent = invocation.getArgument(0);
+			setId(parent);
+			return parent;
+		});
+		when(studentRepository.saveAndFlush(any(Student.class))).thenAnswer(invocation -> {
+			Student savedStudent = invocation.getArgument(0);
+			savedStudent.getParents().forEach(this::setId);
+			return savedStudent;
+		});
+
+		StudentResponse response = studentService.addParent(
+				student.getId(),
+				new ParentMappingRequest(
+						ParentRelation.FATHER,
+						true,
+						true,
+						true,
+						parentRequest()));
+
+		assertThat(response.parents()).hasSize(1);
+		assertThat(response.parents().getFirst().mappingId()).isNotNull();
+		assertThat(response.parents().getFirst().displayName()).isEqualTo("Rajesh Sharma");
+	}
+
+	@Test
 	void admitStudentRejectsDuplicateAdmissionNumber() {
 		when(studentRepository.existsByAdmissionNumberIgnoreCaseAndDeletedFalse("ADM-2026-0001")).thenReturn(true);
 
@@ -216,6 +269,7 @@ class StudentServiceTest {
 		return new StudentAdmissionRequest(
 				"ADM-2026-0001",
 				profileRequest(),
+				StudentStatus.ACTIVE,
 				List.of(new ParentMappingRequest(
 						ParentRelation.FATHER,
 						primaryContact,

@@ -95,6 +95,7 @@ public class StudentMapper {
 				student.getMiddleName(),
 				student.getLastName(),
 				student.getDisplayName(),
+				student.getFullName(),
 				student.getDateOfBirth(),
 				student.getGender(),
 				student.getBloodGroup(),
@@ -109,6 +110,10 @@ public class StudentMapper {
 				student.getState(),
 				student.getPostalCode(),
 				student.getCountry(),
+				student.getPhotoStorageKey(),
+				student.getPhotoUrl(),
+				student.getPhotoContentType(),
+				student.getPhotoFileName(),
 				parentResponses(student),
 				documentResponses(student),
 				student.getCurrentAssignment().map(this::toClassSectionAssignmentResponse).orElse(null),
@@ -155,6 +160,12 @@ public class StudentMapper {
 				parent.getPhoneNumber(),
 				parent.getAlternatePhoneNumber(),
 				parent.getOccupation(),
+				parent.getAddressLine1(),
+				parent.getAddressLine2(),
+				parent.getCity(),
+				parent.getState(),
+				parent.getPostalCode(),
+				parent.getCountry(),
 				parent.getUserAccountId());
 	}
 

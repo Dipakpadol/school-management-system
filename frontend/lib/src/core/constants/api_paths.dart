@@ -29,6 +29,11 @@ abstract final class ApiPaths {
   static const auditLogsExportExcel = '/v1/audit-logs/export/excel';
   static const auditLogsExportCsv = '/v1/audit-logs/export/csv';
   static const auditLogsExportPdf = '/v1/audit-logs/export/pdf';
+  static const auditLogFilterModules =
+      '/v1/audit-logs/filter-options/modules';
+  static const auditLogFilterActions =
+      '/v1/audit-logs/filter-options/actions';
+  static const auditLogFilterUsers = '/v1/audit-logs/filter-options/users';
 
   static const feeCategories = '/v1/fees/categories';
   static const feeStructures = '/v1/fees/structures';
@@ -45,12 +50,20 @@ abstract final class ApiPaths {
   static const feeAssignmentsImportExcel = '/v1/fees/assignments/import/excel';
   static const feeAssignmentsImportCsv = '/v1/fees/assignments/import/csv';
 
+  static String feeCategory(String id) => '/v1/fees/categories/$id';
+
   static String feeStructure(String id) => '/v1/fees/structures/$id';
 
   static String feeAssignment(String id) => '/v1/fees/assignments/$id';
 
   static String feeAssignmentPayments(String id) =>
       '/v1/fees/assignments/$id/payments';
+
+  static String feeClassStudents(String classId) =>
+      '/v1/fees/classes/$classId/students';
+
+  static String feeClassAssign(String classId) =>
+      '/v1/fees/classes/$classId/assign';
 
   static String feeReceipt(String receiptNumber) =>
       '/v1/fees/receipts/$receiptNumber';
@@ -79,7 +92,23 @@ abstract final class ApiPaths {
 
   static String studentProfile(String id) => '/v1/students/$id/profile';
 
+  static String studentPhoto(String id) => '/v1/students/$id/photo';
+
   static String studentParents(String id) => '/v1/students/$id/parents';
+
+  static String studentParent(String id, String mappingId) =>
+      '/v1/students/$id/parents/$mappingId';
+
+  static String studentDocuments(String id) => '/v1/students/$id/documents';
+
+  static String studentDocument(String id, String documentId) =>
+      '/v1/students/$id/documents/$documentId';
+
+  static String studentClassAssignments(String id) =>
+      '/v1/students/$id/class-assignments';
+
+  static String studentClassAssignment(String id, String assignmentId) =>
+      '/v1/students/$id/class-assignments/$assignmentId';
 
   static String academicYearClasses(String academicYearId) =>
       '/v1/academic-years/$academicYearId/classes';

@@ -32,9 +32,35 @@ class FeesRemoteDataSource {
     return FeeCategoryModel.fromJson(_unwrapData(response.data));
   }
 
-  Future<PagePayload<FeeStructureModel>> structures() async {
+  Future<FeeCategoryModel> updateCategory(
+    String id,
+    Map<String, dynamic> payload,
+  ) async {
+    final response = await _apiClient.put<Map<String, dynamic>>(
+      ApiPaths.feeCategory(id),
+      data: payload,
+    );
+    return FeeCategoryModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<FeeCategoryModel> deleteCategory(String id) async {
+    final response = await _apiClient.delete<Map<String, dynamic>>(
+      ApiPaths.feeCategory(id),
+    );
+    return FeeCategoryModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<PagePayload<FeeStructureModel>> structures({
+    String? academicYearId,
+    String? classId,
+  }) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.feeStructures,
+      queryParameters: {
+        if (academicYearId != null && academicYearId.isNotEmpty)
+          'academicYearId': academicYearId,
+        if (classId != null && classId.isNotEmpty) 'classId': classId,
+      },
     );
     return PagePayload.fromJson(
       _unwrapData(response.data),
@@ -70,6 +96,13 @@ class FeesRemoteDataSource {
     return FeeStructureModel.fromJson(_unwrapData(response.data));
   }
 
+  Future<FeeStructureModel> deleteStructure(String id) async {
+    final response = await _apiClient.delete<Map<String, dynamic>>(
+      ApiPaths.feeStructure(id),
+    );
+    return FeeStructureModel.fromJson(_unwrapData(response.data));
+  }
+
   Future<PagePayload<StudentFeeAssignmentModel>> assignments() async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.feeAssignments,
@@ -88,6 +121,24 @@ class FeesRemoteDataSource {
       data: payload,
     );
     return StudentFeeAssignmentModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<List<ClassStudentFeeModel>> classStudents(String classId) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.feeClassStudents(classId),
+    );
+    return _unwrapList(response.data, ClassStudentFeeModel.fromJson);
+  }
+
+  Future<ClassFeeAssignmentModel> assignClassFee(
+    String classId,
+    Map<String, dynamic> payload,
+  ) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.feeClassAssign(classId),
+      data: payload,
+    );
+    return ClassFeeAssignmentModel.fromJson(_unwrapData(response.data));
   }
 
   Future<FeeReceiptModel> collectPayment(
@@ -199,6 +250,17 @@ class FeesRemoteDataSource {
     final data = body?['data'];
     if (data is Map<String, dynamic>) {
       return data;
+    }
+    throw const FormatException('Response payload is invalid.');
+  }
+
+  List<T> _unwrapList<T>(
+    Map<String, dynamic>? body,
+    T Function(Map<String, dynamic>) mapper,
+  ) {
+    final data = body?['data'];
+    if (data is List) {
+      return data.whereType<Map<String, dynamic>>().map(mapper).toList();
     }
     throw const FormatException('Response payload is invalid.');
   }

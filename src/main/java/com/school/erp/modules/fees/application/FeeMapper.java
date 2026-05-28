@@ -44,6 +44,7 @@ public class FeeMapper {
 				category.getDescription(),
 				category.isActive(),
 				category.getSortOrder(),
+				category.isMandatory(),
 				category.getCreatedAt(),
 				category.getUpdatedAt());
 	}
@@ -51,6 +52,8 @@ public class FeeMapper {
 	public FeeStructureResponse toStructureResponse(FeeStructure structure) {
 		return new FeeStructureResponse(
 				structure.getId(),
+				structure.getAcademicYearEntity() == null ? null : structure.getAcademicYearEntity().getId(),
+				structure.getClassEntity() == null ? null : structure.getClassEntity().getId(),
 				structure.getAcademicYear(),
 				structure.getClassName(),
 				structure.getSectionName(),
@@ -79,6 +82,8 @@ public class FeeMapper {
 				student.getDisplayName(),
 				assignment.getFeeStructure().getId(),
 				assignment.getFeeStructure().getName(),
+				assignment.getAcademicYearEntity() == null ? null : assignment.getAcademicYearEntity().getId(),
+				assignment.getClassEntity() == null ? null : assignment.getClassEntity().getId(),
 				assignment.getAcademicYear(),
 				assignment.getClassName(),
 				assignment.getSectionName(),

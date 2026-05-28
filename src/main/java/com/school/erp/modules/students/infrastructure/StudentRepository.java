@@ -51,4 +51,17 @@ public interface StudentRepository extends BaseRepository<Student, UUID>, JpaSpe
 			@Param("month") int month,
 			@Param("day") int day,
 			Pageable pageable);
+
+	@EntityGraph(attributePaths = { "classAssignments" })
+	@Query("""
+			select distinct student
+			from Student student
+			join student.classAssignments assignment
+			where student.deleted = false
+			  and assignment.deleted = false
+			  and assignment.active = true
+			  and assignment.classEntity.id = :classId
+			order by student.firstName asc, student.lastName asc, student.admissionNumber asc
+			""")
+	List<Student> findActiveStudentsByClassId(@Param("classId") UUID classId);
 }

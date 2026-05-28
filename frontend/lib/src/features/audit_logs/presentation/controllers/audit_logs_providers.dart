@@ -19,6 +19,28 @@ final auditUserFilterProvider =
       AuditUserFilterController.new,
     );
 
+final auditFromDateFilterProvider =
+    NotifierProvider<AuditFromDateFilterController, String>(
+      AuditFromDateFilterController.new,
+    );
+
+final auditToDateFilterProvider =
+    NotifierProvider<AuditToDateFilterController, String>(
+      AuditToDateFilterController.new,
+    );
+
+final auditModuleOptionsProvider = FutureProvider<List<String>>((ref) {
+  return _resolve(ref.watch(auditLogsRepositoryProvider).filterModules());
+});
+
+final auditActionOptionsProvider = FutureProvider<List<String>>((ref) {
+  return _resolve(ref.watch(auditLogsRepositoryProvider).filterActions());
+});
+
+final auditUserOptionsProvider = FutureProvider<List<String>>((ref) {
+  return _resolve(ref.watch(auditLogsRepositoryProvider).filterUsers());
+});
+
 final auditLogsProvider = FutureProvider<List<AuditLogModel>>((ref) {
   return _resolve(
     ref
@@ -27,6 +49,8 @@ final auditLogsProvider = FutureProvider<List<AuditLogModel>>((ref) {
           moduleName: ref.watch(auditModuleFilterProvider),
           action: ref.watch(auditActionFilterProvider),
           performedBy: ref.watch(auditUserFilterProvider),
+          fromDate: ref.watch(auditFromDateFilterProvider),
+          toDate: ref.watch(auditToDateFilterProvider),
         ),
   );
 });
@@ -58,6 +82,24 @@ class AuditActionFilterController extends Notifier<String> {
 }
 
 class AuditUserFilterController extends Notifier<String> {
+  @override
+  String build() => '';
+
+  void set(String value) {
+    state = value;
+  }
+}
+
+class AuditFromDateFilterController extends Notifier<String> {
+  @override
+  String build() => '';
+
+  void set(String value) {
+    state = value;
+  }
+}
+
+class AuditToDateFilterController extends Notifier<String> {
   @override
   String build() => '';
 

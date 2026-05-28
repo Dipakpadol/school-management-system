@@ -35,6 +35,9 @@ public class FeeCategory extends BaseEntity {
 	@Column(name = "sort_order", nullable = false)
 	private int sortOrder;
 
+	@Column(name = "is_mandatory", nullable = false)
+	private boolean mandatory = true;
+
 	public FeeCategory(String code, String name, String description, int sortOrder) {
 		this.code = normalizeCode(code);
 		this.name = name;
@@ -42,12 +45,13 @@ public class FeeCategory extends BaseEntity {
 		this.sortOrder = sortOrder;
 	}
 
-	public void update(String code, String name, String description, boolean active, int sortOrder) {
+	public void update(String code, String name, String description, boolean active, int sortOrder, boolean mandatory) {
 		this.code = normalizeCode(code);
 		this.name = name;
 		this.description = trimToNull(description);
 		this.active = active;
 		this.sortOrder = sortOrder;
+		this.mandatory = mandatory;
 	}
 
 	private String normalizeCode(String value) {

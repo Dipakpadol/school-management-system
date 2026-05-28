@@ -69,15 +69,10 @@ class _FeesHeader extends ConsumerWidget {
               spacing: 10,
               runSpacing: 10,
               children: [
-                AppButton(
-                  label: 'Fee structure',
-                  icon: Icons.add,
-                  onPressed: () => context.go(AppRoutes.newFeeStructure),
-                ),
                 OutlinedButton.icon(
                   onPressed: () => context.go(AppRoutes.newFeeAssignment),
-                  icon: const Icon(Icons.person_add_alt_1_outlined),
-                  label: const Text('Assign student'),
+                  icon: const Icon(Icons.groups_outlined),
+                  label: const Text('Assign class fee'),
                 ),
                 OutlinedButton.icon(
                   onPressed: () => context.go(AppRoutes.collectFeePayment),
@@ -219,7 +214,7 @@ class _CategoryList extends ConsumerWidget {
         action: OutlinedButton.icon(
           onPressed: () => _showCategoryDialog(context, ref),
           icon: const Icon(Icons.add),
-          label: const Text('Category'),
+          label: const Text('Add category'),
         ),
         child: _ResponsiveList(
           emptyMessage: 'No fee categories found.',
@@ -229,10 +224,32 @@ class _CategoryList extends ConsumerWidget {
             return _InfoCard(
               icon: Icons.category_outlined,
               title: category.name,
-              subtitle: '${category.code} - sort ${category.sortOrder}',
-              trailing: FeeStatusChip(
-                status: category.active ? 'ACTIVE' : 'INACTIVE',
+              subtitle:
+                  '${category.code} - sort ${category.sortOrder}${category.isMandatory ? ' - mandatory' : ''}',
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FeeStatusChip(
+                    status: category.active ? 'ACTIVE' : 'INACTIVE',
+                  ),
+                  PopupMenuButton<String>(
+                    tooltip: 'Category actions',
+                    icon: const Icon(Icons.more_vert),
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(value: 'edit', child: Text('Edit')),
+                      PopupMenuItem(value: 'delete', child: Text('Delete')),
+                    ],
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        _showCategoryDialog(context, ref, category);
+                      } else {
+                        _deleteCategory(context, ref, category);
+                      }
+                    },
+                  ),
+                ],
               ),
+              onTap: () => _showCategoryDialog(context, ref, category),
             );
           },
         ),
@@ -245,81 +262,114 @@ class _CategoryList extends ConsumerWidget {
     );
   }
 
-  Future<void> _showCategoryDialog(BuildContext context, WidgetRef ref) async {
-    final code = TextEditingController();
-    final name = TextEditingController();
-    final description = TextEditingController();
+  Future<void> _showCategoryDialog(
+    BuildContext context,
+    WidgetRef ref, [
+    FeeCategoryModel? category,
+  ]) async {
+    final code = TextEditingController(text: category?.code ?? '');
+    final name = TextEditingController(text: category?.name ?? '');
+    final description = TextEditingController(
+      text: category?.description ?? '',
+    );
+    final sortOrder = TextEditingController(
+      text: (category?.sortOrder ?? 0).toString(),
+    );
     final formKey = GlobalKey<FormState>();
+    var active = category?.active ?? true;
+    var mandatory = category?.isMandatory ?? true;
 
     await showDialog<void>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Fee category'),
-          content: Form(
-            key: formKey,
-            child: SizedBox(
-              width: 420,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: code,
-                    decoration: const InputDecoration(labelText: 'Code'),
-                    textCapitalization: TextCapitalization.characters,
-                    validator: _required,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: name,
-                    decoration: const InputDecoration(labelText: 'Name'),
-                    validator: _required,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: description,
-                    decoration: const InputDecoration(labelText: 'Description'),
-                    maxLines: 2,
-                  ),
-                ],
+        return StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            title: Text(category == null ? 'Add fee category' : 'Edit fee category'),
+            content: Form(
+              key: formKey,
+              child: SizedBox(
+                width: 460,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: code,
+                      decoration: const InputDecoration(labelText: 'Code'),
+                      textCapitalization: TextCapitalization.characters,
+                      validator: _required,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: name,
+                      decoration: const InputDecoration(labelText: 'Name'),
+                      validator: _required,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: sortOrder,
+                      decoration: const InputDecoration(labelText: 'Sort order'),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: description,
+                      decoration: const InputDecoration(labelText: 'Description'),
+                      maxLines: 2,
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Active'),
+                      value: active,
+                      onChanged: (value) => setState(() => active = value),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Mandatory by default'),
+                      value: mandatory,
+                      onChanged: (value) => setState(() => mandatory = value),
+                    ),
+                  ],
+                ),
               ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  if (!(formKey.currentState?.validate() ?? false)) {
+                    return;
+                  }
+                  final payload = {
+                    'code': code.text.trim(),
+                    'name': name.text.trim(),
+                    'description': description.text.trim(),
+                    'active': active,
+                    'sortOrder': int.tryParse(sortOrder.text.trim()) ?? 0,
+                    'isMandatory': mandatory,
+                  };
+                  final repository = ref.read(feesRepositoryProvider);
+                  final result = category == null
+                      ? await repository.createCategory(payload)
+                      : await repository.updateCategory(category.id, payload);
+                  if (!context.mounted) {
+                    return;
+                  }
+                  result.when(
+                    success: (_) {
+                      ref.invalidate(feeCategoriesProvider);
+                      Navigator.of(context).pop();
+                      _snack(context, 'Fee category saved.');
+                    },
+                    failure: (failure) => _snack(context, failure.message),
+                  );
+                },
+                child: const Text('Save'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                if (!(formKey.currentState?.validate() ?? false)) {
-                  return;
-                }
-                final result = await ref
-                    .read(feesRepositoryProvider)
-                    .createCategory({
-                      'code': code.text.trim(),
-                      'name': name.text.trim(),
-                      'description': description.text.trim(),
-                      'active': true,
-                      'sortOrder': 0,
-                    });
-                if (!context.mounted) {
-                  return;
-                }
-                result.when(
-                  success: (_) {
-                    ref.invalidate(feeCategoriesProvider);
-                    Navigator.of(context).pop();
-                  },
-                  failure: (failure) => ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(failure.message))),
-                );
-              },
-              child: const Text('Save'),
-            ),
-          ],
         );
       },
     );
@@ -327,6 +377,31 @@ class _CategoryList extends ConsumerWidget {
     code.dispose();
     name.dispose();
     description.dispose();
+    sortOrder.dispose();
+  }
+
+  Future<void> _deleteCategory(
+    BuildContext context,
+    WidgetRef ref,
+    FeeCategoryModel category,
+  ) async {
+    final confirmed = await _confirm(context, 'Delete ${category.name}?');
+    if (!confirmed || !context.mounted) {
+      return;
+    }
+    final result = await ref.read(feesRepositoryProvider).deleteCategory(
+          category.id,
+        );
+    if (!context.mounted) {
+      return;
+    }
+    result.when(
+      success: (_) {
+        ref.invalidate(feeCategoriesProvider);
+        _snack(context, 'Fee category deleted.');
+      },
+      failure: (failure) => _snack(context, failure.message),
+    );
   }
 }
 
@@ -340,6 +415,11 @@ class _StructureList extends ConsumerWidget {
     return structures.when(
       data: (items) => _ListSurface(
         title: 'Fee structures',
+        action: OutlinedButton.icon(
+          onPressed: () => context.go(AppRoutes.newFeeStructure),
+          icon: const Icon(Icons.add),
+          label: const Text('Add fee structure'),
+        ),
         child: _ResponsiveList(
           emptyMessage: 'No fee structures found.',
           itemCount: items.length,
@@ -354,8 +434,27 @@ class _StructureList extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  MoneyText(structure.totalAmount, emphasized: true),
-                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      MoneyText(structure.totalAmount, emphasized: true),
+                      PopupMenuButton<String>(
+                        tooltip: 'Structure actions',
+                        icon: const Icon(Icons.more_vert),
+                        itemBuilder: (context) => const [
+                          PopupMenuItem(value: 'edit', child: Text('Edit')),
+                          PopupMenuItem(value: 'delete', child: Text('Delete')),
+                        ],
+                        onSelected: (value) {
+                          if (value == 'edit') {
+                            context.go(AppRoutes.editFeeStructure(structure.id));
+                          } else {
+                            _deleteStructure(context, ref, structure);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
                   FeeStatusChip(status: structure.status),
                 ],
               ),
@@ -371,6 +470,30 @@ class _StructureList extends ConsumerWidget {
       loading: () => const _LoadingBody(),
     );
   }
+
+  Future<void> _deleteStructure(
+    BuildContext context,
+    WidgetRef ref,
+    FeeStructureModel structure,
+  ) async {
+    final confirmed = await _confirm(context, 'Delete ${structure.name}?');
+    if (!confirmed || !context.mounted) {
+      return;
+    }
+    final result = await ref.read(feesRepositoryProvider).deleteStructure(
+          structure.id,
+        );
+    if (!context.mounted) {
+      return;
+    }
+    result.when(
+      success: (_) {
+        ref.invalidate(feeStructuresProvider);
+        _snack(context, 'Fee structure deleted.');
+      },
+      failure: (failure) => _snack(context, failure.message),
+    );
+  }
 }
 
 class _AssignmentList extends ConsumerWidget {
@@ -382,79 +505,143 @@ class _AssignmentList extends ConsumerWidget {
 
     return assignments.when(
       data: (items) => _ListSurface(
-        title: 'Student fee assignments',
-        child: _ResponsiveList(
-          emptyMessage: 'No fee assignments found.',
-          itemCount: items.length,
-          itemBuilder: (context, index) {
-            final assignment = items[index];
-            final completedPayments = assignment.payments
-                .where((payment) => payment.status == 'COMPLETED')
-                .toList(growable: false);
-            final payment = completedPayments.isEmpty
-                ? null
-                : completedPayments.last;
-            return _InfoCard(
-              icon: Icons.assignment_ind_outlined,
-              title: assignment.studentName,
-              subtitle:
-                  '${assignment.admissionNumber} - ${assignment.feeStructureName}',
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      MoneyText(assignment.balanceAmount, emphasized: true),
-                      const SizedBox(height: 6),
-                      FeeStatusChip(status: assignment.status),
-                    ],
-                  ),
-                  const SizedBox(width: 6),
-                  PopupMenuButton<String>(
-                    tooltip: 'Payment actions',
-                    icon: const Icon(Icons.more_vert),
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: 'reverse',
-                        enabled: payment != null,
-                        child: const Text('Reverse payment'),
-                      ),
-                      PopupMenuItem(
-                        value: 'void',
-                        enabled: payment != null,
-                        child: const Text('Void payment'),
-                      ),
-                      PopupMenuItem(
-                        value: 'refund',
-                        enabled: payment != null,
-                        child: const Text('Refund payment'),
-                      ),
-                    ],
-                    onSelected: payment == null
-                        ? null
-                        : (action) => _handlePaymentAction(
-                            context,
-                            ref,
-                            payment.id,
-                            action,
-                          ),
-                  ),
-                ],
-              ),
-              onTap: () => context.go(
-                '${AppRoutes.collectFeePayment}?assignmentId=${assignment.id}',
-              ),
-            );
-          },
+        title: 'Class/student fee assignments',
+        action: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            OutlinedButton.icon(
+              onPressed: () => context.go(AppRoutes.newFeeAssignment),
+              icon: const Icon(Icons.groups_outlined),
+              label: const Text('Assign class fee'),
+            ),
+            OutlinedButton.icon(
+              onPressed: items.isEmpty
+                  ? null
+                  : () => context.go(AppRoutes.collectFeePayment),
+              icon: const Icon(Icons.point_of_sale_outlined),
+              label: const Text('Collect payment'),
+            ),
+          ],
         ),
+        child: items.isEmpty
+            ? const _AssignmentsEmptyState()
+            : _ResponsiveList(
+                emptyMessage: 'No fee assignments found.',
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  final assignment = items[index];
+                  final completedPayments = assignment.payments
+                      .where((payment) => payment.status == 'COMPLETED')
+                      .toList(growable: false);
+                  final payment = completedPayments.isEmpty
+                      ? null
+                      : completedPayments.last;
+                  return _InfoCard(
+                    icon: Icons.assignment_ind_outlined,
+                    title: assignment.studentName,
+                    subtitle:
+                        '${assignment.admissionNumber} - ${assignment.feeStructureName}',
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            MoneyText(
+                              assignment.balanceAmount,
+                              emphasized: true,
+                            ),
+                            const SizedBox(height: 6),
+                            FeeStatusChip(status: assignment.status),
+                          ],
+                        ),
+                        const SizedBox(width: 6),
+                        PopupMenuButton<String>(
+                          tooltip: 'Payment actions',
+                          icon: const Icon(Icons.more_vert),
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: 'collect',
+                              child: Text('Collect payment'),
+                            ),
+                            PopupMenuItem(
+                              value: 'reverse',
+                              enabled: payment != null,
+                              child: const Text('Reverse payment'),
+                            ),
+                            PopupMenuItem(
+                              value: 'void',
+                              enabled: payment != null,
+                              child: const Text('Void payment'),
+                            ),
+                            PopupMenuItem(
+                              value: 'refund',
+                              enabled: payment != null,
+                              child: const Text('Refund payment'),
+                            ),
+                          ],
+                          onSelected: (action) {
+                            if (action == 'collect') {
+                              context.go(
+                                '${AppRoutes.collectFeePayment}?assignmentId=${assignment.id}',
+                              );
+                              return;
+                            }
+                            if (payment == null) {
+                              return;
+                            }
+                            _handlePaymentAction(
+                              context,
+                              ref,
+                              payment.id,
+                              action,
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                    onTap: () => context.go(
+                      '${AppRoutes.collectFeePayment}?assignmentId=${assignment.id}',
+                    ),
+                  );
+                },
+              ),
       ),
       error: (error, _) => _ErrorBody(
         message: _message(error),
         onRetry: () => ref.invalidate(feeAssignmentsProvider),
       ),
       loading: () => const _LoadingBody(),
+    );
+  }
+}
+
+class _AssignmentsEmptyState extends StatelessWidget {
+  const _AssignmentsEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Row(
+          children: [
+            Icon(
+              Icons.assignment_late_outlined,
+              size: 34,
+              color: Theme.of(context).colorScheme.outline,
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Text(
+                'No fee assignments found. Assign a fee structure to a class first, then collect payment from this tab.',
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

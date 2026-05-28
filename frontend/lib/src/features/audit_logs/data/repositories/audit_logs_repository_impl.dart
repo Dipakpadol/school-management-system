@@ -22,12 +22,16 @@ class AuditLogsRepositoryImpl implements AuditLogsRepository {
     String? moduleName,
     String? action,
     String? performedBy,
+    String? fromDate,
+    String? toDate,
   }) {
     return _guard(
       () async => (await _remoteDataSource.auditLogs(
         moduleName: moduleName,
         action: action,
         performedBy: performedBy,
+        fromDate: fromDate,
+        toDate: toDate,
       )).content,
     );
   }
@@ -42,12 +46,16 @@ class AuditLogsRepositoryImpl implements AuditLogsRepository {
     String? moduleName,
     String? action,
     String? performedBy,
+    String? fromDate,
+    String? toDate,
   }) {
     return _guard(() async {
       final bytes = await _remoteDataSource.exportExcel(
         moduleName: moduleName,
         action: action,
         performedBy: performedBy,
+        fromDate: fromDate,
+        toDate: toDate,
       );
       await downloadBytes(
         bytes,
@@ -62,12 +70,16 @@ class AuditLogsRepositoryImpl implements AuditLogsRepository {
     String? moduleName,
     String? action,
     String? performedBy,
+    String? fromDate,
+    String? toDate,
   }) {
     return _guard(() async {
       final bytes = await _remoteDataSource.exportCsv(
         moduleName: moduleName,
         action: action,
         performedBy: performedBy,
+        fromDate: fromDate,
+        toDate: toDate,
       );
       await downloadBytes(bytes, 'audit-logs.csv', 'text/csv');
     });
@@ -78,15 +90,34 @@ class AuditLogsRepositoryImpl implements AuditLogsRepository {
     String? moduleName,
     String? action,
     String? performedBy,
+    String? fromDate,
+    String? toDate,
   }) {
     return _guard(() async {
       final bytes = await _remoteDataSource.exportPdf(
         moduleName: moduleName,
         action: action,
         performedBy: performedBy,
+        fromDate: fromDate,
+        toDate: toDate,
       );
       await downloadBytes(bytes, 'audit-logs.pdf', 'application/pdf');
     });
+  }
+
+  @override
+  Future<Result<List<String>>> filterModules() {
+    return _guard(_remoteDataSource.filterModules);
+  }
+
+  @override
+  Future<Result<List<String>>> filterActions() {
+    return _guard(_remoteDataSource.filterActions);
+  }
+
+  @override
+  Future<Result<List<String>>> filterUsers() {
+    return _guard(_remoteDataSource.filterUsers);
   }
 
   Future<Result<T>> _guard<T>(Future<T> Function() action) async {

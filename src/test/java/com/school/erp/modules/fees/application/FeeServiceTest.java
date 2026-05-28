@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,6 +17,7 @@ import java.util.UUID;
 import com.school.erp.common.audit.application.AuditLogService;
 import com.school.erp.common.exception.BusinessException;
 import com.school.erp.common.exception.ErrorCode;
+import com.school.erp.modules.academic.application.AcademicHierarchyService;
 import com.school.erp.modules.fees.api.dto.AssessLateFeeRequest;
 import com.school.erp.modules.fees.api.dto.FeeDiscountRequest;
 import com.school.erp.modules.fees.api.dto.FeeReceiptResponse;
@@ -79,6 +81,9 @@ class FeeServiceTest {
 	private StudentRepository studentRepository;
 
 	@Mock
+	private AcademicHierarchyService academicHierarchyService;
+
+	@Mock
 	private AuditLogService auditLogService;
 
 	private FeeService feeService;
@@ -93,6 +98,7 @@ class FeeServiceTest {
 				feeReceiptRepository,
 				feePaymentRepository,
 				studentRepository,
+				academicHierarchyService,
 				new FeeMapper(),
 				auditLogService);
 	}
@@ -199,6 +205,42 @@ class FeeServiceTest {
 	}
 
 	@Test
+	void deleteCategoryRejectsCategoryUsedInStructure() {
+		FeeCategory tuition = category("TUITION");
+		when(feeCategoryRepository.findByIdAndDeletedFalse(tuition.getId())).thenReturn(Optional.of(tuition));
+		when(feeStructureRepository.existsByCategoryId(tuition.getId())).thenReturn(true);
+
+		assertThatThrownBy(() -> feeService.deleteCategory(tuition.getId()))
+				.isInstanceOf(BusinessException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.BUSINESS_RULE_VIOLATION);
+	}
+
+	@Test
+	void deleteFeeStructureSoftDeletesUnassignedStructure() {
+		FeeStructure structure = activeStructure(category("TUITION"));
+		when(feeStructureRepository.findDetailedByIdAndDeletedFalse(structure.getId())).thenReturn(Optional.of(structure));
+		when(assignmentRepository.existsByFeeStructureIdAndDeletedFalse(structure.getId())).thenReturn(false);
+
+		FeeStructureResponse response = feeService.deleteFeeStructure(structure.getId());
+
+		assertThat(response.id()).isEqualTo(structure.getId());
+		assertThat(structure.isDeleted()).isTrue();
+	}
+
+	@Test
+	void deleteFeeStructureRejectsAssignedStructure() {
+		FeeStructure structure = activeStructure(category("TUITION"));
+		when(feeStructureRepository.findDetailedByIdAndDeletedFalse(structure.getId())).thenReturn(Optional.of(structure));
+		when(assignmentRepository.existsByFeeStructureIdAndDeletedFalse(structure.getId())).thenReturn(true);
+
+		assertThatThrownBy(() -> feeService.deleteFeeStructure(structure.getId()))
+				.isInstanceOf(BusinessException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.BUSINESS_RULE_VIOLATION);
+	}
+
+	@Test
 	void assignFeeToStudentCreatesStudentInstallments() {
 		Student student = student();
 		FeeStructure structure = activeStructure(category("TUITION"));
@@ -289,6 +331,125 @@ class FeeServiceTest {
 	}
 
 	@Test
+	void collectPaymentRejectsDuplicateUpiReferenceWithBusinessError() {
+		StudentFeeAssignment assignment = assignment();
+		when(assignmentRepository.findDetailedByIdAndDeletedFalse(assignment.getId())).thenReturn(Optional.of(assignment));
+		when(feePaymentRepository.existsByPaymentModeAndReferenceNumberAndDeletedFalse(PaymentMode.UPI, "UPI-123"))
+				.thenReturn(true);
+
+		assertThatThrownBy(() -> feeService.collectPayment(
+				assignment.getId(),
+				new PaymentCollectionRequest(
+						money("5000.00"),
+						LocalDate.of(2026, 6, 20),
+						PaymentMode.UPI,
+						"UPI-123",
+						"Rajesh Sharma",
+						"accountant@school.test",
+						null,
+						false)))
+				.isInstanceOf(BusinessException.class)
+				.hasMessage("Reference number already exists for this payment mode.")
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.VALIDATION_ERROR);
+		verify(feeReceiptRepository, never()).save(any());
+	}
+
+	@Test
+	void collectPaymentAllowsNewUpiReference() {
+		StudentFeeAssignment assignment = assignment();
+		when(assignmentRepository.findDetailedByIdAndDeletedFalse(assignment.getId())).thenReturn(Optional.of(assignment));
+		when(feePaymentRepository.existsByPaymentModeAndReferenceNumberAndDeletedFalse(PaymentMode.UPI, "UPI-NEW"))
+				.thenReturn(false);
+		stubReceiptSave();
+
+		FeeReceiptResponse receipt = feeService.collectPayment(
+				assignment.getId(),
+				new PaymentCollectionRequest(
+						money("5000.00"),
+						LocalDate.of(2026, 6, 20),
+						PaymentMode.UPI,
+						"UPI-NEW",
+						"Rajesh Sharma",
+						"accountant@school.test",
+						null,
+						false));
+
+		assertThat(receipt.receiptNumber()).startsWith("RCPT-");
+		assertThat(assignment.getPayments()).hasSize(1);
+		assertThat(assignment.getPayments().iterator().next().getReferenceNumber()).isEqualTo("UPI-NEW");
+	}
+
+	@Test
+	void collectPaymentAllowsCashWithoutReference() {
+		StudentFeeAssignment assignment = assignment();
+		when(assignmentRepository.findDetailedByIdAndDeletedFalse(assignment.getId())).thenReturn(Optional.of(assignment));
+		stubReceiptSave();
+
+		FeeReceiptResponse receipt = feeService.collectPayment(
+				assignment.getId(),
+				new PaymentCollectionRequest(
+						money("5000.00"),
+						LocalDate.of(2026, 6, 20),
+						PaymentMode.CASH,
+						null,
+						"Rajesh Sharma",
+						"accountant@school.test",
+						null,
+						false));
+
+		assertThat(receipt.receiptNumber()).startsWith("RCPT-");
+		assertThat(assignment.getPayments()).hasSize(1);
+		assertThat(assignment.getPayments().iterator().next().getReferenceNumber()).isNull();
+	}
+
+	@Test
+	void collectPaymentRejectsBankTransferWithoutReference() {
+		StudentFeeAssignment assignment = assignment();
+		when(assignmentRepository.findDetailedByIdAndDeletedFalse(assignment.getId())).thenReturn(Optional.of(assignment));
+
+		assertThatThrownBy(() -> feeService.collectPayment(
+				assignment.getId(),
+				new PaymentCollectionRequest(
+						money("5000.00"),
+						LocalDate.of(2026, 6, 20),
+						PaymentMode.BANK_TRANSFER,
+						" ",
+						"Rajesh Sharma",
+						"accountant@school.test",
+						null,
+						false)))
+				.isInstanceOf(BusinessException.class)
+				.hasMessage("Reference number is required for non-cash payments.")
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.VALIDATION_ERROR);
+	}
+
+	@Test
+	void collectPaymentAllowsReferenceUsedOnlyByDeletedPayment() {
+		StudentFeeAssignment assignment = assignment();
+		when(assignmentRepository.findDetailedByIdAndDeletedFalse(assignment.getId())).thenReturn(Optional.of(assignment));
+		when(feePaymentRepository.existsByPaymentModeAndReferenceNumberAndDeletedFalse(PaymentMode.UPI, "SOFT-DELETED-REF"))
+				.thenReturn(false);
+		stubReceiptSave();
+
+		FeeReceiptResponse receipt = feeService.collectPayment(
+				assignment.getId(),
+				new PaymentCollectionRequest(
+						money("5000.00"),
+						LocalDate.of(2026, 6, 20),
+						PaymentMode.UPI,
+						"SOFT-DELETED-REF",
+						"Rajesh Sharma",
+						"accountant@school.test",
+						null,
+						false));
+
+		assertThat(receipt.receiptNumber()).startsWith("RCPT-");
+		assertThat(assignment.getPayments()).hasSize(1);
+	}
+
+	@Test
 	void collectPaymentRejectsOverpayment() {
 		StudentFeeAssignment assignment = assignment();
 		when(assignmentRepository.findDetailedByIdAndDeletedFalse(assignment.getId())).thenReturn(Optional.of(assignment));
@@ -375,6 +536,15 @@ class FeeServiceTest {
 		FeeCategory category = new FeeCategory(code, code + " Fee", "Test fee", 1);
 		setId(category);
 		return category;
+	}
+
+	private void stubReceiptSave() {
+		when(feeReceiptRepository.existsByReceiptNumberAndDeletedFalse(anyString())).thenReturn(false);
+		when(feeReceiptRepository.save(any(FeeReceipt.class))).thenAnswer(invocation -> {
+			FeeReceipt receipt = invocation.getArgument(0);
+			setId(receipt);
+			return receipt;
+		});
 	}
 
 	private Student student() {

@@ -5,10 +5,13 @@ import java.util.UUID;
 
 import com.school.erp.common.domain.BaseRepository;
 import com.school.erp.modules.fees.domain.FeePayment;
+import com.school.erp.modules.fees.domain.PaymentMode;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 
 public interface FeePaymentRepository extends BaseRepository<FeePayment, UUID> {
+
+	boolean existsByPaymentModeAndReferenceNumberAndDeletedFalse(PaymentMode paymentMode, String referenceNumber);
 
 	@EntityGraph(attributePaths = {
 			"assignment",

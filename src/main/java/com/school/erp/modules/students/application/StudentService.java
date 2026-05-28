@@ -21,6 +21,7 @@ import com.school.erp.modules.students.api.dto.ParentMappingRequest;
 import com.school.erp.modules.students.api.dto.ParentMappingResponse;
 import com.school.erp.modules.students.api.dto.StudentAdmissionRequest;
 import com.school.erp.modules.students.api.dto.StudentDocumentRequest;
+import com.school.erp.modules.students.api.dto.StudentPhotoRequest;
 import com.school.erp.modules.students.api.dto.StudentProfileRequest;
 import com.school.erp.modules.students.api.dto.StudentResponse;
 import com.school.erp.modules.students.api.dto.StudentSearchRequest;
@@ -65,6 +66,9 @@ public class StudentService {
 		ensureAdmissionNumberAvailable(request.admissionNumber());
 
 		Student student = studentMapper.toStudent(request);
+		if (request.status() != null) {
+			student.changeStatus(request.status());
+		}
 		request.parents().forEach(parent -> addParentMapping(student, parent));
 		assignClassSection(student, request.classAssignment());
 		optionalDocuments(request.documents()).forEach(document -> addDocument(student, document));
@@ -104,6 +108,7 @@ public class StudentService {
 		StudentResponse oldValue = studentMapper.toProfileResponse(student);
 		validateParentRequest(request.parent());
 		addParentMapping(student, request);
+		studentRepository.saveAndFlush(student);
 		StudentResponse response = studentMapper.toProfileResponse(student);
 		auditStudent(studentId, "PARENT_ADDED", oldValue, response);
 		return response;
@@ -176,6 +181,21 @@ public class StudentService {
 		findDocument(student, documentId).softDelete(currentActor());
 		StudentResponse response = studentMapper.toProfileResponse(student);
 		auditStudent(studentId, "DOCUMENT_DELETED", oldValue, response);
+		return response;
+	}
+
+	@Transactional
+	public StudentResponse updatePhoto(UUID studentId, StudentPhotoRequest request) {
+		Student student = loadProfile(studentId);
+		StudentResponse oldValue = studentMapper.toProfileResponse(student);
+		validatePhotoRequest(request);
+		student.updatePhoto(
+				request.photoStorageKey(),
+				request.photoUrl(),
+				request.photoContentType(),
+				request.photoFileName());
+		StudentResponse response = studentMapper.toProfileResponse(student);
+		auditStudent(studentId, "PHOTO_UPDATED", oldValue, response);
 		return response;
 	}
 
@@ -384,6 +404,14 @@ public class StudentService {
 			throw new BusinessException(
 					ErrorCode.BUSINESS_RULE_VIOLATION,
 					"Document storage key or file URL is required.");
+		}
+	}
+
+	private void validatePhotoRequest(StudentPhotoRequest request) {
+		if (!StringUtils.hasText(request.photoStorageKey()) && !StringUtils.hasText(request.photoUrl())) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Photo storage key or URL is required.");
 		}
 	}
 

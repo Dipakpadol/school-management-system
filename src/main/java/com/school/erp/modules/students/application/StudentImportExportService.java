@@ -34,6 +34,7 @@ import com.school.erp.modules.students.api.dto.StudentProfileRequest;
 import com.school.erp.modules.students.api.dto.StudentResponse;
 import com.school.erp.modules.students.domain.Gender;
 import com.school.erp.modules.students.domain.ParentRelation;
+import com.school.erp.modules.students.domain.StudentStatus;
 import com.school.erp.modules.students.infrastructure.StudentRepository;
 
 import org.springframework.data.domain.Pageable;
@@ -59,6 +60,7 @@ public class StudentImportExportService {
 			"email",
 			"phoneNumber",
 			"admissionDate",
+			"status",
 			"previousSchool",
 			"addressLine1",
 			"addressLine2",
@@ -246,6 +248,7 @@ public class StudentImportExportService {
 		validateDate(values, row.rowNumber(), "dateOfBirth", errors);
 		validateDate(values, row.rowNumber(), "admissionDate", errors);
 		validateEnum(values, row.rowNumber(), "gender", Gender.class, errors);
+		validateEnum(values, row.rowNumber(), "status", StudentStatus.class, errors);
 		validateEnum(values, row.rowNumber(), "parentRelation", ParentRelation.class, errors);
 		return errors;
 	}
@@ -294,6 +297,9 @@ public class StudentImportExportService {
 		return new StudentAdmissionRequest(
 				value(values, "admissionNumber"),
 				profile,
+				StringUtils.hasText(value(values, "status"))
+						? StudentStatus.valueOf(value(values, "status").toUpperCase())
+						: StudentStatus.ACTIVE,
 				List.of(new ParentMappingRequest(
 						ParentRelation.valueOf(value(values, "parentRelation").toUpperCase()),
 						true,
@@ -324,6 +330,7 @@ public class StudentImportExportService {
 		row.put("email", student.email());
 		row.put("phoneNumber", student.phoneNumber());
 		row.put("admissionDate", student.admissionDate());
+		row.put("status", student.status());
 		row.put("previousSchool", student.previousSchool());
 		row.put("addressLine1", student.addressLine1());
 		row.put("addressLine2", student.addressLine2());

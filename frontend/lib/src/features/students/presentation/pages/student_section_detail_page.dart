@@ -80,6 +80,11 @@ class StudentSectionDetailPage extends ConsumerWidget {
                     academicYearName,
                   ),
             onImport: () => _runPickedStudentImport(context, ref, filter),
+            onTemplate: () => _runStudentDownload(
+              context,
+              ref.read(studentsRepositoryProvider).downloadTemplate(),
+              'Student template downloaded.',
+            ),
             onExport: () => _runStudentDownload(
               context,
               ref.read(studentsRepositoryProvider).exportExcel(),
@@ -131,6 +136,7 @@ class _DetailHeader extends StatelessWidget {
   const _DetailHeader({
     required this.onBack,
     required this.onImport,
+    required this.onTemplate,
     required this.onExport,
     this.onAddStudent,
   });
@@ -138,6 +144,7 @@ class _DetailHeader extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback? onAddStudent;
   final VoidCallback onImport;
+  final VoidCallback onTemplate;
   final VoidCallback onExport;
 
   @override
@@ -165,6 +172,11 @@ class _DetailHeader extends StatelessWidget {
               onPressed: onImport,
               icon: const Icon(Icons.upload_file_outlined),
               label: const Text('Import students'),
+            ),
+            OutlinedButton.icon(
+              onPressed: onTemplate,
+              icon: const Icon(Icons.table_view_outlined),
+              label: const Text('Download template'),
             ),
             OutlinedButton.icon(
               onPressed: onExport,
@@ -430,22 +442,27 @@ Future<void> _showAdmissionDialog(
   final firstName = TextEditingController();
   final middleName = TextEditingController();
   final lastName = TextEditingController();
+  final dateOfBirth = TextEditingController(text: '2015-06-01');
+  final admissionDate = TextEditingController(text: '2026-04-01');
+  final bloodGroup = TextEditingController();
+  final email = TextEditingController();
   final phone = TextEditingController(text: '+9198');
   final roll = TextEditingController();
+  final previousSchool = TextEditingController();
+  final addressLine1 = TextEditingController();
+  final addressLine2 = TextEditingController();
+  final city = TextEditingController(text: 'Bengaluru');
+  final state = TextEditingController(text: 'Karnataka');
+  final postalCode = TextEditingController(text: '560001');
+  final country = TextEditingController(text: 'India');
   final parentName = TextEditingController();
   final parentPhone = TextEditingController(text: '+9198');
+  final parentEmail = TextEditingController();
+  final parentOccupation = TextEditingController();
   final formKey = GlobalKey<FormState>();
   var gender = 'MALE';
-  final dateOfBirth = DateTime(2015, 6, 1);
-  final bloodGroup = TextEditingController(text: 'A+');
-  final email = null;
-  final previousSchool = null;
-  final addressLine1 = 'Demo campus address';
-  final addressLine2 = null;
-  final city = '';
-  final state = '';
-  final postalCode = '';
-  final country = 'India';
+  var status = 'ACTIVE';
+  var parentRelation = 'GUARDIAN';
 
   await showDialog<void>(
     context: context,
@@ -488,7 +505,6 @@ Future<void> _showAdmissionDialog(
                       decoration: const InputDecoration(
                         labelText: 'Middle name',
                       ),
-                      validator: _required,
                     ),
                   ),
                   _Field(
@@ -501,15 +517,12 @@ Future<void> _showAdmissionDialog(
                   _Field(
                     width: 290,
                     child: TextFormField(
-                      controller: dateOfBirth == null
-                          ? null
-                          : TextEditingController(
-                              text:
-                                  '${dateOfBirth.year}-${dateOfBirth.month.toString().padLeft(2, '0')}-${dateOfBirth.day.toString().padLeft(2, '0')}',
-                            ),
+                      controller: dateOfBirth,
                       decoration: const InputDecoration(
                         labelText: 'Date of birth',
+                        hintText: 'YYYY-MM-DD',
                       ),
+                      validator: _date,
                     ),
                   ),
                   _Field(
@@ -530,6 +543,39 @@ Future<void> _showAdmissionDialog(
                   ),
                   _Field(
                     width: 290,
+                    child: DropdownButtonFormField<String>(
+                      initialValue: status,
+                      decoration: const InputDecoration(labelText: 'Status'),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'ACTIVE',
+                          child: Text('Active'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'INACTIVE',
+                          child: Text('Inactive'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'TRANSFERRED',
+                          child: Text('Transferred'),
+                        ),
+                      ],
+                      onChanged: (value) => status = value ?? status,
+                    ),
+                  ),
+                  _Field(
+                    width: 290,
+                    child: TextFormField(
+                      controller: admissionDate,
+                      decoration: const InputDecoration(
+                        labelText: 'Admission date',
+                        hintText: 'YYYY-MM-DD',
+                      ),
+                      validator: _date,
+                    ),
+                  ),
+                  _Field(
+                    width: 290,
                     child: TextFormField(
                       controller: bloodGroup,
                       decoration: const InputDecoration(
@@ -540,10 +586,9 @@ Future<void> _showAdmissionDialog(
                   _Field(
                     width: 290,
                     child: TextFormField(
-                      controller: email != null
-                          ? TextEditingController(text: email)
-                          : null,
+                      controller: email,
                       decoration: const InputDecoration(labelText: 'E-mail'),
+                      validator: _email,
                     ),
                   ),
                   _Field(
@@ -551,6 +596,7 @@ Future<void> _showAdmissionDialog(
                     child: TextFormField(
                       controller: phone,
                       decoration: const InputDecoration(labelText: 'Mobile'),
+                      validator: _optionalMobile,
                     ),
                   ),
                   _Field(
@@ -560,6 +606,24 @@ Future<void> _showAdmissionDialog(
                       decoration: const InputDecoration(
                         labelText: 'Roll number',
                       ),
+                    ),
+                  ),
+                  _Field(
+                    width: 290,
+                    child: DropdownButtonFormField<String>(
+                      initialValue: parentRelation,
+                      decoration: const InputDecoration(labelText: 'Relation'),
+                      items: const [
+                        DropdownMenuItem(value: 'FATHER', child: Text('Father')),
+                        DropdownMenuItem(value: 'MOTHER', child: Text('Mother')),
+                        DropdownMenuItem(
+                          value: 'GUARDIAN',
+                          child: Text('Guardian'),
+                        ),
+                        DropdownMenuItem(value: 'OTHER', child: Text('Other')),
+                      ],
+                      onChanged: (value) =>
+                          parentRelation = value ?? parentRelation,
                     ),
                   ),
                   _Field(
@@ -577,15 +641,32 @@ Future<void> _showAdmissionDialog(
                       decoration: const InputDecoration(
                         labelText: 'Guardian mobile',
                       ),
-                      validator: _required,
+                      validator: _mobile,
                     ),
                   ),
                   _Field(
                     width: 290,
                     child: TextFormField(
-                      controller: previousSchool != null
-                          ? TextEditingController(text: previousSchool)
-                          : null,
+                      controller: parentEmail,
+                      decoration: const InputDecoration(
+                        labelText: 'Guardian email',
+                      ),
+                      validator: _email,
+                    ),
+                  ),
+                  _Field(
+                    width: 290,
+                    child: TextFormField(
+                      controller: parentOccupation,
+                      decoration: const InputDecoration(
+                        labelText: 'Guardian occupation',
+                      ),
+                    ),
+                  ),
+                  _Field(
+                    width: 290,
+                    child: TextFormField(
+                      controller: previousSchool,
                       decoration: const InputDecoration(
                         labelText: 'Previous school',
                       ),
@@ -594,9 +675,7 @@ Future<void> _showAdmissionDialog(
                   _Field(
                     width: 290,
                     child: TextFormField(
-                      controller: addressLine1 != null
-                          ? TextEditingController(text: addressLine1)
-                          : null,
+                      controller: addressLine1,
                       decoration: const InputDecoration(
                         labelText: 'Address line 1',
                       ),
@@ -605,9 +684,7 @@ Future<void> _showAdmissionDialog(
                   _Field(
                     width: 290,
                     child: TextFormField(
-                      controller: addressLine2 != null
-                          ? TextEditingController(text: addressLine2)
-                          : null,
+                      controller: addressLine2,
                       decoration: const InputDecoration(
                         labelText: 'Address line 2',
                       ),
@@ -616,38 +693,31 @@ Future<void> _showAdmissionDialog(
                   _Field(
                     width: 290,
                     child: TextFormField(
-                      controller: city != null
-                          ? TextEditingController(text: city)
-                          : null,
+                      controller: city,
                       decoration: const InputDecoration(labelText: 'City'),
                     ),
                   ),
                   _Field(
                     width: 290,
                     child: TextFormField(
-                      controller: state != null
-                          ? TextEditingController(text: state)
-                          : null,
+                      controller: state,
                       decoration: const InputDecoration(labelText: 'State'),
                     ),
                   ),
                   _Field(
                     width: 290,
                     child: TextFormField(
-                      controller: postalCode != null
-                          ? TextEditingController(text: postalCode)
-                          : null,
+                      controller: postalCode,
                       decoration: const InputDecoration(
                         labelText: 'Postal code',
                       ),
+                      validator: _optionalPinCode,
                     ),
                   ),
                   _Field(
                     width: 290,
                     child: TextFormField(
-                      controller: country != null
-                          ? TextEditingController(text: country)
-                          : null,
+                      controller: country,
                       decoration: const InputDecoration(labelText: 'Country'),
                     ),
                   ),
@@ -670,41 +740,42 @@ Future<void> _showAdmissionDialog(
                 'admissionNumber': admissionNo.text.trim(),
                 'profile': {
                   'firstName': firstName.text.trim(),
-                  'middleName': null,
+                  'middleName': _blankToNull(middleName.text),
                   'lastName': _blankToNull(lastName.text),
-                  'dateOfBirth': '2015-06-01',
+                  'dateOfBirth': dateOfBirth.text.trim(),
                   'gender': gender,
-                  'bloodGroup': null,
-                  'email': null,
+                  'bloodGroup': _blankToNull(bloodGroup.text),
+                  'email': _blankToNull(email.text),
                   'phoneNumber': _blankToNull(phone.text),
-                  'admissionDate': '2026-04-01',
-                  'previousSchool': null,
-                  'addressLine1': 'Demo campus address',
-                  'addressLine2': null,
-                  'city': 'Bengaluru',
-                  'state': 'Karnataka',
-                  'postalCode': '560001',
-                  'country': 'India',
+                  'admissionDate': admissionDate.text.trim(),
+                  'previousSchool': _blankToNull(previousSchool.text),
+                  'addressLine1': _blankToNull(addressLine1.text),
+                  'addressLine2': _blankToNull(addressLine2.text),
+                  'city': _blankToNull(city.text),
+                  'state': _blankToNull(state.text),
+                  'postalCode': _blankToNull(postalCode.text),
+                  'country': _blankToNull(country.text),
                 },
+                'status': status,
                 'parents': [
                   {
-                    'relationType': 'GUARDIAN',
+                    'relationType': parentRelation,
                     'primaryContact': true,
                     'emergencyContact': true,
                     'pickupAllowed': true,
                     'parent': {
                       'firstName': parentName.text.trim(),
                       'lastName': null,
-                      'email': null,
+                      'email': _blankToNull(parentEmail.text),
                       'phoneNumber': parentPhone.text.trim(),
                       'alternatePhoneNumber': null,
-                      'occupation': null,
-                      'addressLine1': 'Demo campus address',
-                      'addressLine2': null,
-                      'city': 'Bengaluru',
-                      'state': 'Karnataka',
-                      'postalCode': '560001',
-                      'country': 'India',
+                      'occupation': _blankToNull(parentOccupation.text),
+                      'addressLine1': _blankToNull(addressLine1.text),
+                      'addressLine2': _blankToNull(addressLine2.text),
+                      'city': _blankToNull(city.text),
+                      'state': _blankToNull(state.text),
+                      'postalCode': _blankToNull(postalCode.text),
+                      'country': _blankToNull(country.text),
                       'userAccountId': null,
                     },
                   },
@@ -717,7 +788,7 @@ Future<void> _showAdmissionDialog(
                   'className': details.className,
                   'sectionName': details.sectionName,
                   'rollNumber': _blankToNull(roll.text),
-                  'effectiveFrom': '2026-04-01',
+                  'effectiveFrom': admissionDate.text.trim(),
                 },
                 'documents': [],
               });
@@ -727,6 +798,7 @@ Future<void> _showAdmissionDialog(
               result.when(
                 success: (_) {
                   ref.invalidate(sectionStudentsProvider(filter));
+                  _snack(context, 'Student saved successfully.');
                   Navigator.of(context).pop();
                 },
                 failure: (failure) => _snack(context, failure.message),
@@ -742,11 +814,25 @@ Future<void> _showAdmissionDialog(
 
   admissionNo.dispose();
   firstName.dispose();
+  middleName.dispose();
   lastName.dispose();
+  dateOfBirth.dispose();
+  admissionDate.dispose();
+  bloodGroup.dispose();
+  email.dispose();
   phone.dispose();
   roll.dispose();
+  previousSchool.dispose();
+  addressLine1.dispose();
+  addressLine2.dispose();
+  city.dispose();
+  state.dispose();
+  postalCode.dispose();
+  country.dispose();
   parentName.dispose();
   parentPhone.dispose();
+  parentEmail.dispose();
+  parentOccupation.dispose();
 }
 
 class _Field extends StatelessWidget {
@@ -806,6 +892,55 @@ String? _required(String? value) {
     return 'Required';
   }
   return null;
+}
+
+String? _date(String? value) {
+  final text = value?.trim() ?? '';
+  if (text.isEmpty) {
+    return 'Required';
+  }
+  final parsed = DateTime.tryParse(text);
+  if (parsed == null || text.length != 10) {
+    return 'Use YYYY-MM-DD';
+  }
+  return null;
+}
+
+String? _email(String? value) {
+  final text = value?.trim() ?? '';
+  if (text.isEmpty) {
+    return null;
+  }
+  final pattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+  return pattern.hasMatch(text) ? null : 'Enter a valid email';
+}
+
+String? _mobile(String? value) {
+  final text = value?.trim() ?? '';
+  if (text.isEmpty) {
+    return 'Required';
+  }
+  return RegExp(r'^\+?[0-9]{10,15}$').hasMatch(text)
+      ? null
+      : 'Enter 10 to 15 digits';
+}
+
+String? _optionalMobile(String? value) {
+  final text = value?.trim() ?? '';
+  if (text.isEmpty) {
+    return null;
+  }
+  return _mobile(text);
+}
+
+String? _optionalPinCode(String? value) {
+  final text = value?.trim() ?? '';
+  if (text.isEmpty) {
+    return null;
+  }
+  return RegExp(r'^[0-9A-Za-z -]{4,12}$').hasMatch(text)
+      ? null
+      : 'Enter a valid pin code';
 }
 
 String? _blankToNull(String value) {

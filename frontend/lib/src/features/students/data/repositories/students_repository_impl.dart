@@ -65,6 +65,11 @@ class StudentsRepositoryImpl implements StudentsRepository {
   }
 
   @override
+  Future<Result<List<StudentParentModel>>> parents(String studentId) {
+    return _guard(() => _remoteDataSource.parents(studentId));
+  }
+
+  @override
   Future<Result<StudentProfileModel>> admit(Map<String, dynamic> payload) {
     return _guard(() => _remoteDataSource.admit(payload));
   }
@@ -75,6 +80,76 @@ class StudentsRepositoryImpl implements StudentsRepository {
     Map<String, dynamic> payload,
   ) {
     return _guard(() => _remoteDataSource.updateProfile(studentId, payload));
+  }
+
+  @override
+  Future<Result<StudentProfileModel>> updatePhoto(
+    String studentId,
+    Map<String, dynamic> payload,
+  ) {
+    return _guard(() => _remoteDataSource.updatePhoto(studentId, payload));
+  }
+
+  @override
+  Future<Result<StudentProfileModel>> addParent(
+    String studentId,
+    Map<String, dynamic> payload,
+  ) {
+    return _guard(() => _remoteDataSource.addParent(studentId, payload));
+  }
+
+  @override
+  Future<Result<StudentProfileModel>> updateParent(
+    String studentId,
+    String mappingId,
+    Map<String, dynamic> payload,
+  ) {
+    return _guard(
+      () => _remoteDataSource.updateParent(studentId, mappingId, payload),
+    );
+  }
+
+  @override
+  Future<Result<StudentProfileModel>> deleteParent(
+    String studentId,
+    String mappingId,
+  ) {
+    return _guard(() => _remoteDataSource.deleteParent(studentId, mappingId));
+  }
+
+  @override
+  Future<Result<StudentProfileModel>> addDocument(
+    String studentId,
+    Map<String, dynamic> payload,
+  ) {
+    return _guard(() => _remoteDataSource.addDocument(studentId, payload));
+  }
+
+  @override
+  Future<Result<StudentProfileModel>> updateDocument(
+    String studentId,
+    String documentId,
+    Map<String, dynamic> payload,
+  ) {
+    return _guard(
+      () => _remoteDataSource.updateDocument(studentId, documentId, payload),
+    );
+  }
+
+  @override
+  Future<Result<StudentProfileModel>> deleteDocument(
+    String studentId,
+    String documentId,
+  ) {
+    return _guard(() => _remoteDataSource.deleteDocument(studentId, documentId));
+  }
+
+  @override
+  Future<Result<StudentProfileModel>> assignClass(
+    String studentId,
+    Map<String, dynamic> payload,
+  ) {
+    return _guard(() => _remoteDataSource.assignClass(studentId, payload));
   }
 
   @override

@@ -13,6 +13,7 @@ import com.school.erp.modules.students.api.dto.ParentMappingRequest;
 import com.school.erp.modules.students.api.dto.ParentMappingResponse;
 import com.school.erp.modules.students.api.dto.StudentAdmissionRequest;
 import com.school.erp.modules.students.api.dto.StudentDocumentRequest;
+import com.school.erp.modules.students.api.dto.StudentPhotoRequest;
 import com.school.erp.modules.students.api.dto.StudentProfileRequest;
 import com.school.erp.modules.students.api.dto.StudentResponse;
 import com.school.erp.modules.students.api.dto.StudentSearchRequest;
@@ -187,6 +188,16 @@ public class StudentController {
 			@Valid @RequestBody StudentProfileRequest request,
 			HttpServletRequest httpRequest) {
 		return ok(studentService.updateStudentProfile(studentId, request), "Student profile updated successfully", httpRequest);
+	}
+
+	@PutMapping("/{studentId}/photo")
+	@PreAuthorize("hasAuthority('STUDENTS_UPDATE')")
+	@Operation(summary = "Upload or update student photo metadata")
+	public ResponseEntity<ApiResponse<StudentResponse>> updatePhoto(
+			@PathVariable UUID studentId,
+			@Valid @RequestBody StudentPhotoRequest request,
+			HttpServletRequest httpRequest) {
+		return ok(studentService.updatePhoto(studentId, request), "Student photo updated successfully", httpRequest);
 	}
 
 	@PostMapping("/{studentId}/parents")

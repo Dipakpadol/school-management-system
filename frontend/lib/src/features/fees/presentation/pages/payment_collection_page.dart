@@ -43,6 +43,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
   final _remarksController = TextEditingController();
 
   String? _assignmentId;
+  String? _defaultsAppliedAssignmentId;
   String _paymentMode = 'CASH';
   bool _assessLateFee = true;
   bool _saving = false;
@@ -91,12 +92,34 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
   }
 
   Widget _buildForm(List<StudentFeeAssignmentModel> assignments) {
+    if (assignments.isEmpty) {
+      return _buildEmptyAssignments();
+    }
+
     final assignmentIds = assignments
         .map((assignment) => assignment.id)
         .toSet();
     final selectedAssignment = assignmentIds.contains(_assignmentId)
         ? _assignmentId
         : null;
+    final defaultAssignment = _defaultAssignment(assignments);
+    final visibleAssignment =
+        _findAssignment(assignments, selectedAssignment) ?? defaultAssignment;
+    final canSubmit = _containsAssignment(assignments, _assignmentId);
+
+    if (selectedAssignment == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_containsAssignment(assignments, _assignmentId)) {
+          setState(() => _applySelectedAssignment(defaultAssignment));
+        }
+      });
+    } else if (_defaultsAppliedAssignmentId != visibleAssignment.id) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _assignmentId == visibleAssignment.id) {
+          setState(() => _applySelectedAssignment(visibleAssignment));
+        }
+      });
+    }
 
     return Form(
       key: _formKey,
@@ -111,7 +134,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
                 _Header(
                   saving: _saving,
                   onBack: () => context.go(AppRoutes.fees),
-                  onSave: _saving ? null : _submit,
+                  onSave: _saving || !canSubmit ? null : _submit,
                 ),
                 const SizedBox(height: 12),
                 Card(
@@ -120,7 +143,8 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
                     child: Column(
                       children: [
                         DropdownButtonFormField<String>(
-                          initialValue: selectedAssignment,
+                          initialValue: selectedAssignment ??
+                              defaultAssignment.id,
                           isExpanded: true,
                           items: [
                             for (final assignment in assignments)
@@ -133,9 +157,17 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
                               ),
                           ],
                           onChanged: (value) {
+                            final assignment = _findAssignment(
+                              assignments,
+                              value,
+                            );
                             setState(() {
-                              _assignmentId = value;
-                              _receipt = null;
+                              if (assignment == null) {
+                                _assignmentId = value;
+                                _receipt = null;
+                              } else {
+                                _applySelectedAssignment(assignment);
+                              }
                             });
                           },
                           validator: _required,
@@ -146,10 +178,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
                         ),
                         const SizedBox(height: 14),
                         _SelectedAssignmentPanel(
-                          assignment: _findAssignment(
-                            assignments,
-                            selectedAssignment,
-                          ),
+                          assignment: visibleAssignment,
                         ),
                         const SizedBox(height: 14),
                         _ResponsiveFields(
@@ -255,6 +284,43 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
     );
   }
 
+  Widget _buildEmptyAssignments() {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 980),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _Header(
+                saving: false,
+                onBack: () => context.go(AppRoutes.fees),
+                onSave: null,
+              ),
+              const SizedBox(height: 12),
+              _EmptyAssignmentsPanel(
+                onAssignFee: () => context.go(AppRoutes.newFeeAssignment),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _applySelectedAssignment(StudentFeeAssignmentModel assignment) {
+    _assignmentId = assignment.id;
+    _defaultsAppliedAssignmentId = assignment.id;
+    if (assignment.balanceAmount > 0) {
+      _amountController.text = assignment.balanceAmount.toStringAsFixed(2);
+    } else {
+      _amountController.clear();
+    }
+    _payerController.text = assignment.studentName;
+    _receipt = null;
+  }
+
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
@@ -301,6 +367,63 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _EmptyAssignmentsPanel extends StatelessWidget {
+  const _EmptyAssignmentsPanel({required this.onAssignFee});
+
+  final VoidCallback onAssignFee;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Wrap(
+          spacing: 16,
+          runSpacing: 14,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          alignment: WrapAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.assignment_late_outlined,
+                  size: 34,
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+                const SizedBox(width: 14),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'No fee assignments available',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Assign a fee structure to a class before collecting payments.',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            OutlinedButton.icon(
+              onPressed: onAssignFee,
+              icon: const Icon(Icons.groups_outlined),
+              label: const Text('Assign class fee'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -545,6 +668,27 @@ StudentFeeAssignmentModel? _findAssignment(
     }
   }
   return null;
+}
+
+StudentFeeAssignmentModel _defaultAssignment(
+  List<StudentFeeAssignmentModel> assignments,
+) {
+  for (final assignment in assignments) {
+    if (assignment.balanceAmount > 0) {
+      return assignment;
+    }
+  }
+  return assignments.first;
+}
+
+bool _containsAssignment(
+  List<StudentFeeAssignmentModel> assignments,
+  String? assignmentId,
+) {
+  if (assignmentId == null) {
+    return false;
+  }
+  return assignments.any((assignment) => assignment.id == assignmentId);
 }
 
 String _money(double value) {

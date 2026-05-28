@@ -49,6 +49,13 @@ class StudentsRemoteDataSource {
     return StudentProfileModel.fromJson(_unwrapData(response.data));
   }
 
+  Future<List<StudentParentModel>> parents(String studentId) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.studentParents(studentId),
+    );
+    return _unwrapList(response.data, StudentParentModel.fromJson);
+  }
+
   Future<List<AcademicYearModel>> academicYears() async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.academicYears,
@@ -94,6 +101,94 @@ class StudentsRemoteDataSource {
   ) async {
     final response = await _apiClient.put<Map<String, dynamic>>(
       ApiPaths.studentProfile(studentId),
+      data: payload,
+    );
+    return StudentProfileModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<StudentProfileModel> updatePhoto(
+    String studentId,
+    Map<String, dynamic> payload,
+  ) async {
+    final response = await _apiClient.put<Map<String, dynamic>>(
+      ApiPaths.studentPhoto(studentId),
+      data: payload,
+    );
+    return StudentProfileModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<StudentProfileModel> addParent(
+    String studentId,
+    Map<String, dynamic> payload,
+  ) async {
+    await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.studentParents(studentId),
+      data: payload,
+    );
+    return profile(studentId);
+  }
+
+  Future<StudentProfileModel> updateParent(
+    String studentId,
+    String mappingId,
+    Map<String, dynamic> payload,
+  ) async {
+    await _apiClient.put<Map<String, dynamic>>(
+      ApiPaths.studentParent(studentId, mappingId),
+      data: payload,
+    );
+    return profile(studentId);
+  }
+
+  Future<StudentProfileModel> deleteParent(
+    String studentId,
+    String mappingId,
+  ) async {
+    await _apiClient.delete<Map<String, dynamic>>(
+      ApiPaths.studentParent(studentId, mappingId),
+    );
+    return profile(studentId);
+  }
+
+  Future<StudentProfileModel> addDocument(
+    String studentId,
+    Map<String, dynamic> payload,
+  ) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.studentDocuments(studentId),
+      data: payload,
+    );
+    return StudentProfileModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<StudentProfileModel> updateDocument(
+    String studentId,
+    String documentId,
+    Map<String, dynamic> payload,
+  ) async {
+    final response = await _apiClient.put<Map<String, dynamic>>(
+      ApiPaths.studentDocument(studentId, documentId),
+      data: payload,
+    );
+    return StudentProfileModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<StudentProfileModel> deleteDocument(
+    String studentId,
+    String documentId,
+  ) async {
+    final response = await _apiClient.delete<Map<String, dynamic>>(
+      ApiPaths.studentDocument(studentId, documentId),
+    );
+    return StudentProfileModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<StudentProfileModel> assignClass(
+    String studentId,
+    Map<String, dynamic> payload,
+  ) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.studentClassAssignments(studentId),
       data: payload,
     );
     return StudentProfileModel.fromJson(_unwrapData(response.data));

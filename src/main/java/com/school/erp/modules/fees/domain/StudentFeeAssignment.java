@@ -9,6 +9,8 @@ import java.util.Optional;
 import java.util.Set;
 
 import com.school.erp.common.domain.BaseEntity;
+import com.school.erp.modules.academic.domain.AcademicYear;
+import com.school.erp.modules.academic.domain.ClassEntity;
 import com.school.erp.modules.students.domain.Student;
 
 import jakarta.persistence.CascadeType;
@@ -52,6 +54,14 @@ public class StudentFeeAssignment extends BaseEntity {
 	@Column(name = "section_name", length = 80)
 	private String sectionName;
 
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "academic_year_id")
+	private AcademicYear academicYearEntity;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "class_id")
+	private ClassEntity classEntity;
+
 	@Column(name = "assigned_date", nullable = false)
 	private LocalDate assignedDate;
 
@@ -92,6 +102,8 @@ public class StudentFeeAssignment extends BaseEntity {
 		this.academicYear = feeStructure.getAcademicYear();
 		this.className = feeStructure.getClassName();
 		this.sectionName = feeStructure.getSectionName();
+		this.academicYearEntity = feeStructure.getAcademicYearEntity();
+		this.classEntity = feeStructure.getClassEntity();
 		this.assignedDate = assignedDate;
 		this.notes = notes;
 		this.grossAmount = feeStructure.getTotalAmount();

@@ -30,8 +30,29 @@ class FeesRepositoryImpl implements FeesRepository {
   }
 
   @override
-  Future<Result<List<FeeStructureModel>>> structures() {
-    return _guard(() async => (await _remoteDataSource.structures()).content);
+  Future<Result<FeeCategoryModel>> updateCategory(
+    String id,
+    Map<String, dynamic> payload,
+  ) {
+    return _guard(() => _remoteDataSource.updateCategory(id, payload));
+  }
+
+  @override
+  Future<Result<FeeCategoryModel>> deleteCategory(String id) {
+    return _guard(() => _remoteDataSource.deleteCategory(id));
+  }
+
+  @override
+  Future<Result<List<FeeStructureModel>>> structures({
+    String? academicYearId,
+    String? classId,
+  }) {
+    return _guard(
+      () async => (await _remoteDataSource.structures(
+        academicYearId: academicYearId,
+        classId: classId,
+      )).content,
+    );
   }
 
   @override
@@ -55,6 +76,11 @@ class FeesRepositoryImpl implements FeesRepository {
   }
 
   @override
+  Future<Result<FeeStructureModel>> deleteStructure(String id) {
+    return _guard(() => _remoteDataSource.deleteStructure(id));
+  }
+
+  @override
   Future<Result<List<StudentFeeAssignmentModel>>> assignments() {
     return _guard(() async => (await _remoteDataSource.assignments()).content);
   }
@@ -64,6 +90,19 @@ class FeesRepositoryImpl implements FeesRepository {
     Map<String, dynamic> payload,
   ) {
     return _guard(() => _remoteDataSource.createAssignment(payload));
+  }
+
+  @override
+  Future<Result<List<ClassStudentFeeModel>>> classStudents(String classId) {
+    return _guard(() => _remoteDataSource.classStudents(classId));
+  }
+
+  @override
+  Future<Result<ClassFeeAssignmentModel>> assignClassFee(
+    String classId,
+    Map<String, dynamic> payload,
+  ) {
+    return _guard(() => _remoteDataSource.assignClassFee(classId, payload));
   }
 
   @override
