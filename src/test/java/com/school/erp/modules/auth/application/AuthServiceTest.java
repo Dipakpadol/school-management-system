@@ -27,6 +27,8 @@ import com.school.erp.modules.users.domain.Permission;
 import com.school.erp.modules.users.domain.Role;
 import com.school.erp.modules.users.domain.RoleName;
 import com.school.erp.modules.users.domain.UserAccount;
+import com.school.erp.modules.users.domain.UserStatus;
+import com.school.erp.modules.users.infrastructure.RoleRepository;
 import com.school.erp.modules.users.infrastructure.UserAccountRepository;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -52,6 +54,9 @@ class AuthServiceTest {
 
 	@Mock
 	private UserAccountRepository userAccountRepository;
+
+	@Mock
+	private RoleRepository roleRepository;
 
 	@Mock
 	private RefreshTokenRepository refreshTokenRepository;
@@ -85,13 +90,14 @@ class AuthServiceTest {
 		authService = new AuthService(
 				authenticationManager,
 				userAccountRepository,
+				roleRepository,
 				refreshTokenRepository,
 				passwordResetTokenRepository,
 				passwordEncoder,
 				jwtService,
 				secureTokenService,
 				authMapper,
-				new AuthProperties(5, Duration.ofMinutes(15)),
+				new AuthProperties(5, Duration.ofMinutes(15), RoleName.PARENT, UserStatus.ACTIVE),
 				jwtProperties,
 				eventPublisher,
 				auditLogService);

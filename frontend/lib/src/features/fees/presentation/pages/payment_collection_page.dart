@@ -15,9 +15,16 @@ import '../controllers/fees_providers.dart';
 import '../widgets/fee_widgets.dart';
 
 class PaymentCollectionPage extends ConsumerStatefulWidget {
-  const PaymentCollectionPage({this.assignmentId, super.key});
+  const PaymentCollectionPage({
+    this.assignmentId,
+    this.studentId,
+    this.paymentId,
+    super.key,
+  });
 
   final String? assignmentId;
+  final String? studentId;
+  final String? paymentId;
 
   @override
   ConsumerState<PaymentCollectionPage> createState() {
@@ -45,6 +52,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
   String? _assignmentId;
   String? _defaultsAppliedAssignmentId;
   String _paymentMode = 'CASH';
+  double _selectedBalanceAmount = 0;
   bool _assessLateFee = true;
   bool _saving = false;
   FeeReceiptModel? _receipt;
@@ -69,21 +77,51 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
 
   @override
   Widget build(BuildContext context) {
+    final studentId = widget.studentId;
+    final initialAssignmentId = widget.assignmentId;
+    final paymentId = widget.paymentId;
+    if (paymentId != null && paymentId.isNotEmpty) {
+      return _shell(child: _PaymentReceiptRoutePanel(paymentId: paymentId));
+    }
+    if (studentId != null && studentId.isNotEmpty) {
+      final summary = ref.watch(studentFeeSummaryProvider(studentId));
+      return _shell(
+        child: summary.when(
+          data: (value) => _buildForm(value.assignments, summary: value),
+          error: (error, _) => AppErrorState(
+            message:
+                'Unable to load payment details. Please try again.\n${_message(error)}',
+            onRetry: () => ref.invalidate(studentFeeSummaryProvider(studentId)),
+          ),
+          loading: () =>
+              const AppLoadingState(label: 'Loading payment details'),
+        ),
+      );
+    }
+    if (initialAssignmentId != null && initialAssignmentId.isNotEmpty) {
+      final assignment = ref.watch(feeAssignmentProvider(initialAssignmentId));
+      return _shell(
+        child: assignment.when(
+          data: (value) => _buildForm([value]),
+          error: (error, _) => AppErrorState(
+            message:
+                'Unable to load payment details. Please try again.\n${_message(error)}',
+            onRetry: () =>
+                ref.invalidate(feeAssignmentProvider(initialAssignmentId)),
+          ),
+          loading: () =>
+              const AppLoadingState(label: 'Loading payment details'),
+        ),
+      );
+    }
     final assignments = ref.watch(feeAssignmentsProvider);
 
-    return AdminShell(
-      title: 'Payment collection',
-      activeModuleId: 'fees',
-      onLogout: () async {
-        await ref.read(authControllerProvider.notifier).logout();
-        if (context.mounted) {
-          context.go(AppRoutes.login);
-        }
-      },
+    return _shell(
       child: assignments.when(
         data: _buildForm,
         error: (error, _) => AppErrorState(
-          message: _message(error),
+          message:
+              'Unable to load payment details. Please try again.\n${_message(error)}',
           onRetry: () => ref.invalidate(feeAssignmentsProvider),
         ),
         loading: () => const AppLoadingState(label: 'Loading assignments'),
@@ -91,7 +129,25 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
     );
   }
 
-  Widget _buildForm(List<StudentFeeAssignmentModel> assignments) {
+  Widget _shell({required Widget child}) {
+    return AdminShell(
+      title: 'Payment collection',
+      activeModuleId: 'fees',
+      onLogout: () async {
+        await ref.read(authControllerProvider.notifier).logout();
+        if (!mounted) {
+          return;
+        }
+        context.go(AppRoutes.login);
+      },
+      child: child,
+    );
+  }
+
+  Widget _buildForm(
+    List<StudentFeeAssignmentModel> assignments, {
+    StudentFeeSummaryModel? summary,
+  }) {
     if (assignments.isEmpty) {
       return _buildEmptyAssignments();
     }
@@ -137,14 +193,18 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
                   onSave: _saving || !canSubmit ? null : _submit,
                 ),
                 const SizedBox(height: 12),
+                if (summary != null) ...[
+                  _StudentSummaryPanel(summary: summary),
+                  const SizedBox(height: 12),
+                ],
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(18),
                     child: Column(
                       children: [
                         DropdownButtonFormField<String>(
-                          initialValue: selectedAssignment ??
-                              defaultAssignment.id,
+                          initialValue:
+                              selectedAssignment ?? defaultAssignment.id,
                           isExpanded: true,
                           items: [
                             for (final assignment in assignments)
@@ -177,9 +237,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
                           ),
                         ),
                         const SizedBox(height: 14),
-                        _SelectedAssignmentPanel(
-                          assignment: visibleAssignment,
-                        ),
+                        _SelectedAssignmentPanel(assignment: visibleAssignment),
                         const SizedBox(height: 14),
                         _ResponsiveFields(
                           children: [
@@ -276,6 +334,8 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
                   const SizedBox(height: 12),
                   _ReceiptPanel(receipt: _receipt!),
                 ],
+                const SizedBox(height: 12),
+                _PaymentHistoryPanel(payments: visibleAssignment.payments),
               ],
             ),
           ),
@@ -300,7 +360,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
               ),
               const SizedBox(height: 12),
               _EmptyAssignmentsPanel(
-                onAssignFee: () => context.go(AppRoutes.newFeeAssignment),
+                onAssignFee: () => context.go(AppRoutes.feeAssignments),
               ),
             ],
           ),
@@ -317,6 +377,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
     } else {
       _amountController.clear();
     }
+    _selectedBalanceAmount = assignment.balanceAmount;
     _payerController.text = assignment.studentName;
     _receipt = null;
   }
@@ -327,6 +388,11 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
     }
     final assignmentId = _assignmentId;
     if (assignmentId == null) {
+      return;
+    }
+    final amount = double.tryParse(_amountController.text.trim()) ?? 0;
+    if (_selectedBalanceAmount > 0 && amount > _selectedBalanceAmount) {
+      _showSnack('Amount cannot exceed pending amount.');
       return;
     }
     setState(() => _saving = true);
@@ -349,6 +415,13 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
     result.when<void>(
       success: (receipt) {
         ref.invalidate(feeAssignmentsProvider);
+        if (widget.assignmentId != null) {
+          ref.invalidate(feeAssignmentProvider(widget.assignmentId!));
+        }
+        if (widget.studentId != null) {
+          ref.invalidate(studentFeeSummaryProvider(widget.studentId!));
+          ref.invalidate(studentPaymentHistoryProvider(widget.studentId!));
+        }
         ref.invalidate(feeDefaultersProvider);
         setState(() => _receipt = receipt);
       },
@@ -423,6 +496,71 @@ class _EmptyAssignmentsPanel extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PaymentReceiptRoutePanel extends ConsumerWidget {
+  const _PaymentReceiptRoutePanel({required this.paymentId});
+
+  final String paymentId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 760),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(22),
+              child: Wrap(
+                spacing: 16,
+                runSpacing: 14,
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.receipt_long_outlined,
+                        size: 34,
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                      const SizedBox(width: 14),
+                      const Text('Payment receipt'),
+                    ],
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => _download(context, ref),
+                    icon: const Icon(Icons.picture_as_pdf_outlined),
+                    label: const Text('Download receipt'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _download(BuildContext context, WidgetRef ref) async {
+    final result = await ref
+        .read(feesRepositoryProvider)
+        .downloadPaymentReceiptPdf(paymentId);
+    if (!context.mounted) {
+      return;
+    }
+    result.when(
+      success: (_) => ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Receipt downloaded.'))),
+      failure: (failure) => ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(failure.message))),
     );
   }
 }
@@ -512,13 +650,41 @@ class _SelectedAssignmentPanel extends StatelessWidget {
   }
 }
 
-class _ReceiptPanel extends StatelessWidget {
+class _StudentSummaryPanel extends StatelessWidget {
+  const _StudentSummaryPanel({required this.summary});
+
+  final StudentFeeSummaryModel summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Wrap(
+          spacing: 18,
+          runSpacing: 12,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            _Detail(label: 'Student', value: summary.studentName),
+            _Detail(label: 'Admission', value: summary.admissionNumber),
+            _Detail(label: 'Total fee', value: _money(summary.grossAmount)),
+            _Detail(label: 'Discount', value: _money(summary.discountAmount)),
+            _Detail(label: 'Paid', value: _money(summary.paidAmount)),
+            _Detail(label: 'Pending', value: _money(summary.balanceAmount)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ReceiptPanel extends ConsumerWidget {
   const _ReceiptPanel({required this.receipt});
 
   final FeeReceiptModel receipt;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -568,6 +734,74 @@ class _ReceiptPanel extends StatelessWidget {
             _Detail(label: 'Amount', value: _money(receipt.totalAmount)),
             _Detail(label: 'Mode', value: receipt.paymentMode),
             FeeStatusChip(status: receipt.status),
+            OutlinedButton.icon(
+              onPressed: () => _downloadReceipt(context, ref),
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              label: const Text('Download receipt'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _downloadReceipt(BuildContext context, WidgetRef ref) async {
+    final result = await ref
+        .read(feesRepositoryProvider)
+        .downloadReceiptPdf(receipt.receiptNumber);
+    if (!context.mounted) {
+      return;
+    }
+    result.when(
+      success: (_) => ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Receipt downloaded.'))),
+      failure: (failure) => ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(failure.message))),
+    );
+  }
+}
+
+class _PaymentHistoryPanel extends StatelessWidget {
+  const _PaymentHistoryPanel({required this.payments});
+
+  final List<FeePaymentModel> payments;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Payment history',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 10),
+            if (payments.isEmpty)
+              const Text('No payment history available.')
+            else
+              for (final payment in payments)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    '${_money(payment.amount)} - ${payment.paymentMode}',
+                  ),
+                  subtitle: Text(
+                    [
+                      _dateLabel(payment.paymentDate),
+                      if ((payment.referenceNumber ?? '').isNotEmpty)
+                        payment.referenceNumber!,
+                      payment.receiptNumber,
+                    ].join(' - '),
+                  ),
+                  trailing: FeeStatusChip(status: payment.status),
+                ),
           ],
         ),
       ),

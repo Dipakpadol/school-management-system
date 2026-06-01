@@ -113,6 +113,13 @@ class FeesRemoteDataSource {
     );
   }
 
+  Future<StudentFeeAssignmentModel> assignment(String id) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.feeAssignment(id),
+    );
+    return StudentFeeAssignmentModel.fromJson(_unwrapData(response.data));
+  }
+
   Future<StudentFeeAssignmentModel> createAssignment(
     Map<String, dynamic> payload,
   ) async {
@@ -147,6 +154,31 @@ class FeesRemoteDataSource {
   ) async {
     final response = await _apiClient.post<Map<String, dynamic>>(
       ApiPaths.feeAssignmentPayments(assignmentId),
+      data: payload,
+    );
+    return FeeReceiptModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<StudentFeeSummaryModel> studentSummary(String studentId) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.feeStudentSummary(studentId),
+    );
+    return StudentFeeSummaryModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<List<FeePaymentModel>> studentPaymentHistory(String studentId) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.feeStudentPaymentHistory(studentId),
+    );
+    return _unwrapList(response.data, FeePaymentModel.fromJson);
+  }
+
+  Future<FeeReceiptModel> collectStudentPayment(
+    String studentId,
+    Map<String, dynamic> payload,
+  ) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.feeStudentPayments(studentId),
       data: payload,
     );
     return FeeReceiptModel.fromJson(_unwrapData(response.data));
@@ -211,6 +243,10 @@ class FeesRemoteDataSource {
 
   Future<List<int>> receiptPdf(String receiptNumber) {
     return _apiClient.download(ApiPaths.feeReceiptPdf(receiptNumber));
+  }
+
+  Future<List<int>> paymentReceiptPdf(String paymentId) {
+    return _apiClient.download(ApiPaths.feePaymentReceiptPdf(paymentId));
   }
 
   Future<List<int>> defaultersExport(String format) {

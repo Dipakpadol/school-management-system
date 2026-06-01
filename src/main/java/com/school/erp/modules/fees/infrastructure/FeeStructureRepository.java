@@ -1,6 +1,7 @@
 package com.school.erp.modules.fees.infrastructure;
 
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 import com.school.erp.common.domain.BaseRepository;
@@ -65,6 +66,10 @@ public interface FeeStructureRepository extends BaseRepository<FeeStructure, UUI
 			String sectionName);
 
 	Optional<FeeStructure> findFirstByClassEntityIdAndStatusAndDeletedFalseOrderByCreatedAtDesc(
+			UUID classId,
+			com.school.erp.modules.fees.domain.FeeStructureStatus status);
+
+	List<FeeStructure> findByClassEntityIdAndStatusAndDeletedFalseOrderByCreatedAtAsc(
 			UUID classId,
 			com.school.erp.modules.fees.domain.FeeStructureStatus status);
 

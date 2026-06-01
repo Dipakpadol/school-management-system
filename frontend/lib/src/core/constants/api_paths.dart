@@ -4,6 +4,9 @@ abstract final class ApiPaths {
   static const currentMenu = '/v1/menus/current';
 
   static const login = '/v1/auth/login';
+  static const signup = '/v1/auth/signup';
+  static const forgotPassword = '/v1/auth/forgot-password';
+  static const resetPassword = '/v1/auth/reset-password';
   static const logout = '/v1/auth/logout';
   static const refresh = '/v1/auth/refresh';
   static const me = '/v1/auth/me';
@@ -16,6 +19,8 @@ abstract final class ApiPaths {
   static const studentsImportExcel = '/v1/students/import/excel';
   static const studentsImportCsv = '/v1/students/import/csv';
   static const academicYears = '/v1/academic-years';
+  static const subjects = '/v1/subjects';
+  static const teachers = '/v1/teachers';
 
   static const users = '/v1/users';
   static const roles = '/v1/users/roles';
@@ -29,10 +34,8 @@ abstract final class ApiPaths {
   static const auditLogsExportExcel = '/v1/audit-logs/export/excel';
   static const auditLogsExportCsv = '/v1/audit-logs/export/csv';
   static const auditLogsExportPdf = '/v1/audit-logs/export/pdf';
-  static const auditLogFilterModules =
-      '/v1/audit-logs/filter-options/modules';
-  static const auditLogFilterActions =
-      '/v1/audit-logs/filter-options/actions';
+  static const auditLogFilterModules = '/v1/audit-logs/filter-options/modules';
+  static const auditLogFilterActions = '/v1/audit-logs/filter-options/actions';
   static const auditLogFilterUsers = '/v1/audit-logs/filter-options/users';
 
   static const feeCategories = '/v1/fees/categories';
@@ -59,6 +62,15 @@ abstract final class ApiPaths {
   static String feeAssignmentPayments(String id) =>
       '/v1/fees/assignments/$id/payments';
 
+  static String feeStudentSummary(String studentId) =>
+      '/v1/fees/students/$studentId/summary';
+
+  static String feeStudentPaymentHistory(String studentId) =>
+      '/v1/fees/students/$studentId/payment-history';
+
+  static String feeStudentPayments(String studentId) =>
+      '/v1/fees/students/$studentId/payments';
+
   static String feeClassStudents(String classId) =>
       '/v1/fees/classes/$classId/students';
 
@@ -70,6 +82,9 @@ abstract final class ApiPaths {
 
   static String feeReceiptPdf(String receiptNumber) =>
       '/v1/fees/receipts/$receiptNumber/pdf';
+
+  static String feePaymentReceiptPdf(String paymentId) =>
+      '/v1/fees/payments/$paymentId/receipt';
 
   static String feePaymentReverse(String paymentId) =>
       '/v1/fees/payments/$paymentId/reverse';
@@ -113,8 +128,24 @@ abstract final class ApiPaths {
   static String academicYearClasses(String academicYearId) =>
       '/v1/academic-years/$academicYearId/classes';
 
+  static String academicYear(String academicYearId) =>
+      '/v1/academic-years/$academicYearId';
+
   static String classSections(String classId) =>
       '/v1/classes/$classId/sections';
+
+  static String schoolClass(String classId) => '/v1/classes/$classId';
+
+  static String classDivisions(String classId) =>
+      '/v1/classes/$classId/divisions';
+
+  static String division(String divisionId) => '/v1/divisions/$divisionId';
+
+  static String divisionSubjects(String divisionId) =>
+      '/v1/divisions/$divisionId/subjects';
+
+  static String divisionSubject(String divisionId, String divisionSubjectId) =>
+      '/v1/divisions/$divisionId/subjects/$divisionSubjectId';
 
   static String classSectionTeachers(String classId, String sectionId) =>
       '/v1/classes/$classId/sections/$sectionId/teachers';
@@ -143,4 +174,45 @@ abstract final class ApiPaths {
   static String rolePermissions(String id) => '/v1/users/roles/$id/permissions';
 
   static String auditLog(String id) => '/v1/audit-logs/$id';
+
+  static const attendanceAcademicYears = '/v1/attendance/academic-years';
+  static const attendanceStudents = '/v1/attendance/students';
+  static const attendanceDaily = '/v1/attendance/daily';
+  static const attendanceExport = '/v1/attendance/export';
+
+  static String attendanceClasses(String academicYearId) =>
+      '/v1/attendance/academic-years/$academicYearId/classes';
+
+  static String attendanceSections(String classId) =>
+      '/v1/attendance/classes/$classId/sections';
+
+  static String attendanceStudentSummary(String studentId) =>
+      '/v1/attendance/students/$studentId/summary';
+
+  static const examAcademicYears = '/v1/exams/academic-years';
+  static const examStudents = '/v1/exams/students';
+  static const examTypes = '/v1/exams/types';
+  static const examSchedules = '/v1/exams/schedules';
+  static const examMarks = '/v1/exams/marks';
+  static const examResultsGenerate = '/v1/exams/results/generate';
+
+  static String examClasses(String academicYearId) =>
+      '/v1/exams/academic-years/$academicYearId/classes';
+
+  static String examSections(String classId) =>
+      '/v1/exams/classes/$classId/sections';
+
+  static String examSubjects(String classId, String sectionId) =>
+      '/v1/exams/classes/$classId/sections/$sectionId/subjects';
+
+  static String examType(String examTypeId) => '/v1/exams/types/$examTypeId';
+
+  static String examSchedule(String scheduleId) =>
+      '/v1/exams/schedules/$scheduleId';
+
+  static String examStudentResult(String studentId) =>
+      '/v1/exams/results/students/$studentId';
+
+  static String examReportCard(String studentId) =>
+      '/v1/exams/results/students/$studentId/report-card';
 }

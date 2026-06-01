@@ -26,6 +26,7 @@ class ProtectedEndpointAuthorizationTest {
 
 	private static final Set<String> PUBLIC_ENDPOINTS = Set.of(
 			"com.school.erp.common.web.SystemController#status",
+			"com.school.erp.modules.auth.api.AuthController#signup",
 			"com.school.erp.modules.auth.api.AuthController#login",
 			"com.school.erp.modules.auth.api.AuthController#refresh",
 			"com.school.erp.modules.auth.api.AuthController#forgotPassword",

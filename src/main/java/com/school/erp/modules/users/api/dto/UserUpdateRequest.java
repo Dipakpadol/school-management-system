@@ -13,6 +13,7 @@ public record UserUpdateRequest(
 		@NotBlank @Email @Size(max = 160) String email,
 		@NotBlank @Size(max = 80) String username,
 		@NotBlank @Size(max = 80) String firstName,
+		@Size(max = 80) String middleName,
 		@Size(max = 80) String lastName,
 		@Size(max = 30) String phoneNumber,
 		@NotEmpty Set<RoleName> roles) {

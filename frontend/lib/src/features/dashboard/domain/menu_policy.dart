@@ -46,42 +46,12 @@ const _roleModuleFallback = <String, Set<String>>{
     'notifications',
     'settings',
   },
-  'TEACHER': {
-    'students',
-    'academic',
-    'attendance',
-    'exams',
-    'reports',
-  },
-  'ACCOUNTANT': {
-    'students',
-    'fees',
-    'reports',
-  },
-  'RECEPTIONIST': {
-    'students',
-    'fees',
-    'notifications',
-  },
-  'WARDEN': {
-    'students',
-    'hostel',
-    'attendance',
-    'reports',
-  },
-  'STUDENT': {
-    'students',
-    'academic',
-    'attendance',
-    'fees',
-  },
-  'PARENT': {
-    'students',
-    'academic',
-    'attendance',
-    'fees',
-    'notifications',
-  },
+  'TEACHER': {'students', 'academic', 'attendance', 'exams', 'reports'},
+  'ACCOUNTANT': {'students', 'fees', 'reports'},
+  'RECEPTIONIST': {'students', 'fees', 'notifications'},
+  'WARDEN': {'students', 'hostel', 'attendance', 'reports'},
+  'STUDENT': {'students', 'academic', 'attendance', 'fees'},
+  'PARENT': {'students', 'academic', 'attendance', 'fees', 'notifications'},
 };
 
 List<ErpModule> visibleErpModules(AuthUser? user) {
@@ -132,6 +102,9 @@ String? moduleIdForPath(String path) {
   if (path == '/students' || path.startsWith('/students/')) {
     return 'students';
   }
+  if (path == '/academic' || path.startsWith('/academic/')) {
+    return 'academic';
+  }
   if (path == '/fees' || path.startsWith('/fees/')) {
     return 'fees';
   }
@@ -140,6 +113,12 @@ String? moduleIdForPath(String path) {
   }
   if (path == '/audit-logs' || path.startsWith('/audit-logs/')) {
     return 'audit-logs';
+  }
+  if (path == '/attendance' || path.startsWith('/attendance/')) {
+    return 'attendance';
+  }
+  if (path == '/exams' || path.startsWith('/exams/')) {
+    return 'exams';
   }
   if (path == '/settings' || path.startsWith('/settings/')) {
     return 'settings';

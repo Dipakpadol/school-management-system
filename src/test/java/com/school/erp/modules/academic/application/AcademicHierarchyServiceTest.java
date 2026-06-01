@@ -29,6 +29,8 @@ import com.school.erp.modules.academic.infrastructure.SectionEntityRepository;
 import com.school.erp.modules.academic.infrastructure.SubjectRepository;
 import com.school.erp.modules.academic.infrastructure.SubjectTeacherMappingRepository;
 import com.school.erp.modules.academic.infrastructure.TeacherRepository;
+import com.school.erp.modules.academic.infrastructure.DivisionSubjectRepository;
+import com.school.erp.modules.students.infrastructure.StudentClassAssignmentRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,10 +58,16 @@ class AcademicHierarchyServiceTest {
 	private SubjectRepository subjectRepository;
 
 	@Mock
+	private DivisionSubjectRepository divisionSubjectRepository;
+
+	@Mock
 	private ClassTeacherMappingRepository classTeacherMappingRepository;
 
 	@Mock
 	private SubjectTeacherMappingRepository subjectTeacherMappingRepository;
+
+	@Mock
+	private StudentClassAssignmentRepository studentClassAssignmentRepository;
 
 	@Mock
 	private AuditLogService auditLogService;
@@ -77,8 +85,10 @@ class AcademicHierarchyServiceTest {
 				sectionEntityRepository,
 				teacherRepository,
 				subjectRepository,
+				divisionSubjectRepository,
 				classTeacherMappingRepository,
 				subjectTeacherMappingRepository,
+				studentClassAssignmentRepository,
 				new AcademicHierarchyMapper(),
 				auditLogService);
 		academicYear = new AcademicYear("AY-2026-27", "2026-2027", LocalDate.of(2026, 4, 1), LocalDate.of(2027, 3, 31));

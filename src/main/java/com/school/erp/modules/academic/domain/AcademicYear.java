@@ -41,6 +41,9 @@ public class AcademicYear extends BaseEntity {
 	@Column(nullable = false)
 	private boolean active = true;
 
+	@Column(length = 500)
+	private String description;
+
 	@OneToMany(mappedBy = "academicYear", cascade = CascadeType.ALL)
 	private Set<ClassEntity> classes = new LinkedHashSet<>();
 
@@ -51,12 +54,13 @@ public class AcademicYear extends BaseEntity {
 		this.endDate = endDate;
 	}
 
-	public void update(String code, String name, LocalDate startDate, LocalDate endDate, boolean active) {
+	public void update(String code, String name, LocalDate startDate, LocalDate endDate, boolean active, String description) {
 		this.code = normalizeCode(code);
 		this.name = trim(name);
 		this.startDate = startDate;
 		this.endDate = endDate;
 		this.active = active;
+		this.description = trimToNull(description);
 	}
 
 	public void activate() {
@@ -76,5 +80,9 @@ public class AcademicYear extends BaseEntity {
 			return null;
 		}
 		return value.trim();
+	}
+
+	private String trimToNull(String value) {
+		return trim(value);
 	}
 }

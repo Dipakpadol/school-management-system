@@ -52,6 +52,49 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Result<String>> signup(Map<String, dynamic> payload) async {
+    try {
+      return Success(await _remoteDataSource.signup(payload));
+    } on DioException catch (error) {
+      return FailureResult(_failureFromDio(error));
+    } catch (_) {
+      return const FailureResult(UnexpectedFailure());
+    }
+  }
+
+  @override
+  Future<Result<String>> forgotPassword(String emailOrMobile) async {
+    try {
+      return Success(await _remoteDataSource.forgotPassword(emailOrMobile));
+    } on DioException catch (error) {
+      return FailureResult(_failureFromDio(error));
+    } catch (_) {
+      return const FailureResult(UnexpectedFailure());
+    }
+  }
+
+  @override
+  Future<Result<String>> resetPassword({
+    required String token,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      return Success(
+        await _remoteDataSource.resetPassword(
+          token: token,
+          newPassword: newPassword,
+          confirmPassword: confirmPassword,
+        ),
+      );
+    } on DioException catch (error) {
+      return FailureResult(_failureFromDio(error));
+    } catch (_) {
+      return const FailureResult(UnexpectedFailure());
+    }
+  }
+
+  @override
   Future<Result<void>> logout() async {
     try {
       final refreshToken = await _tokenStorage.readRefreshToken();

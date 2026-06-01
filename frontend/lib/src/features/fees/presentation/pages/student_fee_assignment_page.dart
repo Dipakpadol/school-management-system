@@ -16,7 +16,14 @@ import '../controllers/fees_providers.dart';
 import '../widgets/fee_widgets.dart';
 
 class StudentFeeAssignmentPage extends ConsumerStatefulWidget {
-  const StudentFeeAssignmentPage({super.key});
+  const StudentFeeAssignmentPage({
+    this.initialAcademicYearId,
+    this.initialClassId,
+    super.key,
+  });
+
+  final String? initialAcademicYearId;
+  final String? initialClassId;
 
   @override
   ConsumerState<StudentFeeAssignmentPage> createState() {
@@ -32,12 +39,14 @@ class _StudentFeeAssignmentPageState
 
   String? _academicYearId;
   String? _classId;
-  String? _feeStructureId;
+  final Set<String> _selectedFeeStructureIds = {};
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
+    _academicYearId = widget.initialAcademicYearId;
+    _classId = widget.initialClassId;
     _assignedDateController.text = _dateLabel(DateTime.now());
   }
 
@@ -89,7 +98,7 @@ class _StudentFeeAssignmentPageState
           setState(() {
             _academicYearId = selectedYear;
             _classId = null;
-            _feeStructureId = null;
+            _selectedFeeStructureIds.clear();
           });
         }
       });
@@ -101,9 +110,8 @@ class _StudentFeeAssignmentPageState
       data: (items) => _buildForm(years, items, selectedYear),
       error: (error, _) => AppErrorState(
         message: _message(error),
-        onRetry: () => ref.invalidate(
-          classesByAcademicYearProvider(selectedYear),
-        ),
+        onRetry: () =>
+            ref.invalidate(classesByAcademicYearProvider(selectedYear)),
       ),
       loading: () => const AppLoadingState(label: 'Loading classes'),
     );
@@ -117,14 +125,14 @@ class _StudentFeeAssignmentPageState
     final selectedClass = classes.isEmpty
         ? null
         : classes.any((item) => item.id == _classId)
-            ? _classId
-            : classes.first.id;
+        ? _classId
+        : classes.first.id;
     if (selectedClass != null && _classId != selectedClass) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _classId != selectedClass) {
           setState(() {
             _classId = selectedClass;
-            _feeStructureId = null;
+            _selectedFeeStructureIds.clear();
           });
         }
       });
@@ -132,7 +140,9 @@ class _StudentFeeAssignmentPageState
     final key = selectedClass != null
         ? FeeClassKey(academicYearId: selectedYear, classId: selectedClass)
         : null;
-    final structures = key == null ? null : ref.watch(feeStructuresByClassProvider(key));
+    final structures = key == null
+        ? null
+        : ref.watch(feeStructuresByClassProvider(key));
     final students = selectedClass == null
         ? null
         : ref.watch(classFeeStudentsProvider(selectedClass));
@@ -149,10 +159,11 @@ class _StudentFeeAssignmentPageState
               children: [
                 _Header(
                   onBack: () => context.go(AppRoutes.fees),
-                  onSave: _saving ||
+                  onSave:
+                      _saving ||
                           selectedClass == null ||
                           _classId != selectedClass ||
-                          _feeStructureId == null
+                          _selectedFeeStructureIds.isEmpty
                       ? null
                       : _submit,
                   saving: _saving,
@@ -179,15 +190,13 @@ class _StudentFeeAssignmentPageState
                                 setState(() {
                                   _academicYearId = value;
                                   _classId = null;
-                                  _feeStructureId = null;
+                                  _selectedFeeStructureIds.clear();
                                 });
                               },
                               validator: _required,
                               decoration: const InputDecoration(
                                 labelText: 'Academic year',
-                                prefixIcon: Icon(
-                                  Icons.calendar_month_outlined,
-                                ),
+                                prefixIcon: Icon(Icons.calendar_month_outlined),
                               ),
                             ),
                             if (classes.isNotEmpty)
@@ -204,7 +213,7 @@ class _StudentFeeAssignmentPageState
                                 onChanged: (value) {
                                   setState(() {
                                     _classId = value;
-                                    _feeStructureId = null;
+                                    _selectedFeeStructureIds.clear();
                                   });
                                 },
                                 validator: _required,
@@ -227,8 +236,14 @@ class _StudentFeeAssignmentPageState
                           structures == null
                               ? const SizedBox.shrink()
                               : structures.when(
-                                  data: _structureDropdown,
-                                  error: (error, _) => Text(_message(error)),
+                                  data: _structureSelection,
+                                  error: (error, _) => AppErrorState(
+                                    message:
+                                        'Unable to load fee structures. Please try again.\n${_message(error)}',
+                                    onRetry: () => ref.invalidate(
+                                      feeStructuresByClassProvider(key!),
+                                    ),
+                                  ),
                                   loading: () =>
                                       const LinearProgressIndicator(),
                                 ),
@@ -261,8 +276,18 @@ class _StudentFeeAssignmentPageState
                 const SizedBox(height: 14),
                 if (students != null)
                   students.when(
-                    data: (items) => _ClassStudentsPanel(students: items),
-                    error: (error, _) => AppErrorState(message: _message(error)),
+                    data: (items) => _ClassStudentsPanel(
+                      academicYearId: selectedYear,
+                      classId: selectedClass!,
+                      students: items,
+                    ),
+                    error: (error, _) => AppErrorState(
+                      message:
+                          'Unable to load class students. Please try again.\n${_message(error)}',
+                      onRetry: () => ref.invalidate(
+                        classFeeStudentsProvider(selectedClass!),
+                      ),
+                    ),
                     loading: () =>
                         const AppLoadingState(label: 'Loading students'),
                   ),
@@ -274,45 +299,61 @@ class _StudentFeeAssignmentPageState
     );
   }
 
-  Widget _structureDropdown(List<FeeStructureModel> structures) {
-    final selected = structures.any((item) => item.id == _feeStructureId)
-        ? _feeStructureId
-        : null;
+  Widget _structureSelection(List<FeeStructureModel> structures) {
     if (structures.isEmpty) {
-      return const Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          'No fee structure available. Please create a fee structure first.',
-        ),
+      return const _InlineEmptyMessage(
+        icon: Icons.account_tree_outlined,
+        title: 'No fee structure available',
+        message:
+            'No fee structure available. Please create a fee structure first.',
       );
     }
-    if (selected == null) {
+    final validIds = structures.map((item) => item.id).toSet();
+    if (_selectedFeeStructureIds.any((id) => !validIds.contains(id))) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted &&
-            !structures.any((structure) => structure.id == _feeStructureId)) {
-          setState(() => _feeStructureId = structures.first.id);
+        if (mounted) {
+          setState(
+            () => _selectedFeeStructureIds.removeWhere(
+              (id) => !validIds.contains(id),
+            ),
+          );
         }
       });
     }
-    return DropdownButtonFormField<String>(
-      initialValue: selected ?? structures.first.id,
-      isExpanded: true,
-      items: [
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Fee structures',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+        ),
+        const SizedBox(height: 8),
         for (final structure in structures)
-          DropdownMenuItem(
-            value: structure.id,
-            child: Text(
-              '${structure.name} - INR ${structure.totalAmount.toStringAsFixed(2)}',
-              overflow: TextOverflow.ellipsis,
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _selectedFeeStructureIds.contains(structure.id),
+            onChanged: _saving
+                ? null
+                : (selected) {
+                    setState(() {
+                      if (selected ?? false) {
+                        _selectedFeeStructureIds.add(structure.id);
+                      } else {
+                        _selectedFeeStructureIds.remove(structure.id);
+                      }
+                    });
+                  },
+            title: Text(structure.name),
+            subtitle: Text(
+              '${structure.status} - INR ${structure.totalAmount.toStringAsFixed(2)}',
             ),
           ),
       ],
-      onChanged: (value) => setState(() => _feeStructureId = value),
-      validator: _required,
-      decoration: const InputDecoration(
-        labelText: 'Class fee structure',
-        prefixIcon: Icon(Icons.account_tree_outlined),
-      ),
     );
   }
 
@@ -321,20 +362,20 @@ class _StudentFeeAssignmentPageState
       return;
     }
     final classId = _classId;
-    final feeStructureId = _feeStructureId;
-    if (classId == null || feeStructureId == null) {
+    final feeStructureIds = _selectedFeeStructureIds.toList(growable: false);
+    if (classId == null || feeStructureIds.isEmpty) {
       return;
     }
     setState(() => _saving = true);
-    final result = await ref.read(feesRepositoryProvider).assignClassFee(
-      classId,
-      {
-        'feeStructureId': feeStructureId,
-        'assignedDate': _assignedDateController.text.trim(),
-        'notes': _blankToNull(_notesController.text),
-        'skipExisting': true,
-      },
-    );
+    final repository = ref.read(feesRepositoryProvider);
+    final result = await repository.assignClassFee(classId, {
+      'academicYearId': _academicYearId,
+      'classId': classId,
+      'feeStructureIds': feeStructureIds,
+      'assignedDate': _assignedDateController.text.trim(),
+      'notes': _blankToNull(_notesController.text),
+      'skipExisting': true,
+    });
     if (!mounted) {
       return;
     }
@@ -344,7 +385,8 @@ class _StudentFeeAssignmentPageState
         ref.invalidate(feeAssignmentsProvider);
         ref.invalidate(classFeeStudentsProvider(classId));
         _showSnack(
-          'Created ${summary.createdAssignments}, skipped ${summary.skippedAssignments}.',
+          summary.message ??
+              'Created ${summary.createdAssignments}, skipped ${summary.skippedAssignments}.',
         );
       },
       failure: (failure) => _showSnack(failure.message),
@@ -437,8 +479,8 @@ class _EmptyPanel extends StatelessWidget {
                   Text(
                     title,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(message),
@@ -500,8 +542,14 @@ class _InlineEmptyMessage extends StatelessWidget {
 }
 
 class _ClassStudentsPanel extends StatelessWidget {
-  const _ClassStudentsPanel({required this.students});
+  const _ClassStudentsPanel({
+    required this.academicYearId,
+    required this.classId,
+    required this.students,
+  });
 
+  final String academicYearId;
+  final String classId;
   final List<ClassStudentFeeModel> students;
 
   @override
@@ -536,13 +584,35 @@ class _ClassStudentsPanel extends StatelessWidget {
                 ),
                 trailing: student.assignmentId == null
                     ? const FeeStatusChip(status: 'UNASSIGNED')
-                    : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                    : Wrap(
+                        spacing: 10,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          MoneyText(student.balanceAmount, emphasized: true),
-                          const SizedBox(height: 4),
-                          FeeStatusChip(status: student.status ?? 'PENDING'),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              MoneyText(
+                                student.balanceAmount,
+                                emphasized: true,
+                              ),
+                              const SizedBox(height: 4),
+                              FeeStatusChip(
+                                status: student.status ?? 'PENDING',
+                              ),
+                            ],
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: () => context.go(
+                              AppRoutes.classStudentFeePayment(
+                                academicYearId: academicYearId,
+                                classId: classId,
+                                studentId: student.studentId,
+                              ),
+                            ),
+                            icon: const Icon(Icons.point_of_sale_outlined),
+                            label: const Text('Collect'),
+                          ),
                         ],
                       ),
               ),

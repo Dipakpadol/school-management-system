@@ -8,6 +8,16 @@ abstract interface class AuthRepository {
     required String password,
   });
 
+  Future<Result<String>> signup(Map<String, dynamic> payload);
+
+  Future<Result<String>> forgotPassword(String emailOrMobile);
+
+  Future<Result<String>> resetPassword({
+    required String token,
+    required String newPassword,
+    required String confirmPassword,
+  });
+
   Future<Result<void>> logout();
 
   Future<bool> hasSavedSession();

@@ -53,7 +53,9 @@ class FeeCategoryModel {
       active: json['active'] as bool? ?? false,
       sortOrder: json['sortOrder'] as int? ?? 0,
       isMandatory:
-          (json['isMandatory'] as bool?) ?? (json['mandatory'] as bool?) ?? true,
+          (json['isMandatory'] as bool?) ??
+          (json['mandatory'] as bool?) ??
+          true,
     );
   }
 
@@ -288,6 +290,10 @@ class FeePaymentModel {
     required this.paymentDate,
     required this.paymentMode,
     required this.status,
+    this.referenceNumber,
+    this.payerName,
+    this.collectedBy,
+    this.remarks,
   });
 
   factory FeePaymentModel.fromJson(Map<String, dynamic> json) {
@@ -297,6 +303,10 @@ class FeePaymentModel {
       amount: _money(json['amount']),
       paymentDate: DateTime.parse(json['paymentDate'] as String),
       paymentMode: json['paymentMode'] as String? ?? '',
+      referenceNumber: json['referenceNumber'] as String?,
+      payerName: json['payerName'] as String?,
+      collectedBy: json['collectedBy'] as String?,
+      remarks: json['remarks'] as String?,
       status: json['status'] as String? ?? '',
     );
   }
@@ -306,7 +316,52 @@ class FeePaymentModel {
   final double amount;
   final DateTime paymentDate;
   final String paymentMode;
+  final String? referenceNumber;
+  final String? payerName;
+  final String? collectedBy;
+  final String? remarks;
   final String status;
+}
+
+class StudentFeeSummaryModel {
+  const StudentFeeSummaryModel({
+    required this.studentId,
+    required this.admissionNumber,
+    required this.studentName,
+    required this.grossAmount,
+    required this.discountAmount,
+    required this.lateFeeAmount,
+    required this.paidAmount,
+    required this.balanceAmount,
+    required this.assignments,
+  });
+
+  factory StudentFeeSummaryModel.fromJson(Map<String, dynamic> json) {
+    return StudentFeeSummaryModel(
+      studentId: json['studentId'] as String,
+      admissionNumber: json['admissionNumber'] as String? ?? '',
+      studentName: json['studentName'] as String? ?? '',
+      grossAmount: _money(json['grossAmount']),
+      discountAmount: _money(json['discountAmount']),
+      lateFeeAmount: _money(json['lateFeeAmount']),
+      paidAmount: _money(json['paidAmount']),
+      balanceAmount: _money(json['balanceAmount']),
+      assignments: _list(
+        json['assignments'],
+        StudentFeeAssignmentModel.fromJson,
+      ),
+    );
+  }
+
+  final String studentId;
+  final String admissionNumber;
+  final String studentName;
+  final double grossAmount;
+  final double discountAmount;
+  final double lateFeeAmount;
+  final double paidAmount;
+  final double balanceAmount;
+  final List<StudentFeeAssignmentModel> assignments;
 }
 
 class FeeReceiptModel {
@@ -435,28 +490,49 @@ class ClassStudentFeeModel {
 
 class ClassFeeAssignmentModel {
   const ClassFeeAssignmentModel({
+    this.academicYearId,
     required this.classId,
     required this.feeStructureId,
+    required this.assignedFeeStructures,
     required this.totalStudents,
     required this.createdAssignments,
     required this.skippedAssignments,
+    this.message,
   });
 
   factory ClassFeeAssignmentModel.fromJson(Map<String, dynamic> json) {
+    final assignedFeeStructures = json['assignedFeeStructures'];
     return ClassFeeAssignmentModel(
+      academicYearId: json['academicYearId'] as String?,
       classId: json['classId'] as String,
       feeStructureId: json['feeStructureId'] as String,
+      assignedFeeStructures: assignedFeeStructures is List
+          ? assignedFeeStructures.whereType<String>().toList(growable: false)
+          : [
+              if (json['feeStructureId'] is String)
+                json['feeStructureId'] as String,
+            ],
       totalStudents: json['totalStudents'] as int? ?? 0,
-      createdAssignments: json['createdAssignments'] as int? ?? 0,
-      skippedAssignments: json['skippedAssignments'] as int? ?? 0,
+      createdAssignments:
+          (json['createdAssignments'] as int?) ??
+          (json['assignedStudents'] as int?) ??
+          0,
+      skippedAssignments:
+          (json['skippedAssignments'] as int?) ??
+          (json['skippedStudents'] as int?) ??
+          0,
+      message: json['message'] as String?,
     );
   }
 
+  final String? academicYearId;
   final String classId;
   final String feeStructureId;
+  final List<String> assignedFeeStructures;
   final int totalStudents;
   final int createdAssignments;
   final int skippedAssignments;
+  final String? message;
 }
 
 List<T> _list<T>(Object? value, T Function(Map<String, dynamic>) mapper) {

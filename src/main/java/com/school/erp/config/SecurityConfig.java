@@ -68,10 +68,13 @@ public class SecurityConfig {
 								"/swagger-ui/**",
 								"/v3/api-docs/**",
 								"/v1/system/status",
+								"/v1/auth/signup",
 								"/v1/auth/login",
 								"/v1/auth/refresh",
 								"/v1/auth/forgot-password",
-								"/v1/auth/reset-password")
+								"/v1/auth/reset-password",
+								"/v1/users/roles"
+								)
 						.permitAll()
 						.anyRequest().authenticated())
 				.exceptionHandling(exceptions -> exceptions

@@ -9,12 +9,16 @@ import java.util.UUID;
 import com.school.erp.modules.academic.api.dto.AcademicYearResponse;
 import com.school.erp.modules.academic.api.dto.ClassResponse;
 import com.school.erp.modules.academic.api.dto.ClassSectionTeachersResponse;
+import com.school.erp.modules.academic.api.dto.DivisionResponse;
+import com.school.erp.modules.academic.api.dto.DivisionSubjectResponse;
 import com.school.erp.modules.academic.api.dto.SectionResponse;
+import com.school.erp.modules.academic.api.dto.SubjectResponse;
 import com.school.erp.modules.academic.api.dto.SubjectTeacherResponse;
 import com.school.erp.modules.academic.api.dto.TeacherSummaryResponse;
 import com.school.erp.modules.academic.domain.AcademicYear;
 import com.school.erp.modules.academic.domain.ClassEntity;
 import com.school.erp.modules.academic.domain.ClassTeacherMapping;
+import com.school.erp.modules.academic.domain.DivisionSubject;
 import com.school.erp.modules.academic.domain.SectionEntity;
 import com.school.erp.modules.academic.domain.Subject;
 import com.school.erp.modules.academic.domain.SubjectTeacherMapping;
@@ -32,7 +36,8 @@ public class AcademicHierarchyMapper {
 				academicYear.getName(),
 				academicYear.getStartDate(),
 				academicYear.getEndDate(),
-				academicYear.isActive());
+				academicYear.isActive(),
+				academicYear.getDescription());
 	}
 
 	public ClassResponse toClassResponse(ClassEntity classEntity) {
@@ -57,12 +62,56 @@ public class AcademicHierarchyMapper {
 	}
 
 	public TeacherSummaryResponse toTeacherSummary(Teacher teacher) {
+		if (teacher == null) {
+			return null;
+		}
 		return new TeacherSummaryResponse(
 				teacher.getId(),
 				teacher.getEmployeeNumber(),
 				teacher.getDisplayName(),
 				teacher.getEmail(),
 				teacher.getPhoneNumber());
+	}
+
+	public SubjectResponse toSubjectResponse(Subject subject) {
+		return new SubjectResponse(
+				subject.getId(),
+				subject.getCode(),
+				subject.getName(),
+				subject.getDescription(),
+				subject.isActive());
+	}
+
+	public DivisionSubjectResponse toDivisionSubjectResponse(DivisionSubject mapping) {
+		Subject subject = mapping.getSubject();
+		return new DivisionSubjectResponse(
+				mapping.getId(),
+				mapping.getSection().getId(),
+				subject.getId(),
+				subject.getCode(),
+				subject.getName(),
+				toTeacherSummary(mapping.getTeacher()),
+				mapping.isActive());
+	}
+
+	public DivisionResponse toDivisionResponse(
+			SectionEntity section,
+			long totalStudents,
+			ClassTeacherMapping classTeacherMapping,
+			List<DivisionSubject> subjects) {
+		return new DivisionResponse(
+				section.getId(),
+				section.getClassEntity().getId(),
+				section.getCode(),
+				section.getName(),
+				section.getCapacity(),
+				section.getDisplayOrder(),
+				section.isActive(),
+				totalStudents,
+				classTeacherMapping == null ? null : toTeacherSummary(classTeacherMapping.getTeacher()),
+				subjects.stream()
+						.map(this::toDivisionSubjectResponse)
+						.toList());
 	}
 
 	public ClassSectionTeachersResponse toTeacherDetails(

@@ -13,6 +13,7 @@ public record UserCreateRequest(
 		@NotBlank @Email @Size(max = 160) String email,
 		@NotBlank @Size(max = 80) String username,
 		@NotBlank @Size(max = 80) String firstName,
+		@Size(max = 80) String middleName,
 		@Size(max = 80) String lastName,
 		@Size(max = 30) String phoneNumber,
 		@NotBlank @Size(min = 8, max = 72) String password,

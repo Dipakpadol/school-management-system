@@ -39,8 +39,9 @@ class AuthInterceptor extends QueuedInterceptor {
 
   bool _isPublicAuthPath(String path) {
     return path.endsWith(ApiPaths.login) ||
+        path.endsWith(ApiPaths.signup) ||
         path.endsWith(ApiPaths.refresh) ||
-        path.endsWith('/v1/auth/forgot-password') ||
-        path.endsWith('/v1/auth/reset-password');
+        path.endsWith(ApiPaths.forgotPassword) ||
+        path.endsWith(ApiPaths.resetPassword);
   }
 }

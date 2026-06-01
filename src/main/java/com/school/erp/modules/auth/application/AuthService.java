@@ -19,12 +19,18 @@ import com.school.erp.modules.auth.api.dto.LoginRequest;
 import com.school.erp.modules.auth.api.dto.LogoutRequest;
 import com.school.erp.modules.auth.api.dto.RefreshTokenRequest;
 import com.school.erp.modules.auth.api.dto.ResetPasswordRequest;
+import com.school.erp.modules.auth.api.dto.SignupRequest;
+import com.school.erp.modules.auth.api.dto.SignupResponse;
 import com.school.erp.modules.auth.domain.PasswordResetToken;
 import com.school.erp.modules.auth.domain.RefreshToken;
 import com.school.erp.modules.auth.infrastructure.PasswordResetTokenRepository;
 import com.school.erp.modules.auth.infrastructure.RefreshTokenRepository;
+import com.school.erp.modules.users.domain.Role;
+import com.school.erp.modules.users.domain.RoleName;
 import com.school.erp.modules.users.domain.UserAccount;
+import com.school.erp.modules.users.domain.UserSource;
 import com.school.erp.modules.users.domain.UserStatus;
+import com.school.erp.modules.users.infrastructure.RoleRepository;
 import com.school.erp.modules.users.infrastructure.UserAccountRepository;
 
 import org.springframework.security.authentication.AuthenticationManager;
@@ -34,6 +40,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import lombok.RequiredArgsConstructor;
 
@@ -43,6 +50,7 @@ public class AuthService {
 
 	private final AuthenticationManager authenticationManager;
 	private final UserAccountRepository userAccountRepository;
+	private final RoleRepository roleRepository;
 	private final RefreshTokenRepository refreshTokenRepository;
 	private final PasswordResetTokenRepository passwordResetTokenRepository;
 	private final PasswordEncoder passwordEncoder;
@@ -53,6 +61,54 @@ public class AuthService {
 	private final com.school.erp.common.security.JwtProperties jwtProperties;
 	private final ApplicationEventPublisher eventPublisher;
 	private final AuditLogService auditLogService;
+
+	private static final java.util.Set<RoleName> PUBLIC_SIGNUP_BLOCKED_ROLES = java.util.Set.of(
+			RoleName.SUPER_ADMIN,
+			RoleName.ADMIN,
+			RoleName.PRINCIPAL,
+			RoleName.ACCOUNTANT,
+			RoleName.TEACHER);
+
+	@Transactional
+	public SignupResponse signup(SignupRequest request, ClientRequestInfo client) {
+		validatePasswordConfirmation(request.password(), request.confirmPassword());
+		String email = normalizeEmail(request.email());
+		String mobileNumber = trimToNull(request.mobileNumber());
+		validatePublicSignupUniqueness(email, mobileNumber);
+        RoleName signupRole = request.role();
+
+    if (PUBLIC_SIGNUP_BLOCKED_ROLES.contains(signupRole)) {
+        throw new BusinessException(
+                ErrorCode.BUSINESS_RULE_VIOLATION,
+                "Selected role is not allowed for public sign-up.");
+    }
+		Role role = roleRepository.findByNameAndDeletedFalse(signupRole)
+				.orElseThrow(() -> new ResourceNotFoundException("Role", signupRole));
+
+		UserAccount user = new UserAccount(
+				email,
+				email,
+				passwordEncoder.encode(request.password()),
+				request.firstName().trim(),
+				request.lastName().trim());
+		user.updateProfile(
+				email,
+				email,
+				request.firstName().trim(),
+				trimToNull(request.middleName()),
+				request.lastName().trim(),
+				mobileNumber);
+		user.markSource(UserSource.SIGN_UP);
+		user.changeStatus(authProperties.signupDefaultStatus());
+		user.addRole(role);
+		UserAccount saved = userAccountRepository.save(user);
+
+		auditAuth(saved, "SIGN_UP", null, authMetadata(saved, client));
+		String message = saved.getStatus() == UserStatus.ACTIVE
+				? "Registration successful. You can now login."
+				: "Registration successful. Please wait for admin approval.";
+		return new SignupResponse(saved.getId(), saved.getEmail(), signupRole, saved.getStatus(), message);
+	}
 
 	@Transactional
 	public AuthenticationResponse login(LoginRequest request, ClientRequestInfo client) {
@@ -119,7 +175,8 @@ public class AuthService {
 
 	@Transactional
 	public ForgotPasswordResponse forgotPassword(ForgotPasswordRequest request, ClientRequestInfo client) {
-		userAccountRepository.findByEmailIgnoreCaseAndDeletedFalse(request.email())
+		String lookup = forgotPasswordLookup(request);
+		findUserForPasswordReset(lookup)
 				.filter(UserAccount::isActive)
 				.ifPresent(user -> {
 					GeneratedRefreshToken token = generatePasswordResetToken();
@@ -134,6 +191,7 @@ public class AuthService {
 							user.getDisplayName(),
 							token.value(),
 							token.expiresAt()));
+					auditAuth(user, "FORGOT_PASSWORD_REQUEST", null, authMetadata(user, client));
 				});
 		return new ForgotPasswordResponse(true);
 	}
@@ -216,6 +274,43 @@ public class AuthService {
 					ErrorCode.PASSWORD_POLICY_VIOLATION,
 					"Password confirmation does not match.");
 		}
+	}
+
+	private void validatePublicSignupUniqueness(String email, String mobileNumber) {
+		if (userAccountRepository.existsByEmailIgnoreCaseAndDeletedFalse(email)
+				|| userAccountRepository.existsByUsernameIgnoreCaseAndDeletedFalse(email)) {
+			throw new BusinessException(ErrorCode.CONFLICT, "Email already exists: " + email);
+		}
+		if (StringUtils.hasText(mobileNumber)
+				&& userAccountRepository.existsByPhoneNumberAndDeletedFalse(mobileNumber)) {
+			throw new BusinessException(ErrorCode.CONFLICT, "Mobile number already exists: " + mobileNumber);
+		}
+	}
+
+	private java.util.Optional<UserAccount> findUserForPasswordReset(String lookup) {
+		if (lookup.contains("@")) {
+			return userAccountRepository.findByEmailIgnoreCaseAndDeletedFalse(lookup);
+		}
+		return userAccountRepository.findByPhoneNumberAndDeletedFalse(lookup);
+	}
+
+	private String forgotPasswordLookup(ForgotPasswordRequest request) {
+		String lookup = StringUtils.hasText(request.emailOrMobile()) ? request.emailOrMobile() : request.email();
+		if (!StringUtils.hasText(lookup)) {
+			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Email or mobile number is required.");
+		}
+		return normalizeEmail(lookup);
+	}
+
+	private String normalizeEmail(String value) {
+		return value == null ? null : value.trim().toLowerCase();
+	}
+
+	private String trimToNull(String value) {
+		if (!StringUtils.hasText(value)) {
+			return null;
+		}
+		return value.trim();
 	}
 
 	private BusinessException invalidCredentials() {

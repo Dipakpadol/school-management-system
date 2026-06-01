@@ -139,6 +139,10 @@ class _UserHeader extends ConsumerWidget {
                 items: const [
                   DropdownMenuItem(value: null, child: Text('All statuses')),
                   DropdownMenuItem(value: 'ACTIVE', child: Text('Active')),
+                  DropdownMenuItem(
+                    value: 'PENDING_APPROVAL',
+                    child: Text('Pending approval'),
+                  ),
                   DropdownMenuItem(value: 'DISABLED', child: Text('Disabled')),
                   DropdownMenuItem(value: 'LOCKED', child: Text('Locked')),
                 ],
@@ -220,7 +224,7 @@ class _UserList extends ConsumerWidget {
             crossAxisCount: columns,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            mainAxisExtent: 150,
+            mainAxisExtent: 168,
           ),
           itemCount: users.length,
           itemBuilder: (context, index) {
@@ -281,7 +285,10 @@ class _UserCard extends ConsumerWidget {
                     runSpacing: 6,
                     children: [
                       _StatusChip(status: user.status),
+                      _SoftChip(label: _sourceLabel(user.source)),
                       _SoftChip(label: roleText.isEmpty ? 'No role' : roleText),
+                      if (user.createdAt != null)
+                        _SoftChip(label: 'Created ${_dateLabel(user.createdAt!)}'),
                     ],
                   ),
                 ],
@@ -364,6 +371,7 @@ Future<void> _showUserDialog(
       .read(rolesProvider)
       .maybeWhen(data: (roles) => roles, orElse: () => const <RoleModel>[]);
   final firstName = TextEditingController(text: user?.firstName ?? '');
+  final middleName = TextEditingController(text: user?.middleName ?? '');
   final lastName = TextEditingController(text: user?.lastName ?? '');
   final email = TextEditingController(text: user?.email ?? '');
   final username = TextEditingController(text: user?.username ?? '');
@@ -392,6 +400,11 @@ Future<void> _showUserDialog(
                     controller: firstName,
                     decoration: const InputDecoration(labelText: 'First name'),
                     validator: _required,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: middleName,
+                    decoration: const InputDecoration(labelText: 'Middle name'),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -461,6 +474,7 @@ Future<void> _showUserDialog(
                 'email': email.text.trim(),
                 'username': username.text.trim(),
                 'firstName': firstName.text.trim(),
+                'middleName': _blankToNull(middleName.text),
                 'lastName': _blankToNull(lastName.text),
                 'phoneNumber': _blankToNull(phone.text),
                 'roles': [role],
@@ -490,6 +504,7 @@ Future<void> _showUserDialog(
   );
 
   firstName.dispose();
+  middleName.dispose();
   lastName.dispose();
   email.dispose();
   username.dispose();
@@ -560,8 +575,12 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final active = status == 'ACTIVE';
-    final color = active ? const Color(0xFF16A34A) : const Color(0xFF64748B);
+    final color = switch (status) {
+      'ACTIVE' => const Color(0xFF16A34A),
+      'PENDING_APPROVAL' => const Color(0xFFB45309),
+      'LOCKED' => const Color(0xFFDC2626),
+      _ => const Color(0xFF64748B),
+    };
 
     return Container(
       height: 28,
@@ -621,6 +640,16 @@ String _initials(String value) {
 
 String _message(Object error) {
   return error.toString().replaceFirst('Exception: ', '');
+}
+
+String _sourceLabel(String source) {
+  return source == 'SIGN_UP' ? 'Sign up' : 'Admin created';
+}
+
+String _dateLabel(DateTime date) {
+  final month = date.month.toString().padLeft(2, '0');
+  final day = date.day.toString().padLeft(2, '0');
+  return '${date.year}-$month-$day';
 }
 
 String? _required(String? value) {

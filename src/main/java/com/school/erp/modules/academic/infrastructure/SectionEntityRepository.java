@@ -14,4 +14,6 @@ public interface SectionEntityRepository extends BaseRepository<SectionEntity, U
 	Optional<SectionEntity> findByClassEntityIdAndNameIgnoreCaseAndDeletedFalse(UUID classId, String name);
 
 	Optional<SectionEntity> findByClassEntityIdAndCodeIgnoreCaseAndDeletedFalse(UUID classId, String code);
+
+	long countByClassEntityIdAndDeletedFalse(UUID classId);
 }

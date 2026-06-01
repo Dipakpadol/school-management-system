@@ -22,10 +22,12 @@ public class UserMapper {
 				user.getEmail(),
 				user.getUsername(),
 				user.getFirstName(),
+				user.getMiddleName(),
 				user.getLastName(),
 				user.getDisplayName(),
 				user.getPhoneNumber(),
 				user.getStatus(),
+				user.getSource(),
 				user.getRoles().stream()
 						.sorted(Comparator.comparing(role -> role.getName().name()))
 						.map(this::toRoleResponse)

@@ -1,8 +1,8 @@
 package com.school.erp.modules.auth.api.dto;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-public record ForgotPasswordRequest(@NotBlank @Email @Size(max = 160) String email) {
+public record ForgotPasswordRequest(
+		@Size(max = 160) String emailOrMobile,
+		@Size(max = 160) String email) {
 }

@@ -15,6 +15,7 @@ import com.school.erp.modules.academic.application.AcademicHierarchyService;
 import com.school.erp.modules.academic.domain.AcademicYear;
 import com.school.erp.modules.academic.domain.ClassEntity;
 import com.school.erp.modules.academic.domain.SectionEntity;
+import com.school.erp.modules.fees.application.FeeService;
 import com.school.erp.modules.students.api.dto.ClassSectionAssignmentRequest;
 import com.school.erp.modules.students.api.dto.ParentGuardianRequest;
 import com.school.erp.modules.students.api.dto.ParentMappingRequest;
@@ -57,6 +58,7 @@ public class StudentService {
 	private final ParentGuardianRepository parentGuardianRepository;
 	private final StudentClassAssignmentRepository studentClassAssignmentRepository;
 	private final AcademicHierarchyService academicHierarchyService;
+	private final FeeService feeService;
 	private final StudentMapper studentMapper;
 	private final AuditLogService auditLogService;
 
@@ -70,10 +72,15 @@ public class StudentService {
 			student.changeStatus(request.status());
 		}
 		request.parents().forEach(parent -> addParentMapping(student, parent));
-		assignClassSection(student, request.classAssignment());
+		ResolvedClassAssignment resolved = assignClassSection(student, request.classAssignment());
 		optionalDocuments(request.documents()).forEach(document -> addDocument(student, document));
 
-		StudentResponse response = studentMapper.toProfileResponse(studentRepository.save(student));
+		Student saved = studentRepository.saveAndFlush(student);
+		feeService.assignActiveClassFeesToStudent(
+				saved.getId(),
+				resolved.classEntity().getId(),
+				request.classAssignment().effectiveFrom());
+		StudentResponse response = studentMapper.toProfileResponse(saved);
 		auditStudent(response.id(), "CREATE", null, response);
 		return response;
 	}
@@ -203,7 +210,11 @@ public class StudentService {
 	public StudentResponse assignClassSection(UUID studentId, ClassSectionAssignmentRequest request) {
 		Student student = loadProfile(studentId);
 		StudentResponse oldValue = studentMapper.toProfileResponse(student);
-		assignClassSection(student, request);
+		ResolvedClassAssignment resolved = assignClassSection(student, request);
+		feeService.assignActiveClassFeesToStudent(
+				studentId,
+				resolved.classEntity().getId(),
+				request.effectiveFrom());
 		StudentResponse response = studentMapper.toProfileResponse(student);
 		auditStudent(studentId, "CLASS_ASSIGNMENT_CHANGED", oldValue, response);
 		return response;
@@ -348,7 +359,7 @@ public class StudentService {
 		return parentGuardianRepository.save(studentMapper.toParentGuardian(request));
 	}
 
-	private void assignClassSection(Student student, ClassSectionAssignmentRequest request) {
+	private ResolvedClassAssignment assignClassSection(Student student, ClassSectionAssignmentRequest request) {
 		ResolvedClassAssignment resolved = resolveClassAssignment(request);
 		ensureRollNumberAvailable(request.rollNumber(), resolved, null);
 		student.assignClassSection(
@@ -357,6 +368,7 @@ public class StudentService {
 				resolved.section(),
 				request.rollNumber(),
 				request.effectiveFrom());
+		return resolved;
 	}
 
 	private void addDocument(Student student, StudentDocumentRequest request) {

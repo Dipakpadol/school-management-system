@@ -14,4 +14,6 @@ public interface ClassEntityRepository extends BaseRepository<ClassEntity, UUID>
 	Optional<ClassEntity> findByAcademicYearIdAndNameIgnoreCaseAndDeletedFalse(UUID academicYearId, String name);
 
 	Optional<ClassEntity> findByAcademicYearIdAndCodeIgnoreCaseAndDeletedFalse(UUID academicYearId, String code);
+
+	long countByAcademicYearIdAndDeletedFalse(UUID academicYearId);
 }

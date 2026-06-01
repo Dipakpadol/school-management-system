@@ -237,13 +237,13 @@ public class LocalQaDataSeeder {
 		SectionEntity section = seedSection(classEntity, "A", "Division A", 1);
 		Student student = studentRepository.findByAdmissionNumberIgnoreCaseAndDeletedFalse(seed.admissionNumber())
 				.orElseGet(() -> {
-					Student student = new Student(
+					Student newStudent = new Student(
 							seed.admissionNumber(),
 							seed.firstName(),
 							seed.dateOfBirth(),
 							seed.gender(),
 							LocalDate.of(2026, 4, 1));
-					student.updateProfile(
+					newStudent.updateProfile(
 							seed.firstName(),
 							seed.middleName(),
 							seed.lastName(),
@@ -260,7 +260,7 @@ public class LocalQaDataSeeder {
 							"Karnataka",
 							"560001",
 							"India");
-					return studentRepository.save(student);
+					return studentRepository.save(newStudent);
 				});
 		linkDemoAssignment(student, academicYear, classEntity, section, seed.rollNumber());
 		return student;

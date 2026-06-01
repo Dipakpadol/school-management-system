@@ -202,6 +202,24 @@ class _LoginForm extends StatelessWidget {
             isLoading: isSubmitting,
             onPressed: onSubmit,
           ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              TextButton(
+                onPressed: isSubmitting
+                    ? null
+                    : () => context.go(AppRoutes.forgotPassword),
+                child: const Text('Forgot password?'),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: isSubmitting
+                    ? null
+                    : () => context.go(AppRoutes.signup),
+                child: const Text('Sign up'),
+              ),
+            ],
+          ),
         ],
       ),
     );

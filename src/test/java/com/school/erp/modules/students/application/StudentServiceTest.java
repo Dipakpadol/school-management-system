@@ -21,6 +21,7 @@ import com.school.erp.modules.academic.application.AcademicHierarchyService;
 import com.school.erp.modules.academic.domain.AcademicYear;
 import com.school.erp.modules.academic.domain.ClassEntity;
 import com.school.erp.modules.academic.domain.SectionEntity;
+import com.school.erp.modules.fees.application.FeeService;
 import com.school.erp.modules.students.api.dto.ClassSectionAssignmentRequest;
 import com.school.erp.modules.students.api.dto.ParentGuardianRequest;
 import com.school.erp.modules.students.api.dto.ParentMappingRequest;
@@ -70,6 +71,9 @@ class StudentServiceTest {
 	private AcademicHierarchyService academicHierarchyService;
 
 	@Mock
+	private FeeService feeService;
+
+	@Mock
 	private AuditLogService auditLogService;
 
 	private StudentService studentService;
@@ -85,6 +89,7 @@ class StudentServiceTest {
 				parentGuardianRepository,
 				studentClassAssignmentRepository,
 				academicHierarchyService,
+				feeService,
 				new StudentMapper(),
 				auditLogService);
 		academicYear = new AcademicYear("AY-2026-27", "2026-2027", LocalDate.of(2026, 4, 1), LocalDate.of(2027, 3, 31));
@@ -115,7 +120,7 @@ class StudentServiceTest {
 			setId(parent);
 			return parent;
 		});
-		when(studentRepository.save(any(Student.class))).thenAnswer(invocation -> {
+		when(studentRepository.saveAndFlush(any(Student.class))).thenAnswer(invocation -> {
 			Student student = invocation.getArgument(0);
 			setId(student);
 			student.getParents().forEach(this::setId);
@@ -134,7 +139,7 @@ class StudentServiceTest {
 		assertThat(response.currentAssignment().academicYearId()).isEqualTo(academicYear.getId());
 
 		ArgumentCaptor<Student> studentCaptor = ArgumentCaptor.forClass(Student.class);
-		verify(studentRepository).save(studentCaptor.capture());
+		verify(studentRepository).saveAndFlush(studentCaptor.capture());
 		Student savedStudent = studentCaptor.getValue();
 		assertThat(savedStudent.getParents()).hasSize(1);
 		assertThat(savedStudent.getDocuments()).hasSize(1);
@@ -203,7 +208,7 @@ class StudentServiceTest {
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.CONFLICT);
 
-		verify(studentRepository, never()).save(any());
+		verify(studentRepository, never()).saveAndFlush(any());
 	}
 
 	@Test

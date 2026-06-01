@@ -13,6 +13,8 @@ import com.school.erp.modules.auth.api.dto.LoginRequest;
 import com.school.erp.modules.auth.api.dto.LogoutRequest;
 import com.school.erp.modules.auth.api.dto.RefreshTokenRequest;
 import com.school.erp.modules.auth.api.dto.ResetPasswordRequest;
+import com.school.erp.modules.auth.api.dto.SignupRequest;
+import com.school.erp.modules.auth.api.dto.SignupResponse;
 import com.school.erp.modules.auth.application.AuthService;
 import com.school.erp.modules.auth.application.ClientRequestInfo;
 
@@ -21,6 +23,7 @@ import jakarta.validation.Valid;
 
 import org.slf4j.MDC;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -38,6 +41,14 @@ import lombok.RequiredArgsConstructor;
 public class AuthController {
 
 	private final AuthService authService;
+
+	@PostMapping("/signup")
+	public ResponseEntity<ApiResponse<SignupResponse>> signup(
+			@Valid @RequestBody SignupRequest request,
+			HttpServletRequest httpRequest) {
+		SignupResponse response = authService.signup(request, ClientRequestInfo.from(httpRequest));
+		return created(response, response.message(), httpRequest);
+	}
 
 	@PostMapping("/login")
 	public ResponseEntity<ApiResponse<AuthenticationResponse>> login(
@@ -69,7 +80,7 @@ public class AuthController {
 			@Valid @RequestBody ForgotPasswordRequest request,
 			HttpServletRequest httpRequest) {
 		ForgotPasswordResponse response = authService.forgotPassword(request, ClientRequestInfo.from(httpRequest));
-		return ok(response, "If the email exists, password reset instructions will be sent.", httpRequest);
+		return ok(response, "If the account exists, password reset instructions have been sent.", httpRequest);
 	}
 
 	@PostMapping("/reset-password")
@@ -106,6 +117,14 @@ public class AuthController {
 
 	private <T> ResponseEntity<ApiResponse<T>> ok(T data, String message, HttpServletRequest request) {
 		return ResponseEntity.ok(ApiResponse.success(
+				data,
+				message,
+				request.getRequestURI(),
+				MDC.get(CorrelationIdFilter.CORRELATION_ID)));
+	}
+
+	private <T> ResponseEntity<ApiResponse<T>> created(T data, String message, HttpServletRequest request) {
+		return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
 				data,
 				message,
 				request.getRequestURI(),

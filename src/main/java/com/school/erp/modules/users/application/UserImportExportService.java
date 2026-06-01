@@ -178,6 +178,7 @@ public class UserImportExportService {
 				value(values, "email"),
 				value(values, "username"),
 				value(values, "firstName"),
+				blankToNull(value(values, "middleName")),
 				blankToNull(value(values, "lastName")),
 				blankToNull(value(values, "phoneNumber")),
 				value(values, "password"),

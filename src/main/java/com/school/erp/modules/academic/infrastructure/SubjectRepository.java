@@ -12,4 +12,6 @@ public interface SubjectRepository extends BaseRepository<Subject, UUID> {
 	List<Subject> findAllByDeletedFalseAndActiveTrueOrderByNameAsc();
 
 	Optional<Subject> findByCodeIgnoreCaseAndDeletedFalse(String code);
+
+	Optional<Subject> findByNameIgnoreCaseAndDeletedFalse(String name);
 }

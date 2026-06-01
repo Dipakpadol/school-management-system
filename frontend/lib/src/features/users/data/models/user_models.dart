@@ -29,10 +29,13 @@ class UserModel {
     required this.firstName,
     required this.displayName,
     required this.status,
+    required this.source,
     required this.roles,
+    this.middleName,
     this.lastName,
     this.phoneNumber,
     this.lastLoginAt,
+    this.createdAt,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -41,13 +44,18 @@ class UserModel {
       email: json['email'] as String? ?? '',
       username: json['username'] as String? ?? '',
       firstName: json['firstName'] as String? ?? '',
+      middleName: json['middleName'] as String?,
       lastName: json['lastName'] as String?,
       displayName: json['displayName'] as String? ?? '',
       phoneNumber: json['phoneNumber'] as String?,
       status: json['status'] as String? ?? 'ACTIVE',
+      source: json['source'] as String? ?? 'ADMIN_CREATED',
       roles: _list(json['roles'], RoleModel.fromJson),
       lastLoginAt: json['lastLoginAt'] is String
           ? DateTime.parse(json['lastLoginAt'] as String)
+          : null,
+      createdAt: json['createdAt'] is String
+          ? DateTime.parse(json['createdAt'] as String)
           : null,
     );
   }
@@ -56,17 +64,21 @@ class UserModel {
   final String email;
   final String username;
   final String firstName;
+  final String? middleName;
   final String? lastName;
   final String displayName;
   final String? phoneNumber;
   final String status;
+  final String source;
   final List<RoleModel> roles;
   final DateTime? lastLoginAt;
+  final DateTime? createdAt;
 
   Map<String, dynamic> toUpdatePayload({
     String? email,
     String? username,
     String? firstName,
+    String? middleName,
     String? lastName,
     String? phoneNumber,
     List<String>? roles,
@@ -75,6 +87,7 @@ class UserModel {
       'email': email ?? this.email,
       'username': username ?? this.username,
       'firstName': firstName ?? this.firstName,
+      'middleName': middleName ?? this.middleName,
       'lastName': lastName ?? this.lastName,
       'phoneNumber': phoneNumber ?? this.phoneNumber,
       'roles': roles ?? this.roles.map((role) => role.name).toList(),

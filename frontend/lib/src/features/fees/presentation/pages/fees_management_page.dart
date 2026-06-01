@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/widgets/admin_shell.dart';
-import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
 import '../../../../core/result/result.dart';
@@ -70,12 +69,12 @@ class _FeesHeader extends ConsumerWidget {
               runSpacing: 10,
               children: [
                 OutlinedButton.icon(
-                  onPressed: () => context.go(AppRoutes.newFeeAssignment),
+                  onPressed: () => context.go(AppRoutes.feeAssignments),
                   icon: const Icon(Icons.groups_outlined),
                   label: const Text('Assign class fee'),
                 ),
                 OutlinedButton.icon(
-                  onPressed: () => context.go(AppRoutes.collectFeePayment),
+                  onPressed: () => context.go(AppRoutes.feePayments),
                   icon: const Icon(Icons.point_of_sale_outlined),
                   label: const Text('Collect payment'),
                 ),
@@ -166,11 +165,8 @@ class _FeesHeader extends ConsumerWidget {
                       child: Text('Import assignments CSV'),
                     ),
                   ],
-                  onSelected: (value) => _runPickedFeeImport(
-                    context,
-                    ref,
-                    value,
-                  ),
+                  onSelected: (value) =>
+                      _runPickedFeeImport(context, ref, value),
                 ),
               ],
             ),
@@ -284,7 +280,9 @@ class _CategoryList extends ConsumerWidget {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) => AlertDialog(
-            title: Text(category == null ? 'Add fee category' : 'Edit fee category'),
+            title: Text(
+              category == null ? 'Add fee category' : 'Edit fee category',
+            ),
             content: Form(
               key: formKey,
               child: SizedBox(
@@ -307,13 +305,17 @@ class _CategoryList extends ConsumerWidget {
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: sortOrder,
-                      decoration: const InputDecoration(labelText: 'Sort order'),
+                      decoration: const InputDecoration(
+                        labelText: 'Sort order',
+                      ),
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: description,
-                      decoration: const InputDecoration(labelText: 'Description'),
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                      ),
                       maxLines: 2,
                     ),
                     SwitchListTile(
@@ -389,9 +391,9 @@ class _CategoryList extends ConsumerWidget {
     if (!confirmed || !context.mounted) {
       return;
     }
-    final result = await ref.read(feesRepositoryProvider).deleteCategory(
-          category.id,
-        );
+    final result = await ref
+        .read(feesRepositoryProvider)
+        .deleteCategory(category.id);
     if (!context.mounted) {
       return;
     }
@@ -442,12 +444,20 @@ class _StructureList extends ConsumerWidget {
                         tooltip: 'Structure actions',
                         icon: const Icon(Icons.more_vert),
                         itemBuilder: (context) => const [
+                          PopupMenuItem(
+                            value: 'assign',
+                            child: Text('Assign to class'),
+                          ),
                           PopupMenuItem(value: 'edit', child: Text('Edit')),
                           PopupMenuItem(value: 'delete', child: Text('Delete')),
                         ],
                         onSelected: (value) {
-                          if (value == 'edit') {
-                            context.go(AppRoutes.editFeeStructure(structure.id));
+                          if (value == 'assign') {
+                            context.go(AppRoutes.feeAssignments);
+                          } else if (value == 'edit') {
+                            context.go(
+                              AppRoutes.editFeeStructure(structure.id),
+                            );
                           } else {
                             _deleteStructure(context, ref, structure);
                           }
@@ -480,9 +490,9 @@ class _StructureList extends ConsumerWidget {
     if (!confirmed || !context.mounted) {
       return;
     }
-    final result = await ref.read(feesRepositoryProvider).deleteStructure(
-          structure.id,
-        );
+    final result = await ref
+        .read(feesRepositoryProvider)
+        .deleteStructure(structure.id);
     if (!context.mounted) {
       return;
     }
@@ -511,14 +521,14 @@ class _AssignmentList extends ConsumerWidget {
           runSpacing: 8,
           children: [
             OutlinedButton.icon(
-              onPressed: () => context.go(AppRoutes.newFeeAssignment),
+              onPressed: () => context.go(AppRoutes.feeAssignments),
               icon: const Icon(Icons.groups_outlined),
               label: const Text('Assign class fee'),
             ),
             OutlinedButton.icon(
               onPressed: items.isEmpty
                   ? null
-                  : () => context.go(AppRoutes.collectFeePayment),
+                  : () => context.go(AppRoutes.feePayments),
               icon: const Icon(Icons.point_of_sale_outlined),
               label: const Text('Collect payment'),
             ),
@@ -585,7 +595,9 @@ class _AssignmentList extends ConsumerWidget {
                           onSelected: (action) {
                             if (action == 'collect') {
                               context.go(
-                                '${AppRoutes.collectFeePayment}?assignmentId=${assignment.id}',
+                                AppRoutes.collectFeePaymentForAssignment(
+                                  assignment.id,
+                                ),
                               );
                               return;
                             }
@@ -603,7 +615,7 @@ class _AssignmentList extends ConsumerWidget {
                       ],
                     ),
                     onTap: () => context.go(
-                      '${AppRoutes.collectFeePayment}?assignmentId=${assignment.id}',
+                      AppRoutes.collectFeePaymentForAssignment(assignment.id),
                     ),
                   );
                 },
@@ -790,7 +802,9 @@ class _DefaulterList extends ConsumerWidget {
                   '${defaulter.admissionNumber} - ${defaulter.className}${defaulter.sectionName == null ? '' : ' ${defaulter.sectionName}'} - ${defaulter.overdueInstallments} overdue',
               trailing: MoneyText(defaulter.balanceAmount, emphasized: true),
               onTap: () => context.go(
-                '${AppRoutes.collectFeePayment}?assignmentId=${defaulter.assignmentId}',
+                AppRoutes.collectFeePaymentForAssignment(
+                  defaulter.assignmentId,
+                ),
               ),
             );
           },

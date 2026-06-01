@@ -22,6 +22,8 @@ public interface UserAccountRepository extends BaseRepository<UserAccount, UUID>
 	@EntityGraph(attributePaths = { "roles", "roles.permissions" })
 	Optional<UserAccount> findWithRolesByIdAndDeletedFalse(UUID id);
 
+	Optional<UserAccount> findByPhoneNumberAndDeletedFalse(String phoneNumber);
+
 	boolean existsByEmailIgnoreCaseAndDeletedFalse(String email);
 
 	boolean existsByUsernameIgnoreCaseAndDeletedFalse(String username);

@@ -2,8 +2,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/controllers/auth_controller.dart';
+import '../../features/academic/presentation/pages/academic_management_page.dart';
+import '../../features/auth/presentation/pages/forgot_password_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/reset_password_page.dart';
+import '../../features/auth/presentation/pages/signup_page.dart';
 import '../../features/audit_logs/presentation/pages/audit_logs_page.dart';
+import '../../features/attendance/presentation/pages/attendance_page.dart';
 import '../../features/dashboard/domain/menu_policy.dart';
 import '../../features/dashboard/presentation/dashboard_page.dart';
 import '../../features/dashboard/presentation/module_placeholder_page.dart';
@@ -11,6 +16,7 @@ import '../../features/fees/presentation/pages/fee_structure_form_page.dart';
 import '../../features/fees/presentation/pages/fees_management_page.dart';
 import '../../features/fees/presentation/pages/payment_collection_page.dart';
 import '../../features/fees/presentation/pages/student_fee_assignment_page.dart';
+import '../../features/exams/presentation/pages/exams_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/students/presentation/pages/student_profile_page.dart';
 import '../../features/students/presentation/pages/student_section_detail_page.dart';
@@ -25,15 +31,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: AppRoutes.login,
     redirect: (context, state) {
-      final onLogin = state.matchedLocation == AppRoutes.login;
+      final publicAuthRoutes = {
+        AppRoutes.login,
+        AppRoutes.signup,
+        AppRoutes.forgotPassword,
+        AppRoutes.resetPassword,
+      };
+      final onPublicAuthRoute = publicAuthRoutes.contains(
+        state.matchedLocation,
+      );
 
       if (authState.status == AuthStatus.checking) {
-        return onLogin ? null : AppRoutes.login;
+        return onPublicAuthRoute ? null : AppRoutes.login;
       }
       if (!authState.isAuthenticated) {
-        return onLogin ? null : AppRoutes.login;
+        return onPublicAuthRoute ? null : AppRoutes.login;
       }
-      if (onLogin) {
+      if (onPublicAuthRoute) {
         return AppRoutes.dashboard;
       }
       final guardedModuleId = moduleIdForPath(state.uri.path);
@@ -50,6 +64,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const LoginPage(),
       ),
       GoRoute(
+        path: AppRoutes.signup,
+        name: AppRouteName.signup,
+        builder: (context, state) => const SignupPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.forgotPassword,
+        name: AppRouteName.forgotPassword,
+        builder: (context, state) => const ForgotPasswordPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.resetPassword,
+        name: AppRouteName.resetPassword,
+        builder: (context, state) {
+          return ResetPasswordPage(token: state.uri.queryParameters['token']);
+        },
+      ),
+      GoRoute(
         path: AppRoutes.dashboard,
         name: AppRouteName.dashboard,
         builder: (context, state) => const DashboardPage(),
@@ -58,6 +89,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.students,
         name: AppRouteName.students,
         builder: (context, state) => const StudentsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.academic,
+        name: AppRouteName.academic,
+        builder: (context, state) => const AcademicManagementPage(),
       ),
       GoRoute(
         path: AppRoutes.studentClasses,
@@ -110,6 +146,46 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AuditLogsPage(),
       ),
       GoRoute(
+        path: AppRoutes.attendance,
+        name: AppRouteName.attendance,
+        builder: (context, state) => const AttendancePage(),
+      ),
+      GoRoute(
+        path: AppRoutes.attendanceDaily,
+        name: AppRouteName.attendanceDaily,
+        builder: (context, state) => const AttendancePage(),
+      ),
+      GoRoute(
+        path: AppRoutes.attendanceReport,
+        name: AppRouteName.attendanceReport,
+        builder: (context, state) => const AttendancePage(),
+      ),
+      GoRoute(
+        path: AppRoutes.exams,
+        name: AppRouteName.exams,
+        builder: (context, state) => const ExamsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.examTypes,
+        name: AppRouteName.examTypes,
+        builder: (context, state) => const ExamsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.examSchedules,
+        name: AppRouteName.examSchedules,
+        builder: (context, state) => const ExamsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.examMarks,
+        name: AppRouteName.examMarks,
+        builder: (context, state) => const ExamsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.examResults,
+        name: AppRouteName.examResults,
+        builder: (context, state) => const ExamsPage(),
+      ),
+      GoRoute(
         path: AppRoutes.settings,
         name: AppRouteName.settings,
         builder: (context, state) => const SettingsPage(),
@@ -129,9 +205,32 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: AppRoutes.newFeeAssignment,
-        name: AppRouteName.newFeeAssignment,
+        path: AppRoutes.feeAssignments,
+        name: AppRouteName.feeAssignments,
         builder: (context, state) => const StudentFeeAssignmentPage(),
+      ),
+      GoRoute(
+        path: '/fees/assignments/:academicYearId/:classId',
+        name: AppRouteName.feeClassAssignments,
+        builder: (context, state) {
+          return StudentFeeAssignmentPage(
+            initialAcademicYearId: state.pathParameters['academicYearId'],
+            initialClassId: state.pathParameters['classId'],
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.legacyNewFeeAssignment,
+        redirect: (context, state) => AppRoutes.feeAssignments,
+      ),
+      GoRoute(
+        path: AppRoutes.feePayments,
+        name: AppRouteName.feePayments,
+        builder: (context, state) {
+          return PaymentCollectionPage(
+            assignmentId: state.uri.queryParameters['assignmentId'],
+          );
+        },
       ),
       GoRoute(
         path: AppRoutes.collectFeePayment,
@@ -139,6 +238,34 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           return PaymentCollectionPage(
             assignmentId: state.uri.queryParameters['assignmentId'],
+          );
+        },
+      ),
+      GoRoute(
+        path: '/fees/payments/:paymentId/receipt',
+        name: AppRouteName.paymentReceipt,
+        builder: (context, state) {
+          return PaymentCollectionPage(
+            paymentId: state.pathParameters['paymentId'],
+          );
+        },
+      ),
+      GoRoute(
+        path: '/fees/students/:studentId/payment-collection',
+        name: AppRouteName.studentFeePaymentCollection,
+        builder: (context, state) {
+          return PaymentCollectionPage(
+            studentId: state.pathParameters['studentId'],
+          );
+        },
+      ),
+      GoRoute(
+        path:
+            '/fees/assignments/:academicYearId/:classId/students/:studentId/pay',
+        name: AppRouteName.classStudentFeePayment,
+        builder: (context, state) {
+          return PaymentCollectionPage(
+            studentId: state.pathParameters['studentId'],
           );
         },
       ),

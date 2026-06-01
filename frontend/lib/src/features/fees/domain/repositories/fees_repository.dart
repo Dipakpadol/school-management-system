@@ -33,6 +33,8 @@ abstract interface class FeesRepository {
 
   Future<Result<List<StudentFeeAssignmentModel>>> assignments();
 
+  Future<Result<StudentFeeAssignmentModel>> assignment(String id);
+
   Future<Result<StudentFeeAssignmentModel>> createAssignment(
     Map<String, dynamic> payload,
   );
@@ -46,6 +48,15 @@ abstract interface class FeesRepository {
 
   Future<Result<FeeReceiptModel>> collectPayment(
     String assignmentId,
+    Map<String, dynamic> payload,
+  );
+
+  Future<Result<StudentFeeSummaryModel>> studentSummary(String studentId);
+
+  Future<Result<List<FeePaymentModel>>> studentPaymentHistory(String studentId);
+
+  Future<Result<FeeReceiptModel>> collectStudentPayment(
+    String studentId,
     Map<String, dynamic> payload,
   );
 
@@ -68,6 +79,8 @@ abstract interface class FeesRepository {
   Future<Result<void>> downloadAssignmentTemplate();
 
   Future<Result<void>> downloadReceiptPdf(String receiptNumber);
+
+  Future<Result<void>> downloadPaymentReceiptPdf(String paymentId);
 
   Future<Result<void>> exportDefaulters(String format);
 

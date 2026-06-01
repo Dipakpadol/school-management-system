@@ -86,6 +86,11 @@ class FeesRepositoryImpl implements FeesRepository {
   }
 
   @override
+  Future<Result<StudentFeeAssignmentModel>> assignment(String id) {
+    return _guard(() => _remoteDataSource.assignment(id));
+  }
+
+  @override
   Future<Result<StudentFeeAssignmentModel>> createAssignment(
     Map<String, dynamic> payload,
   ) {
@@ -112,6 +117,28 @@ class FeesRepositoryImpl implements FeesRepository {
   ) {
     return _guard(
       () => _remoteDataSource.collectPayment(assignmentId, payload),
+    );
+  }
+
+  @override
+  Future<Result<StudentFeeSummaryModel>> studentSummary(String studentId) {
+    return _guard(() => _remoteDataSource.studentSummary(studentId));
+  }
+
+  @override
+  Future<Result<List<FeePaymentModel>>> studentPaymentHistory(
+    String studentId,
+  ) {
+    return _guard(() => _remoteDataSource.studentPaymentHistory(studentId));
+  }
+
+  @override
+  Future<Result<FeeReceiptModel>> collectStudentPayment(
+    String studentId,
+    Map<String, dynamic> payload,
+  ) {
+    return _guard(
+      () => _remoteDataSource.collectStudentPayment(studentId, payload),
     );
   }
 
@@ -201,6 +228,18 @@ class FeesRepositoryImpl implements FeesRepository {
   }
 
   @override
+  Future<Result<void>> downloadPaymentReceiptPdf(String paymentId) {
+    return _guard(() async {
+      final bytes = await _remoteDataSource.paymentReceiptPdf(paymentId);
+      await downloadBytes(
+        bytes,
+        'fee-receipt-$paymentId.pdf',
+        'application/pdf',
+      );
+    });
+  }
+
+  @override
   Future<Result<void>> exportDefaulters(String format) {
     return _guard(() async {
       final bytes = await _remoteDataSource.defaultersExport(format);
@@ -237,7 +276,10 @@ class FeesRepositoryImpl implements FeesRepository {
   }
 
   @override
-  Future<Result<void>> importAssignmentsExcel(List<int> bytes, String filename) {
+  Future<Result<void>> importAssignmentsExcel(
+    List<int> bytes,
+    String filename,
+  ) {
     return _guard(
       () => _remoteDataSource.importAssignmentsExcel(bytes, filename),
     );

@@ -157,7 +157,6 @@ public class UserController {
 	}
 
 	@GetMapping("/roles")
-	@PreAuthorize("hasAuthority('USERS_READ') or hasAuthority('SETTINGS_READ')")
 	@Operation(summary = "List roles")
 	public ResponseEntity<ApiResponse<List<RoleResponse>>> roles(HttpServletRequest httpRequest) {
 		return ok(userService.listRoles(), "Roles fetched successfully", httpRequest);

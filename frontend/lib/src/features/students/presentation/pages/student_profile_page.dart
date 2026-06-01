@@ -248,7 +248,8 @@ class _ParentsTab extends ConsumerWidget {
               }
               return Column(
                 children: [
-                  for (final parent in items) _ParentTile(student: student, parent: parent),
+                  for (final parent in items)
+                    _ParentTile(student: student, parent: parent),
                 ],
               );
             },
@@ -289,9 +290,9 @@ class _ParentTile extends ConsumerWidget {
           children: [
             Text(
               parent.displayName,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
             _SmallBadge(label: parent.relationType),
             if (parent.primaryContact) const _SmallBadge(label: 'Primary'),
@@ -315,7 +316,8 @@ class _ParentTile extends ConsumerWidget {
             if (!parent.primaryContact)
               IconButton(
                 tooltip: 'Mark primary',
-                onPressed: () => _markParentPrimary(context, ref, student, parent),
+                onPressed: () =>
+                    _markParentPrimary(context, ref, student, parent),
                 icon: const Icon(Icons.star_outline),
               ),
             IconButton(
@@ -368,7 +370,9 @@ class _AcademicTab extends ConsumerWidget {
                       ? Icons.check_circle_outline
                       : Icons.history_outlined,
                 ),
-                title: Text('${assignment.className} ${assignment.sectionName}'),
+                title: Text(
+                  '${assignment.className} ${assignment.sectionName}',
+                ),
                 subtitle: Text(
                   [
                     assignment.academicYear,
@@ -398,7 +402,9 @@ class _FeesTab extends StatelessWidget {
             title: 'Fees',
             actions: [
               FilledButton.icon(
-                onPressed: () => context.go(AppRoutes.collectFeePayment),
+                onPressed: () => context.go(
+                  AppRoutes.studentFeePaymentCollection(student.id),
+                ),
                 icon: const Icon(Icons.point_of_sale_outlined),
                 label: const Text('Collect payment'),
               ),
@@ -511,7 +517,11 @@ class _ActionTab extends StatelessWidget {
           const SizedBox(height: 18),
           Row(
             children: [
-              Icon(icon, size: 30, color: Theme.of(context).colorScheme.outline),
+              Icon(
+                icon,
+                size: 30,
+                color: Theme.of(context).colorScheme.outline,
+              ),
               const SizedBox(width: 12),
               Expanded(child: Text(message)),
             ],
@@ -623,8 +633,9 @@ class _PhotoAvatar extends StatelessWidget {
     return CircleAvatar(
       radius: radius,
       backgroundColor: const Color(0xFFE0F2FE),
-      foregroundImage:
-          photoUrl == null || photoUrl.isEmpty ? null : NetworkImage(photoUrl),
+      foregroundImage: photoUrl == null || photoUrl.isEmpty
+          ? null
+          : NetworkImage(photoUrl),
       child: photoUrl == null || photoUrl.isEmpty
           ? Text(
               student.firstName.isEmpty ? '?' : student.firstName[0],
@@ -716,14 +727,18 @@ Future<void> _showPersonalDialog(
   final firstName = TextEditingController(text: student.firstName);
   final middleName = TextEditingController(text: student.middleName ?? '');
   final lastName = TextEditingController(text: student.lastName ?? '');
-  final dateOfBirth = TextEditingController(text: _dateLabel(student.dateOfBirth));
-  final admissionDate =
-      TextEditingController(text: _dateLabel(student.admissionDate));
+  final dateOfBirth = TextEditingController(
+    text: _dateLabel(student.dateOfBirth),
+  );
+  final admissionDate = TextEditingController(
+    text: _dateLabel(student.admissionDate),
+  );
   final bloodGroup = TextEditingController(text: student.bloodGroup ?? '');
   final email = TextEditingController(text: student.email ?? '');
   final phone = TextEditingController(text: student.phoneNumber ?? '');
-  final previousSchool =
-      TextEditingController(text: student.previousSchool ?? '');
+  final previousSchool = TextEditingController(
+    text: student.previousSchool ?? '',
+  );
   final addressLine1 = TextEditingController(text: student.addressLine1 ?? '');
   final addressLine2 = TextEditingController(text: student.addressLine2 ?? '');
   final city = TextEditingController(text: student.city ?? '');
@@ -748,10 +763,26 @@ Future<void> _showPersonalDialog(
                 runSpacing: 12,
                 children: [
                   _Field(controller: firstName, label: 'First name'),
-                  _Field(controller: middleName, label: 'Middle name', required: false),
-                  _Field(controller: lastName, label: 'Last name', required: false),
-                  _Field(controller: dateOfBirth, label: 'Date of birth', validator: _date),
-                  _Field(controller: admissionDate, label: 'Admission date', validator: _date),
+                  _Field(
+                    controller: middleName,
+                    label: 'Middle name',
+                    required: false,
+                  ),
+                  _Field(
+                    controller: lastName,
+                    label: 'Last name',
+                    required: false,
+                  ),
+                  _Field(
+                    controller: dateOfBirth,
+                    label: 'Date of birth',
+                    validator: _date,
+                  ),
+                  _Field(
+                    controller: admissionDate,
+                    label: 'Admission date',
+                    validator: _date,
+                  ),
                   SizedBox(
                     width: 220,
                     child: DropdownButtonFormField<String>(
@@ -759,7 +790,10 @@ Future<void> _showPersonalDialog(
                       decoration: const InputDecoration(labelText: 'Gender'),
                       items: const [
                         DropdownMenuItem(value: 'MALE', child: Text('Male')),
-                        DropdownMenuItem(value: 'FEMALE', child: Text('Female')),
+                        DropdownMenuItem(
+                          value: 'FEMALE',
+                          child: Text('Female'),
+                        ),
                         DropdownMenuItem(value: 'OTHER', child: Text('Other')),
                         DropdownMenuItem(
                           value: 'UNSPECIFIED',
@@ -769,16 +803,44 @@ Future<void> _showPersonalDialog(
                       onChanged: (value) => gender = value ?? gender,
                     ),
                   ),
-                  _Field(controller: bloodGroup, label: 'Blood group', required: false),
-                  _Field(controller: phone, label: 'Mobile', validator: _optionalMobile),
+                  _Field(
+                    controller: bloodGroup,
+                    label: 'Blood group',
+                    required: false,
+                  ),
+                  _Field(
+                    controller: phone,
+                    label: 'Mobile',
+                    validator: _optionalMobile,
+                  ),
                   _Field(controller: email, label: 'Email', validator: _email),
-                  _Field(controller: previousSchool, label: 'Previous school', required: false),
-                  _Field(controller: addressLine1, label: 'Address line 1', required: false),
-                  _Field(controller: addressLine2, label: 'Address line 2', required: false),
+                  _Field(
+                    controller: previousSchool,
+                    label: 'Previous school',
+                    required: false,
+                  ),
+                  _Field(
+                    controller: addressLine1,
+                    label: 'Address line 1',
+                    required: false,
+                  ),
+                  _Field(
+                    controller: addressLine2,
+                    label: 'Address line 2',
+                    required: false,
+                  ),
                   _Field(controller: city, label: 'City', required: false),
                   _Field(controller: state, label: 'State', required: false),
-                  _Field(controller: postalCode, label: 'Pin code', validator: _optionalPinCode),
-                  _Field(controller: country, label: 'Country', required: false),
+                  _Field(
+                    controller: postalCode,
+                    label: 'Pin code',
+                    validator: _optionalPinCode,
+                  ),
+                  _Field(
+                    controller: country,
+                    label: 'Country',
+                    required: false,
+                  ),
                 ],
               ),
             ),
@@ -797,23 +859,23 @@ Future<void> _showPersonalDialog(
               final result = await ref
                   .read(studentsRepositoryProvider)
                   .updateProfile(student.id, {
-                'firstName': firstName.text.trim(),
-                'middleName': _blankToNull(middleName.text),
-                'lastName': _blankToNull(lastName.text),
-                'dateOfBirth': dateOfBirth.text.trim(),
-                'gender': gender,
-                'bloodGroup': _blankToNull(bloodGroup.text),
-                'email': _blankToNull(email.text),
-                'phoneNumber': _blankToNull(phone.text),
-                'admissionDate': admissionDate.text.trim(),
-                'previousSchool': _blankToNull(previousSchool.text),
-                'addressLine1': _blankToNull(addressLine1.text),
-                'addressLine2': _blankToNull(addressLine2.text),
-                'city': _blankToNull(city.text),
-                'state': _blankToNull(state.text),
-                'postalCode': _blankToNull(postalCode.text),
-                'country': _blankToNull(country.text),
-              });
+                    'firstName': firstName.text.trim(),
+                    'middleName': _blankToNull(middleName.text),
+                    'lastName': _blankToNull(lastName.text),
+                    'dateOfBirth': dateOfBirth.text.trim(),
+                    'gender': gender,
+                    'bloodGroup': _blankToNull(bloodGroup.text),
+                    'email': _blankToNull(email.text),
+                    'phoneNumber': _blankToNull(phone.text),
+                    'admissionDate': admissionDate.text.trim(),
+                    'previousSchool': _blankToNull(previousSchool.text),
+                    'addressLine1': _blankToNull(addressLine1.text),
+                    'addressLine2': _blankToNull(addressLine2.text),
+                    'city': _blankToNull(city.text),
+                    'state': _blankToNull(state.text),
+                    'postalCode': _blankToNull(postalCode.text),
+                    'country': _blankToNull(country.text),
+                  });
               if (!dialogContext.mounted) {
                 return;
               }
@@ -862,8 +924,9 @@ Future<void> _showPhotoDialog(
 ) async {
   final url = TextEditingController(text: student.photoUrl ?? '');
   final storageKey = TextEditingController(text: student.photoStorageKey ?? '');
-  final contentType =
-      TextEditingController(text: student.photoContentType ?? 'image/jpeg');
+  final contentType = TextEditingController(
+    text: student.photoContentType ?? 'image/jpeg',
+  );
   final fileName = TextEditingController(text: student.photoFileName ?? '');
   final formKey = GlobalKey<FormState>();
 
@@ -913,16 +976,14 @@ Future<void> _showPhotoDialog(
               _snack(dialogContext, 'Photo URL or storage key is required.');
               return;
             }
-            final result =
-                await ref.read(studentsRepositoryProvider).updatePhoto(
-              student.id,
-              {
-                'photoUrl': _blankToNull(url.text),
-                'photoStorageKey': _blankToNull(storageKey.text),
-                'photoFileName': _blankToNull(fileName.text),
-                'photoContentType': _blankToNull(contentType.text),
-              },
-            );
+            final result = await ref
+                .read(studentsRepositoryProvider)
+                .updatePhoto(student.id, {
+                  'photoUrl': _blankToNull(url.text),
+                  'photoStorageKey': _blankToNull(storageKey.text),
+                  'photoFileName': _blankToNull(fileName.text),
+                  'photoContentType': _blankToNull(contentType.text),
+                });
             if (!dialogContext.mounted) {
               return;
             }
@@ -958,8 +1019,9 @@ Future<void> _showParentDialog(
   final lastName = TextEditingController(text: parent?.lastName ?? '');
   final email = TextEditingController(text: parent?.email ?? '');
   final phone = TextEditingController(text: parent?.phoneNumber ?? '');
-  final alternatePhone =
-      TextEditingController(text: parent?.alternatePhoneNumber ?? '');
+  final alternatePhone = TextEditingController(
+    text: parent?.alternatePhoneNumber ?? '',
+  );
   final occupation = TextEditingController(text: parent?.occupation ?? '');
   final addressLine1 = TextEditingController(text: parent?.addressLine1 ?? '');
   final addressLine2 = TextEditingController(text: parent?.addressLine2 ?? '');
@@ -978,7 +1040,9 @@ Future<void> _showParentDialog(
     builder: (dialogContext) {
       return StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: Text(parent == null ? 'Add parent / guardian' : 'Edit parent / guardian'),
+          title: Text(
+            parent == null ? 'Add parent / guardian' : 'Edit parent / guardian',
+          ),
           content: Form(
             key: formKey,
             child: SizedBox(
@@ -989,36 +1053,87 @@ Future<void> _showParentDialog(
                   runSpacing: 12,
                   children: [
                     _Field(controller: firstName, label: 'First name'),
-                    _Field(controller: lastName, label: 'Last name', required: false),
+                    _Field(
+                      controller: lastName,
+                      label: 'Last name',
+                      required: false,
+                    ),
                     SizedBox(
                       width: 220,
                       child: DropdownButtonFormField<String>(
                         initialValue: relation,
-                        decoration: const InputDecoration(labelText: 'Relation'),
+                        decoration: const InputDecoration(
+                          labelText: 'Relation',
+                        ),
                         items: const [
-                          DropdownMenuItem(value: 'FATHER', child: Text('Father')),
-                          DropdownMenuItem(value: 'MOTHER', child: Text('Mother')),
-                          DropdownMenuItem(value: 'GUARDIAN', child: Text('Guardian')),
-                          DropdownMenuItem(value: 'OTHER', child: Text('Other')),
+                          DropdownMenuItem(
+                            value: 'FATHER',
+                            child: Text('Father'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'MOTHER',
+                            child: Text('Mother'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'GUARDIAN',
+                            child: Text('Guardian'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'OTHER',
+                            child: Text('Other'),
+                          ),
                         ],
                         onChanged: (value) => relation = value ?? relation,
                       ),
                     ),
-                    _Field(controller: phone, label: 'Mobile', validator: _mobile),
-                    _Field(controller: alternatePhone, label: 'Alternate mobile', validator: _optionalMobile),
-                    _Field(controller: email, label: 'Email', validator: _email),
-                    _Field(controller: occupation, label: 'Occupation', required: false),
-                    _Field(controller: addressLine1, label: 'Address line 1', required: false),
-                    _Field(controller: addressLine2, label: 'Address line 2', required: false),
+                    _Field(
+                      controller: phone,
+                      label: 'Mobile',
+                      validator: _mobile,
+                    ),
+                    _Field(
+                      controller: alternatePhone,
+                      label: 'Alternate mobile',
+                      validator: _optionalMobile,
+                    ),
+                    _Field(
+                      controller: email,
+                      label: 'Email',
+                      validator: _email,
+                    ),
+                    _Field(
+                      controller: occupation,
+                      label: 'Occupation',
+                      required: false,
+                    ),
+                    _Field(
+                      controller: addressLine1,
+                      label: 'Address line 1',
+                      required: false,
+                    ),
+                    _Field(
+                      controller: addressLine2,
+                      label: 'Address line 2',
+                      required: false,
+                    ),
                     _Field(controller: city, label: 'City', required: false),
                     _Field(controller: state, label: 'State', required: false),
-                    _Field(controller: postalCode, label: 'Pin code', validator: _optionalPinCode),
-                    _Field(controller: country, label: 'Country', required: false),
+                    _Field(
+                      controller: postalCode,
+                      label: 'Pin code',
+                      validator: _optionalPinCode,
+                    ),
+                    _Field(
+                      controller: country,
+                      label: 'Country',
+                      required: false,
+                    ),
                     SizedBox(
                       width: 220,
                       child: CheckboxListTile(
                         value: primary,
-                        onChanged: (value) => setState(() => primary = value ?? primary),
+                        onChanged: (value) =>
+                            setState(() => primary = value ?? primary),
                         title: const Text('Primary contact'),
                         contentPadding: EdgeInsets.zero,
                       ),
@@ -1027,7 +1142,8 @@ Future<void> _showParentDialog(
                       width: 220,
                       child: CheckboxListTile(
                         value: emergency,
-                        onChanged: (value) => setState(() => emergency = value ?? emergency),
+                        onChanged: (value) =>
+                            setState(() => emergency = value ?? emergency),
                         title: const Text('Emergency'),
                         contentPadding: EdgeInsets.zero,
                       ),
@@ -1036,7 +1152,8 @@ Future<void> _showParentDialog(
                       width: 220,
                       child: CheckboxListTile(
                         value: pickup,
-                        onChanged: (value) => setState(() => pickup = value ?? pickup),
+                        onChanged: (value) =>
+                            setState(() => pickup = value ?? pickup),
                         title: const Text('Pickup allowed'),
                         contentPadding: EdgeInsets.zero,
                       ),
@@ -1137,7 +1254,9 @@ Future<void> _markParentPrimary(
   if (!confirmed || !context.mounted) {
     return;
   }
-  final result = await ref.read(studentsRepositoryProvider).updateParent(
+  final result = await ref
+      .read(studentsRepositoryProvider)
+      .updateParent(
         student.id,
         parent.mappingId,
         _parentPayload(parent, primaryContact: true),
@@ -1160,15 +1279,15 @@ Future<void> _showClassDialog(
   StudentProfileModel student,
 ) async {
   final assignment = student.currentAssignment;
-  final academicYear =
-      TextEditingController(text: assignment?.academicYear ?? '');
-  final className = TextEditingController(text: assignment?.className ?? '');
-  final sectionName =
-      TextEditingController(text: assignment?.sectionName ?? '');
-  final roll = TextEditingController(text: assignment?.rollNumber ?? '');
-  final effectiveFrom = TextEditingController(
-    text: _dateLabel(DateTime.now()),
+  final academicYear = TextEditingController(
+    text: assignment?.academicYear ?? '',
   );
+  final className = TextEditingController(text: assignment?.className ?? '');
+  final sectionName = TextEditingController(
+    text: assignment?.sectionName ?? '',
+  );
+  final roll = TextEditingController(text: assignment?.rollNumber ?? '');
+  final effectiveFrom = TextEditingController(text: _dateLabel(DateTime.now()));
   final formKey = GlobalKey<FormState>();
 
   await showDialog<void>(
@@ -1187,7 +1306,11 @@ Future<void> _showClassDialog(
               _Field(controller: className, label: 'Class'),
               _Field(controller: sectionName, label: 'Section / division'),
               _Field(controller: roll, label: 'Roll number', required: false),
-              _Field(controller: effectiveFrom, label: 'Effective from', validator: _date),
+              _Field(
+                controller: effectiveFrom,
+                label: 'Effective from',
+                validator: _date,
+              ),
             ],
           ),
         ),
@@ -1202,19 +1325,18 @@ Future<void> _showClassDialog(
             if (!(formKey.currentState?.validate() ?? false)) {
               return;
             }
-            final result = await ref.read(studentsRepositoryProvider).assignClass(
-              student.id,
-              {
-                'academicYearId': null,
-                'classId': null,
-                'sectionId': null,
-                'academicYear': academicYear.text.trim(),
-                'className': className.text.trim(),
-                'sectionName': sectionName.text.trim(),
-                'rollNumber': _blankToNull(roll.text),
-                'effectiveFrom': effectiveFrom.text.trim(),
-              },
-            );
+            final result = await ref
+                .read(studentsRepositoryProvider)
+                .assignClass(student.id, {
+                  'academicYearId': null,
+                  'classId': null,
+                  'sectionId': null,
+                  'academicYear': academicYear.text.trim(),
+                  'className': className.text.trim(),
+                  'sectionName': sectionName.text.trim(),
+                  'rollNumber': _blankToNull(roll.text),
+                  'effectiveFrom': effectiveFrom.text.trim(),
+                });
             if (!dialogContext.mounted) {
               return;
             }
@@ -1293,10 +1415,18 @@ Future<void> _showDocumentDialog(
                   onChanged: (value) => type = value ?? type,
                 ),
               ),
-              _Field(controller: number, label: 'Document number', required: false),
+              _Field(
+                controller: number,
+                label: 'Document number',
+                required: false,
+              ),
               _Field(controller: fileName, label: 'File name'),
               _Field(controller: fileUrl, label: 'File URL', required: false),
-              _Field(controller: storageKey, label: 'Storage key', required: false),
+              _Field(
+                controller: storageKey,
+                label: 'Storage key',
+                required: false,
+              ),
               _Field(controller: remarks, label: 'Remarks', required: false),
             ],
           ),

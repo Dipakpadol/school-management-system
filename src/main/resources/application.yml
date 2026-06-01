@@ -54,6 +54,8 @@ app:
     auth:
       max-failed-login-attempts: ${AUTH_MAX_FAILED_LOGIN_ATTEMPTS:5}
       lock-duration: ${AUTH_LOCK_DURATION:15m}
+      signup-default-role: ${AUTH_SIGNUP_DEFAULT_ROLE:PARENT}
+      signup-default-status: ${AUTH_SIGNUP_DEFAULT_STATUS:ACTIVE}
     bootstrap-super-admin:
       enabled: ${BOOTSTRAP_SUPER_ADMIN_ENABLED:false}
       email: ${BOOTSTRAP_SUPER_ADMIN_EMAIL:}

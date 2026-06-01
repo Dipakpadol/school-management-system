@@ -7,10 +7,15 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "Class fee assignment generation summary.")
 public record ClassFeeAssignmentResponse(
+		UUID academicYearId,
 		UUID classId,
 		UUID feeStructureId,
+		List<UUID> assignedFeeStructures,
 		int totalStudents,
+		int assignedStudents,
+		int skippedStudents,
 		int createdAssignments,
 		int skippedAssignments,
-		List<StudentFeeAssignmentResponse> assignments) {
+		List<StudentFeeAssignmentResponse> assignments,
+		String message) {
 }

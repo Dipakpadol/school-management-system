@@ -12,5 +12,6 @@ public record AcademicYearResponse(
 		String name,
 		LocalDate startDate,
 		LocalDate endDate,
-		boolean active) {
+		boolean active,
+		String description) {
 }

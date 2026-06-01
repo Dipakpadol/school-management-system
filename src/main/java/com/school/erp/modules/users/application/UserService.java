@@ -69,7 +69,13 @@ public class UserService {
 				passwordEncoder.encode(request.password()),
 				request.firstName(),
 				request.lastName());
-		user.updateProfile(request.email(), request.username(), request.firstName(), request.lastName(), request.phoneNumber());
+		user.updateProfile(
+				request.email(),
+				request.username(),
+				request.firstName(),
+				request.middleName(),
+				request.lastName(),
+				request.phoneNumber());
 		user.replaceRoles(roles);
 		UserResponse response = userMapper.toResponse(userAccountRepository.save(user));
 		audit(response.id(), "CREATE", null, response);
@@ -82,7 +88,13 @@ public class UserService {
 		UserResponse oldValue = userMapper.toResponse(user);
 		validateUnique(request.email(), request.username(), request.phoneNumber(), userId);
 		validateSuperAdminRole(request.roles());
-		user.updateProfile(request.email(), request.username(), request.firstName(), request.lastName(), request.phoneNumber());
+		user.updateProfile(
+				request.email(),
+				request.username(),
+				request.firstName(),
+				request.middleName(),
+				request.lastName(),
+				request.phoneNumber());
 		user.replaceRoles(resolveRoles(request.roles()));
 		UserResponse response = userMapper.toResponse(user);
 		audit(userId, "UPDATE", oldValue, response);

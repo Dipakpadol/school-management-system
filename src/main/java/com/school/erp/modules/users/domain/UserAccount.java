@@ -42,6 +42,9 @@ public class UserAccount extends BaseEntity {
 	@Column(name = "first_name", nullable = false, length = 80)
 	private String firstName;
 
+	@Column(name = "middle_name", length = 80)
+	private String middleName;
+
 	@Column(name = "last_name", length = 80)
 	private String lastName;
 
@@ -51,6 +54,10 @@ public class UserAccount extends BaseEntity {
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 40)
 	private UserStatus status = UserStatus.ACTIVE;
+
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 40)
+	private UserSource source = UserSource.ADMIN_CREATED;
 
 	@Column(name = "failed_login_attempts", nullable = false)
 	private int failedLoginAttempts;
@@ -81,10 +88,14 @@ public class UserAccount extends BaseEntity {
 	}
 
 	public String getDisplayName() {
-		if (StringUtils.hasText(lastName)) {
-			return firstName + " " + lastName;
+		StringBuilder displayName = new StringBuilder(firstName);
+		if (StringUtils.hasText(middleName)) {
+			displayName.append(" ").append(middleName);
 		}
-		return firstName;
+		if (StringUtils.hasText(lastName)) {
+			displayName.append(" ").append(lastName);
+		}
+		return displayName.toString();
 	}
 
 	public void addRole(Role role) {
@@ -110,11 +121,33 @@ public class UserAccount extends BaseEntity {
 			String firstName,
 			String lastName,
 			String phoneNumber) {
+		updateProfile(email, username, firstName, null, lastName, phoneNumber);
+	}
+
+	public void updateProfile(
+			String email,
+			String username,
+			String firstName,
+			String middleName,
+			String lastName,
+			String phoneNumber) {
 		this.email = normalize(email);
 		this.username = normalizeUsername(username);
 		this.firstName = firstName;
+		this.middleName = trimToNull(middleName);
 		this.lastName = trimToNull(lastName);
 		this.phoneNumber = trimToNull(phoneNumber);
+	}
+
+	public void changeStatus(UserStatus status) {
+		this.status = status == null ? UserStatus.ACTIVE : status;
+		if (this.status != UserStatus.LOCKED) {
+			this.lockedUntil = null;
+		}
+	}
+
+	public void markSource(UserSource source) {
+		this.source = source == null ? UserSource.ADMIN_CREATED : source;
 	}
 
 	public boolean isActive() {

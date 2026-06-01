@@ -15,10 +15,12 @@ final feeStructuresProvider = FutureProvider<List<FeeStructureModel>>((ref) {
 final feeStructuresByClassProvider =
     FutureProvider.family<List<FeeStructureModel>, FeeClassKey>((ref, key) {
       return _resolve(
-        ref.watch(feesRepositoryProvider).structures(
-          academicYearId: key.academicYearId,
-          classId: key.classId,
-        ),
+        ref
+            .watch(feesRepositoryProvider)
+            .structures(
+              academicYearId: key.academicYearId,
+              classId: key.classId,
+            ),
       );
     });
 
@@ -34,6 +36,30 @@ final feeAssignmentsProvider = FutureProvider<List<StudentFeeAssignmentModel>>((
 ) {
   return _resolve(ref.watch(feesRepositoryProvider).assignments());
 });
+
+final feeAssignmentProvider =
+    FutureProvider.family<StudentFeeAssignmentModel, String>((
+      ref,
+      assignmentId,
+    ) {
+      return _resolve(
+        ref.watch(feesRepositoryProvider).assignment(assignmentId),
+      );
+    });
+
+final studentFeeSummaryProvider =
+    FutureProvider.family<StudentFeeSummaryModel, String>((ref, studentId) {
+      return _resolve(
+        ref.watch(feesRepositoryProvider).studentSummary(studentId),
+      );
+    });
+
+final studentPaymentHistoryProvider =
+    FutureProvider.family<List<FeePaymentModel>, String>((ref, studentId) {
+      return _resolve(
+        ref.watch(feesRepositoryProvider).studentPaymentHistory(studentId),
+      );
+    });
 
 final feeDefaultersProvider = FutureProvider<List<FeeDefaulterModel>>((ref) {
   return _resolve(ref.watch(feesRepositoryProvider).defaulters());

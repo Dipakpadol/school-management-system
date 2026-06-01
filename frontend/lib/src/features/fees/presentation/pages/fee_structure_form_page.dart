@@ -9,6 +9,9 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../academic/data/models/academic_models.dart' as academic_models;
+import '../../../academic/presentation/controllers/academic_providers.dart'
+    as academic;
 import '../../data/models/fee_models.dart';
 import '../../data/repositories/fees_repository_impl.dart';
 import '../controllers/fees_providers.dart';
@@ -35,6 +38,8 @@ class _FeeStructureFormPageState extends ConsumerState<FeeStructureFormPage> {
   final _items = <_FeeItemInput>[];
   final _installments = <_InstallmentInput>[];
 
+  String? _academicYearId;
+  String? _classId;
   bool _activate = true;
   bool _saving = false;
   bool _prefillQueued = false;
@@ -45,7 +50,6 @@ class _FeeStructureFormPageState extends ConsumerState<FeeStructureFormPage> {
   @override
   void initState() {
     super.initState();
-    _academicYearController.text = '2026-2027';
     _addItem();
     _addInstallment();
   }
@@ -84,21 +88,33 @@ class _FeeStructureFormPageState extends ConsumerState<FeeStructureFormPage> {
       },
       child: categories.when(
         data: (categoryItems) {
-          if (structure == null) {
-            return _buildForm(categoryItems);
-          }
-          return structure.when(
-            data: (feeStructure) {
-              _queuePrefill(feeStructure);
-              return _buildForm(categoryItems);
+          final academicYears = ref.watch(academic.academicYearsProvider);
+          return academicYears.when(
+            data: (yearItems) {
+              if (structure == null) {
+                return _buildForm(categoryItems, academicYears: yearItems);
+              }
+              return structure.when(
+                data: (feeStructure) {
+                  _queuePrefill(feeStructure);
+                  return _buildForm(categoryItems, academicYears: yearItems);
+                },
+                error: (error, _) => AppErrorState(
+                  message: _message(error),
+                  onRetry: () {
+                    ref.invalidate(feeStructureProvider(widget.structureId!));
+                  },
+                ),
+                loading: () =>
+                    const AppLoadingState(label: 'Loading structure'),
+              );
             },
             error: (error, _) => AppErrorState(
               message: _message(error),
-              onRetry: () {
-                ref.invalidate(feeStructureProvider(widget.structureId!));
-              },
+              onRetry: () => ref.invalidate(academic.academicYearsProvider),
             ),
-            loading: () => const AppLoadingState(label: 'Loading structure'),
+            loading: () =>
+                const AppLoadingState(label: 'Loading academic years'),
           );
         },
         error: (error, _) => AppErrorState(
@@ -112,6 +128,7 @@ class _FeeStructureFormPageState extends ConsumerState<FeeStructureFormPage> {
 
   Widget _buildForm(
     List<FeeCategoryModel> categories, {
+    List<academic_models.AcademicYearModel> academicYears = const [],
     bool readOnly = false,
   }) {
     return Form(
@@ -142,18 +159,7 @@ class _FeeStructureFormPageState extends ConsumerState<FeeStructureFormPage> {
                       title: 'Structure',
                       child: _ResponsiveFields(
                         children: [
-                          _TextInput(
-                            controller: _academicYearController,
-                            label: 'Academic year',
-                            enabled: !readOnly,
-                            validator: _required,
-                          ),
-                          _TextInput(
-                            controller: _classNameController,
-                            label: 'Class',
-                            enabled: !readOnly,
-                            validator: _required,
-                          ),
+                          ..._academicFields(academicYears, readOnly),
                           _TextInput(
                             controller: _sectionNameController,
                             label: 'Section',
@@ -281,8 +287,136 @@ class _FeeStructureFormPageState extends ConsumerState<FeeStructureFormPage> {
     );
   }
 
+  List<Widget> _academicFields(
+    List<academic_models.AcademicYearModel> academicYears,
+    bool readOnly,
+  ) {
+    if (academicYears.isEmpty) {
+      return [
+        _TextInput(
+          controller: _academicYearController,
+          label: 'Academic year',
+          enabled: !readOnly,
+          validator: _required,
+        ),
+        _TextInput(
+          controller: _classNameController,
+          label: 'Class',
+          enabled: !readOnly,
+          validator: _required,
+        ),
+      ];
+    }
+
+    final selectedYearId = _effectiveAcademicYearId(academicYears);
+    final selectedYear = _findYear(academicYears, selectedYearId);
+    if (selectedYear != null &&
+        (_academicYearId != selectedYearId ||
+            _academicYearController.text != selectedYear.name)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _academicYearId = selectedYear.id;
+          _academicYearController.text = selectedYear.name;
+        });
+      });
+    }
+
+    return [
+      DropdownButtonFormField<String>(
+        key: ValueKey('fee-year-$selectedYearId'),
+        initialValue: selectedYearId,
+        isExpanded: true,
+        items: [
+          for (final year in academicYears)
+            DropdownMenuItem(value: year.id, child: Text(year.name)),
+        ],
+        onChanged: readOnly
+            ? null
+            : (value) {
+                final selectedYear = _findYear(academicYears, value);
+                setState(() {
+                  _academicYearId = value;
+                  _classId = null;
+                  _classNameController.clear();
+                  _academicYearController.text = selectedYear?.name ?? '';
+                });
+              },
+        validator: _required,
+        decoration: const InputDecoration(
+          labelText: 'Academic year',
+          prefixIcon: Icon(Icons.calendar_month_outlined),
+        ),
+      ),
+      _ClassDropdownField(
+        academicYearId: selectedYearId,
+        selectedClassId: _classId,
+        className: _classNameController.text,
+        readOnly: readOnly,
+        onSelected: (schoolClass) {
+          setState(() {
+            _classId = schoolClass.id;
+            _classNameController.text = schoolClass.name;
+          });
+        },
+        onResolved: (schoolClass) {
+          if (!mounted ||
+              (_classId == schoolClass.id &&
+                  _classNameController.text == schoolClass.name)) {
+            return;
+          }
+          setState(() {
+            _classId = schoolClass.id;
+            _classNameController.text = schoolClass.name;
+          });
+        },
+      ),
+    ];
+  }
+
+  String _effectiveAcademicYearId(
+    List<academic_models.AcademicYearModel> academicYears,
+  ) {
+    final selectedId = _academicYearId;
+    if (selectedId != null && _findYear(academicYears, selectedId) != null) {
+      return selectedId;
+    }
+    final text = _academicYearController.text.trim().toLowerCase();
+    if (text.isNotEmpty) {
+      for (final year in academicYears) {
+        if (year.name.toLowerCase() == text ||
+            year.code.toLowerCase() == text) {
+          return year.id;
+        }
+      }
+    }
+    return academicYears.first.id;
+  }
+
+  academic_models.AcademicYearModel? _findYear(
+    List<academic_models.AcademicYearModel> academicYears,
+    String? yearId,
+  ) {
+    if (yearId == null) {
+      return null;
+    }
+    for (final year in academicYears) {
+      if (year.id == yearId) {
+        return year;
+      }
+    }
+    return null;
+  }
+
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+    if (_academicYearController.text.trim().isEmpty ||
+        _classNameController.text.trim().isEmpty) {
+      _showSnack('Academic year and class are required.');
       return;
     }
 
@@ -364,6 +498,8 @@ class _FeeStructureFormPageState extends ConsumerState<FeeStructureFormPage> {
       setState(() {
         _academicYearController.text = structure.academicYear;
         _classNameController.text = structure.className;
+        _academicYearId = structure.academicYearId;
+        _classId = structure.classId;
         _sectionNameController.text = structure.sectionName ?? '';
         _nameController.text = structure.name;
         _descriptionController.text = structure.description ?? '';
@@ -421,6 +557,119 @@ class _FeeStructureFormPageState extends ConsumerState<FeeStructureFormPage> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _ClassDropdownField extends ConsumerWidget {
+  const _ClassDropdownField({
+    required this.academicYearId,
+    required this.selectedClassId,
+    required this.className,
+    required this.readOnly,
+    required this.onSelected,
+    required this.onResolved,
+  });
+
+  final String academicYearId;
+  final String? selectedClassId;
+  final String className;
+  final bool readOnly;
+  final ValueChanged<academic_models.AcademicClassModel> onSelected;
+  final ValueChanged<academic_models.AcademicClassModel> onResolved;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final classes = ref.watch(academic.academicClassesProvider(academicYearId));
+    return classes.when(
+      data: (items) {
+        if (items.isEmpty) {
+          return const InputDecorator(
+            decoration: InputDecoration(
+              labelText: 'Class',
+              prefixIcon: Icon(Icons.school_outlined),
+            ),
+            child: Text('No classes available'),
+          );
+        }
+        final selectedClass = _effectiveClass(items);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          onResolved(selectedClass);
+        });
+        return DropdownButtonFormField<String>(
+          key: ValueKey('fee-class-${selectedClass.id}'),
+          initialValue: selectedClass.id,
+          isExpanded: true,
+          items: [
+            for (final schoolClass in items)
+              DropdownMenuItem(
+                value: schoolClass.id,
+                child: Text(schoolClass.name),
+              ),
+          ],
+          onChanged: readOnly
+              ? null
+              : (value) {
+                  final selected = _findClass(items, value);
+                  if (selected != null) {
+                    onSelected(selected);
+                  }
+                },
+          validator: _required,
+          decoration: const InputDecoration(
+            labelText: 'Class',
+            prefixIcon: Icon(Icons.school_outlined),
+          ),
+        );
+      },
+      error: (error, _) => InputDecorator(
+        decoration: const InputDecoration(
+          labelText: 'Class',
+          prefixIcon: Icon(Icons.school_outlined),
+        ),
+        child: Text(_message(error)),
+      ),
+      loading: () => const InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Class',
+          prefixIcon: Icon(Icons.school_outlined),
+        ),
+        child: LinearProgressIndicator(),
+      ),
+    );
+  }
+
+  academic_models.AcademicClassModel _effectiveClass(
+    List<academic_models.AcademicClassModel> classes,
+  ) {
+    final selected = _findClass(classes, selectedClassId);
+    if (selected != null) {
+      return selected;
+    }
+    final text = className.trim().toLowerCase();
+    if (text.isNotEmpty) {
+      for (final schoolClass in classes) {
+        if (schoolClass.name.toLowerCase() == text ||
+            schoolClass.code.toLowerCase() == text) {
+          return schoolClass;
+        }
+      }
+    }
+    return classes.first;
+  }
+
+  academic_models.AcademicClassModel? _findClass(
+    List<academic_models.AcademicClassModel> classes,
+    String? classId,
+  ) {
+    if (classId == null) {
+      return null;
+    }
+    for (final schoolClass in classes) {
+      if (schoolClass.id == classId) {
+        return schoolClass;
+      }
+    }
+    return null;
   }
 }
 

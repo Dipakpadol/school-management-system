@@ -30,6 +30,43 @@ class AuthRemoteDataSource {
     return AuthSessionDto.fromJson(data);
   }
 
+  Future<String> signup(Map<String, dynamic> payload) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.signup,
+      data: payload,
+      options: Options(extra: {'skipAuth': true}),
+    );
+    return response.data?['message'] as String? ?? 'Registration successful.';
+  }
+
+  Future<String> forgotPassword(String emailOrMobile) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.forgotPassword,
+      data: {'emailOrMobile': emailOrMobile},
+      options: Options(extra: {'skipAuth': true}),
+    );
+    return response.data?['message'] as String? ??
+        'If the account exists, password reset instructions have been sent.';
+  }
+
+  Future<String> resetPassword({
+    required String token,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.resetPassword,
+      data: {
+        'token': token,
+        'newPassword': newPassword,
+        'confirmPassword': confirmPassword,
+      },
+      options: Options(extra: {'skipAuth': true}),
+    );
+    return response.data?['message'] as String? ??
+        'Password reset successful. Please login.';
+  }
+
   Future<void> logout(String refreshToken) async {
     await _apiClient.post<Map<String, dynamic>>(
       ApiPaths.logout,

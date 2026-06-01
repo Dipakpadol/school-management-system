@@ -4,10 +4,13 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import com.school.erp.common.api.PageRequestDto;
@@ -51,6 +54,7 @@ import com.school.erp.modules.fees.domain.FeePaymentStatus;
 import com.school.erp.modules.fees.domain.FeeReceipt;
 import com.school.erp.modules.fees.domain.FeeStructure;
 import com.school.erp.modules.fees.domain.FeeStructureInstallment;
+import com.school.erp.modules.fees.domain.FeeStructureStatus;
 import com.school.erp.modules.fees.domain.LateFeeRule;
 import com.school.erp.modules.fees.domain.PaymentMode;
 import com.school.erp.modules.fees.domain.StudentFeeAssignment;
@@ -271,6 +275,28 @@ public class FeeService {
 		return response;
 	}
 
+	@Transactional
+	public List<StudentFeeAssignmentResponse> assignActiveClassFeesToStudent(
+			UUID studentId,
+			UUID classId,
+			LocalDate assignedDate) {
+		Student student = studentRepository.findByIdAndDeletedFalse(studentId)
+				.orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
+		academicHierarchyService.loadClass(classId);
+		List<StudentFeeAssignmentResponse> created = new java.util.ArrayList<>();
+		for (FeeStructure structure : feeStructureRepository
+				.findByClassEntityIdAndStatusAndDeletedFalseOrderByCreatedAtAsc(classId, FeeStructureStatus.ACTIVE)) {
+			if (assignmentRepository.existsByStudentIdAndFeeStructureIdAndDeletedFalse(studentId, structure.getId())) {
+				continue;
+			}
+			StudentFeeAssignment assignment = buildAssignment(student, structure, assignedDate, "Auto assigned from class fee structure.");
+			StudentFeeAssignmentResponse response = feeMapper.toAssignmentResponse(assignmentRepository.save(assignment));
+			created.add(response);
+			audit("StudentFeeAssignment", response.id(), "AUTO_CLASS_FEE_ASSIGNED", null, response);
+		}
+		return created;
+	}
+
 	@Transactional(readOnly = true)
 	public List<ClassStudentFeeResponse> studentsForClass(UUID classId) {
 		ClassEntity classEntity = academicHierarchyService.loadClass(classId);
@@ -282,7 +308,69 @@ public class FeeService {
 	@Transactional
 	public ClassFeeAssignmentResponse assignFeeToClass(UUID classId, ClassFeeAssignmentRequest request) {
 		ClassEntity classEntity = academicHierarchyService.loadClass(classId);
-		FeeStructure structure = loadStructure(request.feeStructureId());
+		if (request.classId() != null && !request.classId().equals(classId)) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Class in request does not match the selected class.");
+		}
+		if (request.academicYearId() != null
+				&& !request.academicYearId().equals(classEntity.getAcademicYear().getId())) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Academic year in request does not match the selected class.");
+		}
+		List<UUID> feeStructureIds = feeStructureIds(request);
+		List<Student> students = studentRepository.findActiveStudentsByClassId(classId);
+		List<StudentFeeAssignmentResponse> created = new ArrayList<>();
+		List<UUID> assignedFeeStructures = new ArrayList<>();
+		int skipped = 0;
+		for (UUID feeStructureId : feeStructureIds) {
+			FeeStructure structure = loadStructure(feeStructureId);
+			validateClassFeeStructure(classId, classEntity, structure);
+			if (structure.getAcademicYearEntity() == null || structure.getClassEntity() == null) {
+				structure.updateAcademicMapping(classEntity.getAcademicYear(), classEntity);
+			}
+			assignedFeeStructures.add(structure.getId());
+			for (Student student : students) {
+				if (assignmentRepository.existsByStudentIdAndFeeStructureIdAndDeletedFalse(student.getId(), structure.getId())) {
+					if (!request.skipExisting()) {
+						throw new BusinessException(
+								ErrorCode.CONFLICT,
+								"Fee structure is already assigned to one or more students in this class.");
+					}
+					skipped++;
+					continue;
+				}
+				StudentFeeAssignment assignment = buildAssignment(student, structure, request.assignedDate(), request.notes());
+				StudentFeeAssignmentResponse response = feeMapper.toAssignmentResponse(assignmentRepository.save(assignment));
+				created.add(response);
+			}
+		}
+		String message = students.isEmpty()
+				? "Fee assigned to class. No students found currently."
+				: "Class fee assigned successfully.";
+		ClassFeeAssignmentResponse response = new ClassFeeAssignmentResponse(
+				classEntity.getAcademicYear().getId(),
+				classId,
+				assignedFeeStructures.get(0),
+				assignedFeeStructures,
+				students.size(),
+				created.size(),
+				skipped,
+				created.size(),
+				skipped,
+				created,
+				message);
+		audit(
+				"ClassFeeAssignment",
+				classId,
+				"CLASS_FEE_ASSIGNED",
+				null,
+				response);
+		return response;
+	}
+
+	private void validateClassFeeStructure(UUID classId, ClassEntity classEntity, FeeStructure structure) {
 		if (!structure.isActive()) {
 			throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Only active fee structures can be assigned.");
 		}
@@ -312,41 +400,22 @@ public class FeeService {
 					ErrorCode.BUSINESS_RULE_VIOLATION,
 					"Fee structure academic year does not match the selected class.");
 		}
-		if (structure.getAcademicYearEntity() == null || structure.getClassEntity() == null) {
-			structure.updateAcademicMapping(classEntity.getAcademicYear(), classEntity);
-		}
+	}
 
-		List<Student> students = studentRepository.findActiveStudentsByClassId(classId);
-		List<StudentFeeAssignmentResponse> created = new java.util.ArrayList<>();
-		int skipped = 0;
-		for (Student student : students) {
-			if (assignmentRepository.existsByStudentIdAndFeeStructureIdAndDeletedFalse(student.getId(), structure.getId())) {
-				if (!request.skipExisting()) {
-					throw new BusinessException(
-							ErrorCode.CONFLICT,
-							"Fee structure is already assigned to one or more students in this class.");
-				}
-				skipped++;
-				continue;
-			}
-			StudentFeeAssignment assignment = buildAssignment(student, structure, request.assignedDate(), request.notes());
-			StudentFeeAssignmentResponse response = feeMapper.toAssignmentResponse(assignmentRepository.save(assignment));
-			created.add(response);
+	private List<UUID> feeStructureIds(ClassFeeAssignmentRequest request) {
+		Set<UUID> ids = new LinkedHashSet<>();
+		if (request.feeStructureId() != null) {
+			ids.add(request.feeStructureId());
 		}
-		ClassFeeAssignmentResponse response = new ClassFeeAssignmentResponse(
-				classId,
-				structure.getId(),
-				students.size(),
-				created.size(),
-				skipped,
-				created);
-		audit(
-				"ClassFeeAssignment",
-				classId,
-				"CLASS_FEE_ASSIGNED",
-				null,
-				response);
-		return response;
+		if (request.feeStructureIds() != null) {
+			ids.addAll(request.feeStructureIds().stream()
+					.filter(java.util.Objects::nonNull)
+					.toList());
+		}
+		if (ids.isEmpty()) {
+			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "At least one fee structure is required.");
+		}
+		return List.copyOf(ids);
 	}
 
 	@Transactional(readOnly = true)

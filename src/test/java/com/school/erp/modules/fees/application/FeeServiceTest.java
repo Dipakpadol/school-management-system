@@ -18,6 +18,10 @@ import com.school.erp.common.audit.application.AuditLogService;
 import com.school.erp.common.exception.BusinessException;
 import com.school.erp.common.exception.ErrorCode;
 import com.school.erp.modules.academic.application.AcademicHierarchyService;
+import com.school.erp.modules.academic.domain.AcademicYear;
+import com.school.erp.modules.academic.domain.ClassEntity;
+import com.school.erp.modules.fees.api.dto.ClassFeeAssignmentRequest;
+import com.school.erp.modules.fees.api.dto.ClassFeeAssignmentResponse;
 import com.school.erp.modules.fees.api.dto.AssessLateFeeRequest;
 import com.school.erp.modules.fees.api.dto.FeeDiscountRequest;
 import com.school.erp.modules.fees.api.dto.FeeReceiptResponse;
@@ -264,6 +268,74 @@ class FeeServiceTest {
 		assertThat(response.installments()).hasSize(2);
 		assertThat(response.grossAmount()).isEqualByComparingTo("30000.00");
 		assertThat(response.balanceAmount()).isEqualByComparingTo("30000.00");
+	}
+
+	@Test
+	void assignFeeToClassAcceptsMultipleFeeStructuresAndSkipsExistingAssignments() {
+		AcademicYear academicYear = academicYear();
+		ClassEntity classEntity = classEntity(academicYear);
+		Student student = student();
+		FeeStructure tuition = activeStructure(category("TUITION"));
+		FeeStructure transport = activeStructure(category("TRANSPORT"));
+		tuition.updateAcademicMapping(academicYear, classEntity);
+		transport.updateAcademicMapping(academicYear, classEntity);
+		when(academicHierarchyService.loadClass(classEntity.getId())).thenReturn(classEntity);
+		when(feeStructureRepository.findDetailedByIdAndDeletedFalse(tuition.getId())).thenReturn(Optional.of(tuition));
+		when(feeStructureRepository.findDetailedByIdAndDeletedFalse(transport.getId())).thenReturn(Optional.of(transport));
+		when(studentRepository.findActiveStudentsByClassId(classEntity.getId())).thenReturn(List.of(student));
+		when(assignmentRepository.existsByStudentIdAndFeeStructureIdAndDeletedFalse(student.getId(), tuition.getId()))
+				.thenReturn(true);
+		when(assignmentRepository.existsByStudentIdAndFeeStructureIdAndDeletedFalse(student.getId(), transport.getId()))
+				.thenReturn(false);
+		when(assignmentRepository.save(any(StudentFeeAssignment.class))).thenAnswer(invocation -> {
+			StudentFeeAssignment assignment = invocation.getArgument(0);
+			setIds(assignment);
+			return assignment;
+		});
+
+		ClassFeeAssignmentResponse response = feeService.assignFeeToClass(
+				classEntity.getId(),
+				new ClassFeeAssignmentRequest(
+						academicYear.getId(),
+						classEntity.getId(),
+						null,
+						List.of(tuition.getId(), transport.getId()),
+						LocalDate.of(2026, 4, 1),
+						"Batch assignment",
+						true));
+
+		assertThat(response.academicYearId()).isEqualTo(academicYear.getId());
+		assertThat(response.classId()).isEqualTo(classEntity.getId());
+		assertThat(response.assignedFeeStructures()).containsExactly(tuition.getId(), transport.getId());
+		assertThat(response.createdAssignments()).isEqualTo(1);
+		assertThat(response.skippedAssignments()).isEqualTo(1);
+		assertThat(response.message()).isEqualTo("Class fee assigned successfully.");
+	}
+
+	@Test
+	void assignFeeToClassAllowsNoStudentsForFutureAutoAssignment() {
+		AcademicYear academicYear = academicYear();
+		ClassEntity classEntity = classEntity(academicYear);
+		FeeStructure tuition = activeStructure(category("TUITION"));
+		tuition.updateAcademicMapping(academicYear, classEntity);
+		when(academicHierarchyService.loadClass(classEntity.getId())).thenReturn(classEntity);
+		when(feeStructureRepository.findDetailedByIdAndDeletedFalse(tuition.getId())).thenReturn(Optional.of(tuition));
+		when(studentRepository.findActiveStudentsByClassId(classEntity.getId())).thenReturn(List.of());
+
+		ClassFeeAssignmentResponse response = feeService.assignFeeToClass(
+				classEntity.getId(),
+				new ClassFeeAssignmentRequest(
+						academicYear.getId(),
+						classEntity.getId(),
+						tuition.getId(),
+						null,
+						LocalDate.of(2026, 4, 1),
+						null,
+						true));
+
+		assertThat(response.totalStudents()).isZero();
+		assertThat(response.createdAssignments()).isZero();
+		assertThat(response.message()).isEqualTo("Fee assigned to class. No students found currently.");
 	}
 
 	@Test
@@ -536,6 +608,22 @@ class FeeServiceTest {
 		FeeCategory category = new FeeCategory(code, code + " Fee", "Test fee", 1);
 		setId(category);
 		return category;
+	}
+
+	private AcademicYear academicYear() {
+		AcademicYear academicYear = new AcademicYear(
+				"2026-2027",
+				"2026-2027",
+				LocalDate.of(2026, 4, 1),
+				LocalDate.of(2027, 3, 31));
+		setId(academicYear);
+		return academicYear;
+	}
+
+	private ClassEntity classEntity(AcademicYear academicYear) {
+		ClassEntity classEntity = new ClassEntity(academicYear, "CLASS-6", "Class 6", 6);
+		setId(classEntity);
+		return classEntity;
 	}
 
 	private void stubReceiptSave() {
