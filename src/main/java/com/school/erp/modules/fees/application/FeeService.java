@@ -346,6 +346,11 @@ public class FeeService {
 				created.add(response);
 			}
 		}
+		if (assignedFeeStructures.isEmpty()) {
+			throw new BusinessException(
+					ErrorCode.VALIDATION_ERROR,
+					"No fee structure available. Please create a fee structure first.");
+		}
 		String message = students.isEmpty()
 				? "Fee assigned to class. No students found currently."
 				: "Class fee assigned successfully.";

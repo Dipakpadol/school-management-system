@@ -39,6 +39,22 @@ public interface StudentClassAssignmentRepository extends BaseRepository<Student
 			""")
 	long countActiveBySectionId(@Param("sectionId") UUID sectionId);
 
+	@Query("""
+			select count(distinct student.id)
+			from StudentClassAssignment assignment
+			join assignment.student student
+			where assignment.deleted = false
+			  and assignment.active = true
+			  and student.deleted = false
+			  and (:academicYearId is null or assignment.academicYearEntity.id = :academicYearId)
+			  and (:classId is null or assignment.classEntity.id = :classId)
+			  and (:sectionId is null or assignment.sectionEntity.id = :sectionId)
+			""")
+	long countActiveStudents(
+			@Param("academicYearId") UUID academicYearId,
+			@Param("classId") UUID classId,
+			@Param("sectionId") UUID sectionId);
+
 	@EntityGraph(attributePaths = { "student" })
 	@Query("""
 			select assignment

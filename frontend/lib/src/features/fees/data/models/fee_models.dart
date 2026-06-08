@@ -502,16 +502,19 @@ class ClassFeeAssignmentModel {
 
   factory ClassFeeAssignmentModel.fromJson(Map<String, dynamic> json) {
     final assignedFeeStructures = json['assignedFeeStructures'];
+    final assignedIds = assignedFeeStructures is List
+        ? assignedFeeStructures.whereType<String>().toList(growable: false)
+        : [
+            if (json['feeStructureId'] is String)
+              json['feeStructureId'] as String,
+          ];
     return ClassFeeAssignmentModel(
       academicYearId: json['academicYearId'] as String?,
-      classId: json['classId'] as String,
-      feeStructureId: json['feeStructureId'] as String,
-      assignedFeeStructures: assignedFeeStructures is List
-          ? assignedFeeStructures.whereType<String>().toList(growable: false)
-          : [
-              if (json['feeStructureId'] is String)
-                json['feeStructureId'] as String,
-            ],
+      classId: json['classId'] as String? ?? '',
+      feeStructureId:
+          json['feeStructureId'] as String? ??
+          (assignedIds.isEmpty ? '' : assignedIds.first),
+      assignedFeeStructures: assignedIds,
       totalStudents: json['totalStudents'] as int? ?? 0,
       createdAssignments:
           (json['createdAssignments'] as int?) ??

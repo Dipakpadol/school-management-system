@@ -8,6 +8,11 @@ import com.school.erp.common.api.PageRequestDto;
 import com.school.erp.common.api.PageResponse;
 import com.school.erp.common.importexport.ImportResultDto;
 import com.school.erp.common.web.CorrelationIdFilter;
+import com.school.erp.modules.attendance.api.dto.StudentAttendanceHistoryResponse;
+import com.school.erp.modules.attendance.application.AttendanceService;
+import com.school.erp.modules.attendance.domain.AttendanceStatus;
+import com.school.erp.modules.exams.api.dto.StudentExamResultsResponse;
+import com.school.erp.modules.exams.application.ExamService;
 import com.school.erp.modules.students.api.dto.ClassSectionAssignmentRequest;
 import com.school.erp.modules.students.api.dto.ParentMappingRequest;
 import com.school.erp.modules.students.api.dto.ParentMappingResponse;
@@ -59,6 +64,8 @@ public class StudentController {
 
 	private final StudentService studentService;
 	private final StudentImportExportService studentImportExportService;
+	private final AttendanceService attendanceService;
+	private final ExamService examService;
 
 	@PostMapping("/admissions")
 	@PreAuthorize("hasAuthority('STUDENTS_CREATE')")
@@ -162,6 +169,67 @@ public class StudentController {
 			@Parameter(description = "Student UUID") @PathVariable UUID studentId,
 			HttpServletRequest httpRequest) {
 		return ok(studentService.getStudentProfile(studentId), "Student profile fetched successfully", httpRequest);
+	}
+
+	@GetMapping("/{studentId}/attendance-history")
+	@PreAuthorize("hasAnyAuthority('STUDENTS_READ','ATTENDANCE_READ')")
+	@Operation(summary = "Get student attendance history", description = "Reads attendance management records for a student profile.")
+	public ResponseEntity<ApiResponse<StudentAttendanceHistoryResponse>> getStudentAttendanceHistory(
+			@PathVariable UUID studentId,
+			@RequestParam(required = false) UUID academicYearId,
+			@RequestParam(required = false) java.time.LocalDate fromDate,
+			@RequestParam(required = false) java.time.LocalDate toDate,
+			@RequestParam(required = false) AttendanceStatus status,
+			@RequestParam(required = false) String sort,
+			@Valid @ParameterObject PageRequestDto pageRequest,
+			HttpServletRequest httpRequest) {
+		return ok(
+				attendanceService.getStudentAttendanceHistory(studentId, academicYearId, fromDate, toDate, status, pageRequest, sort),
+				"Student attendance history fetched successfully",
+				httpRequest);
+	}
+
+	@GetMapping("/{studentId}/attendance-history/export")
+	@PreAuthorize("hasAnyAuthority('STUDENTS_READ','ATTENDANCE_READ')")
+	@Operation(summary = "Export student attendance history")
+	public ResponseEntity<byte[]> exportStudentAttendanceHistory(
+			@PathVariable UUID studentId,
+			@RequestParam(required = false) UUID academicYearId,
+			@RequestParam(required = false) java.time.LocalDate fromDate,
+			@RequestParam(required = false) java.time.LocalDate toDate,
+			@RequestParam(required = false) AttendanceStatus status) {
+		return file(
+				attendanceService.exportStudentAttendanceHistory(studentId, academicYearId, fromDate, toDate, status),
+				"student-attendance-" + studentId + ".csv",
+				"text/csv");
+	}
+
+	@GetMapping("/{studentId}/exam-results")
+	@PreAuthorize("hasAnyAuthority('STUDENTS_READ','EXAMS_READ')")
+	@Operation(summary = "Get student exam results", description = "Reads exam marks and schedules for a student profile.")
+	public ResponseEntity<ApiResponse<StudentExamResultsResponse>> getStudentExamResults(
+			@PathVariable UUID studentId,
+			@RequestParam(required = false) UUID academicYearId,
+			@RequestParam(required = false) UUID examTypeId,
+			@RequestParam(required = false) UUID examScheduleId,
+			HttpServletRequest httpRequest) {
+		return ok(
+				examService.getStudentProfileExamResults(studentId, academicYearId, examTypeId, examScheduleId),
+				"Student exam results fetched successfully",
+				httpRequest);
+	}
+
+	@GetMapping("/{studentId}/exam-results/{resultId}/report-card")
+	@PreAuthorize("hasAnyAuthority('STUDENTS_READ','EXAMS_READ')")
+	@Operation(summary = "Export student profile report card")
+	public ResponseEntity<byte[]> exportStudentProfileReportCard(
+			@PathVariable UUID studentId,
+			@PathVariable UUID resultId,
+			@RequestParam(required = false) UUID academicYearId) {
+		return file(
+				examService.exportStudentProfileReportCard(studentId, resultId, academicYearId),
+				"student-report-card-" + studentId + ".csv",
+				"text/csv");
 	}
 
 	@GetMapping("/{studentId}/parents")

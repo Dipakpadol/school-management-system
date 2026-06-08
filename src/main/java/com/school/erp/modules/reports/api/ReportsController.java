@@ -14,6 +14,10 @@ import com.school.erp.common.modules.api.dto.ModuleRecordResponse;
 import com.school.erp.common.modules.api.dto.ModuleRecordSearchRequest;
 import com.school.erp.common.modules.application.ModuleRecordService;
 import com.school.erp.common.web.CorrelationIdFilter;
+import com.school.erp.modules.reports.api.dto.ReportOptionsResponse;
+import com.school.erp.modules.reports.application.ReportsService;
+import com.school.erp.modules.reports.application.ReportsService.ReportExportFile;
+import com.school.erp.modules.reports.application.ReportsService.ReportExportRequest;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -58,6 +62,7 @@ public class ReportsController {
 
 	private final ModuleRecordControllerSupport support;
 	private final ModuleRecordService moduleRecordService;
+	private final ReportsService reportsService;
 
 	@GetMapping("/summary")
 	@PreAuthorize("hasAuthority('REPORTS_READ')")
@@ -71,6 +76,28 @@ public class ReportsController {
 				"Report summary fetched successfully",
 				request.getRequestURI(),
 				MDC.get(CorrelationIdFilter.CORRELATION_ID)));
+	}
+
+	@GetMapping("/options")
+	@PreAuthorize("hasAuthority('REPORTS_READ')")
+	@Operation(summary = "Get report export options")
+	public ResponseEntity<ApiResponse<ReportOptionsResponse>> options(HttpServletRequest request) {
+		return ResponseEntity.ok(ApiResponse.success(
+				reportsService.options(),
+				"Report options fetched successfully",
+				request.getRequestURI(),
+				MDC.get(CorrelationIdFilter.CORRELATION_ID)));
+	}
+
+	@GetMapping("/export")
+	@PreAuthorize("hasAuthority('REPORTS_READ')")
+	@Operation(summary = "Export a selected report")
+	public ResponseEntity<byte[]> export(@Valid @ParameterObject ReportExportRequest exportRequest) {
+		ReportExportFile file = reportsService.export(exportRequest);
+		return ResponseEntity.ok()
+				.header("Content-Disposition", "attachment; filename=\"" + file.filename() + "\"")
+				.contentType(MediaType.parseMediaType(file.contentType()))
+				.body(file.content());
 	}
 
 	@GetMapping("/{recordType}")

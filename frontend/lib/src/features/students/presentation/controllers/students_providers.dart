@@ -1,7 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/result/result.dart';
+import '../../../exams/data/models/exam_models.dart';
+import '../../../exams/data/repositories/exams_repository_impl.dart';
 import '../../data/models/student_models.dart';
+import '../../data/models/student_profile_history_models.dart';
+import '../../data/repositories/student_profile_repository_impl.dart';
 import '../../data/repositories/students_repository_impl.dart';
 
 final studentSearchQueryProvider =
@@ -87,6 +91,71 @@ final studentParentsProvider =
       return _resolve(ref.watch(studentsRepositoryProvider).parents(studentId));
     });
 
+final studentAttendanceHistoryProvider =
+    FutureProvider.family<
+      StudentAttendanceHistoryModel,
+      StudentAttendanceHistoryQuery
+    >((ref, query) {
+      return _resolve(
+        ref
+            .watch(studentProfileRepositoryProvider)
+            .fetchAttendanceHistory(
+              studentId: query.studentId,
+              academicYearId: query.academicYearId,
+              fromDate: query.fromDate,
+              toDate: query.toDate,
+              status: query.status,
+              page: query.page,
+              size: query.size,
+              sort: query.sort,
+            ),
+      );
+    });
+
+final studentExamResultsProvider =
+    FutureProvider.family<StudentExamResultsModel, StudentExamResultsQuery>((
+      ref,
+      query,
+    ) {
+      return _resolve(
+        ref
+            .watch(studentProfileRepositoryProvider)
+            .fetchExamResults(
+              studentId: query.studentId,
+              academicYearId: query.academicYearId,
+              examTypeId: query.examTypeId,
+              examScheduleId: query.examScheduleId,
+            ),
+      );
+    });
+
+final studentProfileExamTypesProvider = FutureProvider<List<ExamTypeModel>>((
+  ref,
+) {
+  return _resolve(ref.watch(examsRepositoryProvider).types());
+});
+
+final studentProfileExamSchedulesProvider =
+    FutureProvider.family<
+      List<ExamScheduleModel>,
+      StudentProfileExamSchedulesQuery
+    >((ref, query) {
+      if (query.academicYearId == null ||
+          query.classId == null ||
+          query.sectionId == null) {
+        return const [];
+      }
+      return _resolve(
+        ref
+            .watch(examsRepositoryProvider)
+            .schedules(
+              academicYearId: query.academicYearId,
+              classId: query.classId,
+              sectionId: query.sectionId,
+            ),
+      );
+    });
+
 Future<T> _resolve<T>(Future<Result<T>> resultFuture) async {
   final result = await resultFuture;
   return result.when(
@@ -160,4 +229,101 @@ class ClassSectionKey {
 
   @override
   int get hashCode => Object.hash(classId, sectionId);
+}
+
+class StudentAttendanceHistoryQuery {
+  const StudentAttendanceHistoryQuery({
+    required this.studentId,
+    this.academicYearId,
+    this.fromDate,
+    this.toDate,
+    this.status,
+    this.page = 0,
+    this.size = 20,
+    this.sort = 'attendanceDate,desc',
+  });
+
+  final String studentId;
+  final String? academicYearId;
+  final DateTime? fromDate;
+  final DateTime? toDate;
+  final String? status;
+  final int page;
+  final int size;
+  final String sort;
+
+  @override
+  bool operator ==(Object other) {
+    return other is StudentAttendanceHistoryQuery &&
+        other.studentId == studentId &&
+        other.academicYearId == academicYearId &&
+        other.fromDate == fromDate &&
+        other.toDate == toDate &&
+        other.status == status &&
+        other.page == page &&
+        other.size == size &&
+        other.sort == sort;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    studentId,
+    academicYearId,
+    fromDate,
+    toDate,
+    status,
+    page,
+    size,
+    sort,
+  );
+}
+
+class StudentExamResultsQuery {
+  const StudentExamResultsQuery({
+    required this.studentId,
+    this.academicYearId,
+    this.examTypeId,
+    this.examScheduleId,
+  });
+
+  final String studentId;
+  final String? academicYearId;
+  final String? examTypeId;
+  final String? examScheduleId;
+
+  @override
+  bool operator ==(Object other) {
+    return other is StudentExamResultsQuery &&
+        other.studentId == studentId &&
+        other.academicYearId == academicYearId &&
+        other.examTypeId == examTypeId &&
+        other.examScheduleId == examScheduleId;
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(studentId, academicYearId, examTypeId, examScheduleId);
+}
+
+class StudentProfileExamSchedulesQuery {
+  const StudentProfileExamSchedulesQuery({
+    this.academicYearId,
+    this.classId,
+    this.sectionId,
+  });
+
+  final String? academicYearId;
+  final String? classId;
+  final String? sectionId;
+
+  @override
+  bool operator ==(Object other) {
+    return other is StudentProfileExamSchedulesQuery &&
+        other.academicYearId == academicYearId &&
+        other.classId == classId &&
+        other.sectionId == sectionId;
+  }
+
+  @override
+  int get hashCode => Object.hash(academicYearId, classId, sectionId);
 }

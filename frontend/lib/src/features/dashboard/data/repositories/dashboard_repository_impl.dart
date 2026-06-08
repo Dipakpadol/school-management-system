@@ -22,14 +22,51 @@ class DashboardRepositoryImpl implements DashboardRepository {
   Future<Result<DashboardOverview>> overview() async {
     try {
       final summary = await _remoteDataSource.fetchSummary();
+      final todayAttendance = await _remoteDataSource.fetchTodayAttendance();
       return Success(
         summary.toDomain(
           metrics: [
             DashboardMetric(
               label: 'Total students',
-              value: _formatInt(summary.totalStudents),
+              value: _formatInt(todayAttendance.totalStudents),
               icon: Icons.groups_2_outlined,
               color: const Color(0xFF2563EB),
+            ),
+            DashboardMetric(
+              label: 'Present today',
+              value: _formatInt(todayAttendance.present),
+              icon: Icons.check_circle_outline,
+              color: const Color(0xFF16A34A),
+            ),
+            DashboardMetric(
+              label: 'Absent today',
+              value: _formatInt(todayAttendance.absent),
+              icon: Icons.cancel_outlined,
+              color: const Color(0xFFDC2626),
+            ),
+            DashboardMetric(
+              label: 'Late today',
+              value: _formatInt(todayAttendance.late),
+              icon: Icons.schedule_outlined,
+              color: const Color(0xFFF59E0B),
+            ),
+            DashboardMetric(
+              label: 'Half-day today',
+              value: _formatInt(todayAttendance.halfDay),
+              icon: Icons.timelapse_outlined,
+              color: const Color(0xFF7C3AED),
+            ),
+            DashboardMetric(
+              label: 'Leave today',
+              value: _formatInt(todayAttendance.leave),
+              icon: Icons.event_available_outlined,
+              color: const Color(0xFF0891B2),
+            ),
+            DashboardMetric(
+              label: 'Attendance %',
+              value: _formatPercent(todayAttendance.attendancePercentage),
+              icon: Icons.fact_check_outlined,
+              color: const Color(0xFF0F766E),
             ),
             DashboardMetric(
               label: 'Staff users',
@@ -68,12 +105,6 @@ class DashboardRepositoryImpl implements DashboardRepository {
               color: const Color(0xFF64748B),
             ),
             DashboardMetric(
-              label: 'Today attendance',
-              value: _formatPercent(summary.todayAttendancePercentage),
-              icon: Icons.fact_check_outlined,
-              color: const Color(0xFFF59E0B),
-            ),
-            DashboardMetric(
               label: 'Fee collected',
               value: _formatMoney(summary.totalFeeCollected),
               icon: Icons.payments_outlined,
@@ -89,7 +120,8 @@ class DashboardRepositoryImpl implements DashboardRepository {
         ),
       );
     } on DioException catch (error) {
-      if (error.response?.statusCode == 401 || error.response?.statusCode == 403) {
+      if (error.response?.statusCode == 401 ||
+          error.response?.statusCode == 403) {
         return const FailureResult(UnauthorizedFailure());
       }
       return const FailureResult(NetworkFailure('Unable to load dashboard.'));

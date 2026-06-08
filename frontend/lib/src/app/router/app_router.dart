@@ -17,6 +17,7 @@ import '../../features/fees/presentation/pages/fees_management_page.dart';
 import '../../features/fees/presentation/pages/payment_collection_page.dart';
 import '../../features/fees/presentation/pages/student_fee_assignment_page.dart';
 import '../../features/exams/presentation/pages/exams_page.dart';
+import '../../features/reports/presentation/pages/reports_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/students/presentation/pages/student_profile_page.dart';
 import '../../features/students/presentation/pages/student_section_detail_page.dart';
@@ -184,6 +185,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.examResults,
         name: AppRouteName.examResults,
         builder: (context, state) => const ExamsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.reports,
+        name: AppRouteName.reports,
+        builder: (context, state) => const ReportsPage(),
       ),
       GoRoute(
         path: AppRoutes.settings,

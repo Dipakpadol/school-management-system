@@ -18,6 +18,7 @@ abstract final class AppRoutes {
   static const examSchedules = '/exams/schedules';
   static const examMarks = '/exams/marks';
   static const examResults = '/exams/results';
+  static const reports = '/reports';
   static const settings = '/settings';
   static const newFeeStructure = '/fees/structures/new';
   static const feeAssignments = '/fees/assignments';
@@ -36,6 +37,7 @@ abstract final class AppRoutes {
       'audit-logs' => auditLogs,
       'attendance' => attendance,
       'exams' => exams,
+      'reports' => reports,
       'settings' => settings,
       _ => '/modules/$moduleId',
     };
@@ -118,6 +120,7 @@ abstract final class AppRouteName {
   static const examSchedules = 'exam-schedules';
   static const examMarks = 'exam-marks';
   static const examResults = 'exam-results';
+  static const reports = 'reports';
   static const settings = 'settings';
   static const newFeeStructure = 'new-fee-structure';
   static const editFeeStructure = 'edit-fee-structure';

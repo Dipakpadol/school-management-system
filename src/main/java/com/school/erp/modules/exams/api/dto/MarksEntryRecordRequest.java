@@ -10,6 +10,6 @@ import jakarta.validation.constraints.Size;
 public record MarksEntryRecordRequest(
 		@NotNull UUID studentId,
 		@NotNull @DecimalMin(value = "0.00") BigDecimal marksObtained,
-		@NotNull @DecimalMin(value = "0.01") BigDecimal maxMarks,
+		@DecimalMin(value = "0.01") BigDecimal maxMarks,
 		@Size(max = 500) String remarks) {
 }

@@ -1,6 +1,7 @@
 abstract final class ApiPaths {
   static const systemStatus = '/v1/system/status';
   static const dashboardSummary = '/v1/dashboard/summary';
+  static const dashboardTodayAttendance = '/v1/dashboard/today-attendance';
   static const currentMenu = '/v1/menus/current';
 
   static const login = '/v1/auth/login';
@@ -37,6 +38,9 @@ abstract final class ApiPaths {
   static const auditLogFilterModules = '/v1/audit-logs/filter-options/modules';
   static const auditLogFilterActions = '/v1/audit-logs/filter-options/actions';
   static const auditLogFilterUsers = '/v1/audit-logs/filter-options/users';
+
+  static const reportsOptions = '/v1/reports/options';
+  static const reportsExport = '/v1/reports/export';
 
   static const feeCategories = '/v1/fees/categories';
   static const feeStructures = '/v1/fees/structures';
@@ -106,6 +110,18 @@ abstract final class ApiPaths {
   static String studentPdf(String id) => '/v1/students/$id/pdf';
 
   static String studentProfile(String id) => '/v1/students/$id/profile';
+
+  static String studentAttendanceHistory(String id) =>
+      '/v1/students/$id/attendance-history';
+
+  static String studentAttendanceHistoryExport(String id) =>
+      '/v1/students/$id/attendance-history/export';
+
+  static String studentExamResults(String id) =>
+      '/v1/students/$id/exam-results';
+
+  static String studentExamReportCard(String id, String resultId) =>
+      '/v1/students/$id/exam-results/$resultId/report-card';
 
   static String studentPhoto(String id) => '/v1/students/$id/photo';
 

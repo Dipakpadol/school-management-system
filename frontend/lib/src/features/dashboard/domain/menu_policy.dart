@@ -120,6 +120,9 @@ String? moduleIdForPath(String path) {
   if (path == '/exams' || path.startsWith('/exams/')) {
     return 'exams';
   }
+  if (path == '/reports' || path.startsWith('/reports/')) {
+    return 'reports';
+  }
   if (path == '/settings' || path.startsWith('/settings/')) {
     return 'settings';
   }

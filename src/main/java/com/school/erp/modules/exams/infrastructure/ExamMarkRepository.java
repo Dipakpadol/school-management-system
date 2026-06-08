@@ -12,7 +12,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface ExamMarkRepository extends BaseRepository<ExamMark, UUID> {
 
-	@EntityGraph(attributePaths = { "student", "examSchedule", "subject" })
+	@EntityGraph(attributePaths = { "student", "examSchedule", "examSchedule.subjects", "examSchedule.subjects.subject", "subject" })
 	@Query("""
 			select mark
 			from ExamMark mark
@@ -31,7 +31,7 @@ public interface ExamMarkRepository extends BaseRepository<ExamMark, UUID> {
 			@Param("examScheduleId") UUID examScheduleId,
 			@Param("subjectId") UUID subjectId);
 
-	@EntityGraph(attributePaths = { "student", "examSchedule", "subject" })
+	@EntityGraph(attributePaths = { "student", "examSchedule", "examSchedule.subjects", "examSchedule.subjects.subject", "subject" })
 	@Query("""
 			select mark
 			from ExamMark mark
@@ -48,7 +48,7 @@ public interface ExamMarkRepository extends BaseRepository<ExamMark, UUID> {
 			@Param("sectionId") UUID sectionId,
 			@Param("examTypeId") UUID examTypeId);
 
-	@EntityGraph(attributePaths = { "student", "examSchedule", "subject", "classEntity", "section" })
+	@EntityGraph(attributePaths = { "student", "examSchedule", "examSchedule.subjects", "examSchedule.subjects.subject", "subject", "classEntity", "section" })
 	@Query("""
 			select mark
 			from ExamMark mark
@@ -60,6 +60,33 @@ public interface ExamMarkRepository extends BaseRepository<ExamMark, UUID> {
 	List<ExamMark> findStudentMarks(
 			@Param("studentId") UUID studentId,
 			@Param("academicYearId") UUID academicYearId);
+
+	@EntityGraph(attributePaths = {
+			"student",
+			"academicYear",
+			"classEntity",
+			"section",
+			"examSchedule",
+			"examSchedule.examType",
+			"examSchedule.subjects",
+			"examSchedule.subjects.subject",
+			"subject"
+	})
+	@Query("""
+			select mark
+			from ExamMark mark
+			where mark.deleted = false
+			  and mark.student.id = :studentId
+			  and (:academicYearId is null or mark.academicYear.id = :academicYearId)
+			  and (:examTypeId is null or mark.examSchedule.examType.id = :examTypeId)
+			  and (:examScheduleId is null or mark.examSchedule.id = :examScheduleId)
+			order by mark.academicYear.startDate desc, mark.examSchedule.examDate asc, mark.subject.name asc
+			""")
+	List<ExamMark> findStudentExamResults(
+			@Param("studentId") UUID studentId,
+			@Param("academicYearId") UUID academicYearId,
+			@Param("examTypeId") UUID examTypeId,
+			@Param("examScheduleId") UUID examScheduleId);
 
 	long countByExamScheduleIdAndDeletedFalse(UUID examScheduleId);
 }

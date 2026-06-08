@@ -32,15 +32,15 @@ class DashboardSummaryModel {
       ),
       totalFeeCollected: _doubleValue(json['totalFeeCollected']),
       pendingFeeAmount: _doubleValue(json['pendingFeeAmount']),
-      recentActivities: _list(json['recentActivities'])
-          .map(DashboardActivityModel.fromJson)
-          .toList(),
-      notifications: _list(json['notifications'])
-          .map(DashboardNotificationModel.fromJson)
-          .toList(),
-      birthdaysToday: _list(json['birthdaysToday'])
-          .map(DashboardBirthdayModel.fromJson)
-          .toList(),
+      recentActivities: _list(
+        json['recentActivities'],
+      ).map(DashboardActivityModel.fromJson).toList(),
+      notifications: _list(
+        json['notifications'],
+      ).map(DashboardNotificationModel.fromJson).toList(),
+      birthdaysToday: _list(
+        json['birthdaysToday'],
+      ).map(DashboardBirthdayModel.fromJson).toList(),
     );
   }
 
@@ -65,7 +65,9 @@ class DashboardSummaryModel {
     return DashboardOverview(
       systemStatus: systemStatus,
       metrics: metrics,
-      recentActivities: recentActivities.map((item) => item.toDomain()).toList(),
+      recentActivities: recentActivities
+          .map((item) => item.toDomain())
+          .toList(),
       notifications: notifications.map((item) => item.toDomain()).toList(),
       birthdaysToday: birthdaysToday.map((item) => item.toDomain()).toList(),
     );
@@ -94,6 +96,43 @@ class DashboardSummaryModel {
     }
     return value.whereType<Map<String, dynamic>>().toList();
   }
+}
+
+class TodayAttendanceModel {
+  const TodayAttendanceModel({
+    required this.date,
+    required this.totalStudents,
+    required this.present,
+    required this.absent,
+    required this.late,
+    required this.halfDay,
+    required this.leave,
+    required this.attendancePercentage,
+  });
+
+  factory TodayAttendanceModel.fromJson(Map<String, dynamic> json) {
+    return TodayAttendanceModel(
+      date: DateTime.tryParse(json['date']?.toString() ?? '') ?? DateTime.now(),
+      totalStudents: DashboardSummaryModel._intValue(json['totalStudents']),
+      present: DashboardSummaryModel._intValue(json['present']),
+      absent: DashboardSummaryModel._intValue(json['absent']),
+      late: DashboardSummaryModel._intValue(json['late']),
+      halfDay: DashboardSummaryModel._intValue(json['halfDay']),
+      leave: DashboardSummaryModel._intValue(json['leave']),
+      attendancePercentage: DashboardSummaryModel._doubleValue(
+        json['attendancePercentage'],
+      ),
+    );
+  }
+
+  final DateTime date;
+  final int totalStudents;
+  final int present;
+  final int absent;
+  final int late;
+  final int halfDay;
+  final int leave;
+  final double attendancePercentage;
 }
 
 class DashboardActivityModel {

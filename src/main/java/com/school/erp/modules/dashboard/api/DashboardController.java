@@ -1,8 +1,11 @@
 package com.school.erp.modules.dashboard.api;
 
+import java.util.UUID;
+
 import com.school.erp.common.api.ApiResponse;
 import com.school.erp.common.web.CorrelationIdFilter;
 import com.school.erp.modules.dashboard.api.dto.DashboardSummaryResponse;
+import com.school.erp.modules.dashboard.api.dto.TodayAttendanceResponse;
 import com.school.erp.modules.dashboard.application.DashboardService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,6 +37,21 @@ public class DashboardController {
 		return ResponseEntity.ok(ApiResponse.success(
 				dashboardService.summary(),
 				"Dashboard summary loaded",
+				request.getRequestURI(),
+				MDC.get(CorrelationIdFilter.CORRELATION_ID)));
+	}
+
+	@Operation(summary = "Get today's attendance summary")
+	@GetMapping("/today-attendance")
+	@PreAuthorize("isAuthenticated()")
+	public ResponseEntity<ApiResponse<TodayAttendanceResponse>> todayAttendance(
+			@RequestParam(required = false) UUID academicYearId,
+			@RequestParam(required = false) UUID classId,
+			@RequestParam(required = false) UUID sectionId,
+			HttpServletRequest request) {
+		return ResponseEntity.ok(ApiResponse.success(
+				dashboardService.todayAttendance(academicYearId, classId, sectionId),
+				"Today's attendance loaded",
 				request.getRequestURI(),
 				MDC.get(CorrelationIdFilter.CORRELATION_ID)));
 	}

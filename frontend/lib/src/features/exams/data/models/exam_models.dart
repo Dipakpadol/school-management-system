@@ -56,44 +56,123 @@ class ExamScheduleModel {
   const ExamScheduleModel({
     required this.id,
     required this.academicYearId,
+    required this.academicYearName,
     required this.classId,
+    required this.className,
     required this.sectionId,
+    required this.sectionName,
     required this.examTypeId,
     required this.examTypeName,
-    required this.subjectId,
-    required this.subjectName,
-    required this.examDate,
-    required this.maxMarks,
+    required this.examName,
+    required this.subjects,
     required this.status,
   });
 
   factory ExamScheduleModel.fromJson(Map<String, dynamic> json) {
+    final subjectsJson = json['subjects'];
+    final subjects = subjectsJson is List
+        ? subjectsJson
+              .whereType<Map<String, dynamic>>()
+              .map(ExamScheduleSubjectModel.fromJson)
+              .toList(growable: false)
+        : const <ExamScheduleSubjectModel>[];
+    final legacySubjectId = json['subjectId'] as String?;
+    final normalizedSubjects = subjects.isNotEmpty || legacySubjectId == null
+        ? subjects
+        : [ExamScheduleSubjectModel.fromLegacyJson(json)];
     return ExamScheduleModel(
       id: json['id'] as String? ?? '',
       academicYearId: json['academicYearId'] as String? ?? '',
+      academicYearName: json['academicYearName'] as String? ?? '',
       classId: json['classId'] as String? ?? '',
+      className: json['className'] as String? ?? '',
       sectionId: json['sectionId'] as String? ?? '',
+      sectionName: json['sectionName'] as String? ?? '',
       examTypeId: json['examTypeId'] as String? ?? '',
       examTypeName: json['examTypeName'] as String? ?? '',
-      subjectId: json['subjectId'] as String? ?? '',
-      subjectName: json['subjectName'] as String? ?? '',
-      examDate: DateTime.parse(json['examDate'] as String),
-      maxMarks: (json['maxMarks'] as num?)?.toDouble() ?? 0,
+      examName:
+          json['examName'] as String? ?? json['examTypeName'] as String? ?? '',
+      subjects: normalizedSubjects,
       status: json['status'] as String? ?? 'SCHEDULED',
     );
   }
 
   final String id;
   final String academicYearId;
+  final String academicYearName;
   final String classId;
+  final String className;
   final String sectionId;
+  final String sectionName;
   final String examTypeId;
   final String examTypeName;
+  final String examName;
+  final List<ExamScheduleSubjectModel> subjects;
+  final String status;
+
+  String get subjectId => subjects.isEmpty ? '' : subjects.first.subjectId;
+
+  String get subjectName => subjects.isEmpty ? '' : subjects.first.subjectName;
+
+  DateTime get examDate =>
+      subjects.isEmpty ? DateTime.now() : subjects.first.examDate;
+
+  double get maxMarks => subjects.isEmpty ? 0 : subjects.first.maxMarks;
+
+  double? get passingMarks =>
+      subjects.isEmpty ? null : subjects.first.passingMarks;
+
+  ExamScheduleSubjectModel? subjectById(String? id) {
+    if (id == null) {
+      return null;
+    }
+    for (final subject in subjects) {
+      if (subject.subjectId == id) {
+        return subject;
+      }
+    }
+    return null;
+  }
+}
+
+class ExamScheduleSubjectModel {
+  const ExamScheduleSubjectModel({
+    required this.id,
+    required this.subjectId,
+    required this.subjectName,
+    required this.examDate,
+    required this.maxMarks,
+    this.passingMarks,
+  });
+
+  factory ExamScheduleSubjectModel.fromJson(Map<String, dynamic> json) {
+    return ExamScheduleSubjectModel(
+      id: json['id'] as String? ?? '',
+      subjectId: json['subjectId'] as String? ?? '',
+      subjectName: json['subjectName'] as String? ?? '',
+      examDate: _parseDate(json['examDate']),
+      maxMarks: _parseDouble(json['maxMarks']),
+      passingMarks: _parseNullableDouble(json['passingMarks']),
+    );
+  }
+
+  factory ExamScheduleSubjectModel.fromLegacyJson(Map<String, dynamic> json) {
+    return ExamScheduleSubjectModel(
+      id: '',
+      subjectId: json['subjectId'] as String? ?? '',
+      subjectName: json['subjectName'] as String? ?? '',
+      examDate: _parseDate(json['examDate']),
+      maxMarks: _parseDouble(json['maxMarks']),
+      passingMarks: _parseNullableDouble(json['passingMarks']),
+    );
+  }
+
+  final String id;
   final String subjectId;
   final String subjectName;
   final DateTime examDate;
   final double maxMarks;
-  final String status;
+  final double? passingMarks;
 }
 
 class ExamMarkModel {
@@ -130,11 +209,17 @@ class ExamMarkModel {
 }
 
 class MarksEntryModel {
-  const MarksEntryModel({required this.records});
+  const MarksEntryModel({
+    required this.records,
+    required this.maxMarks,
+    this.passingMarks,
+  });
 
   factory MarksEntryModel.fromJson(Map<String, dynamic> json) {
     final recordsJson = json['records'];
     return MarksEntryModel(
+      maxMarks: _parseDouble(json['maxMarks']),
+      passingMarks: _parseNullableDouble(json['passingMarks']),
       records: recordsJson is List
           ? recordsJson
                 .whereType<Map<String, dynamic>>()
@@ -145,6 +230,8 @@ class MarksEntryModel {
   }
 
   final List<ExamMarkModel> records;
+  final double maxMarks;
+  final double? passingMarks;
 }
 
 class StudentResultModel {
@@ -186,3 +273,24 @@ class StudentResultModel {
 }
 
 typedef ExamSubjectModel = DivisionSubjectModel;
+
+DateTime _parseDate(Object? value) {
+  if (value is String && value.isNotEmpty) {
+    return DateTime.parse(value);
+  }
+  return DateTime.now();
+}
+
+double _parseDouble(Object? value) {
+  return _parseNullableDouble(value) ?? 0;
+}
+
+double? _parseNullableDouble(Object? value) {
+  if (value is num) {
+    return value.toDouble();
+  }
+  if (value is String) {
+    return double.tryParse(value);
+  }
+  return null;
+}

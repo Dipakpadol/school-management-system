@@ -13,6 +13,8 @@ import java.util.stream.Collectors;
 
 import com.school.erp.common.audit.application.AuditLogEvent;
 import com.school.erp.common.audit.application.AuditLogService;
+import com.school.erp.common.api.PageRequestDto;
+import com.school.erp.common.api.PageResponse;
 import com.school.erp.common.exception.BusinessException;
 import com.school.erp.common.exception.ErrorCode;
 import com.school.erp.common.exception.ResourceNotFoundException;
@@ -25,6 +27,8 @@ import com.school.erp.modules.attendance.api.dto.AttendanceStudentResponse;
 import com.school.erp.modules.attendance.api.dto.DailyAttendanceRecordRequest;
 import com.school.erp.modules.attendance.api.dto.DailyAttendanceRequest;
 import com.school.erp.modules.attendance.api.dto.DailyAttendanceResponse;
+import com.school.erp.modules.attendance.api.dto.StudentAttendanceHistoryRecordResponse;
+import com.school.erp.modules.attendance.api.dto.StudentAttendanceHistoryResponse;
 import com.school.erp.modules.attendance.api.dto.StudentAttendanceSummaryResponse;
 import com.school.erp.modules.attendance.domain.AttendanceRecord;
 import com.school.erp.modules.attendance.domain.AttendanceStatus;
@@ -34,8 +38,13 @@ import com.school.erp.modules.students.domain.StudentClassAssignment;
 import com.school.erp.modules.students.infrastructure.StudentClassAssignmentRepository;
 import com.school.erp.modules.students.infrastructure.StudentRepository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import lombok.RequiredArgsConstructor;
 
@@ -166,6 +175,87 @@ public class AttendanceService {
 	}
 
 	@Transactional(readOnly = true)
+	public StudentAttendanceHistoryResponse getStudentAttendanceHistory(
+			UUID studentId,
+			UUID academicYearId,
+			LocalDate fromDate,
+			LocalDate toDate,
+			AttendanceStatus status,
+			PageRequestDto pageRequest,
+			String sort) {
+		validateDateRange(fromDate, toDate);
+		AcademicYear selectedYear = academicYearId == null ? null : academicHierarchyService.loadAcademicYear(academicYearId);
+		Student student = studentRepository.findProfileByIdAndDeletedFalse(studentId)
+				.orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
+		Pageable pageable = studentHistoryPageable(pageRequest, sort);
+		Page<AttendanceRecord> page = attendanceRecordRepository.findStudentHistory(
+				studentId,
+				academicYearId,
+				fromDate,
+				toDate,
+				status,
+				pageable);
+		List<AttendanceRecord> summaryRecords = attendanceRecordRepository.findStudentHistoryForSummary(
+				studentId,
+				academicYearId,
+				fromDate,
+				toDate,
+				status);
+		AttendanceContext context = attendanceContext(student, selectedYear, summaryRecords);
+		return new StudentAttendanceHistoryResponse(
+				studentId,
+				student.getDisplayName(),
+				context.academicYearId(),
+				context.academicYear(),
+				context.classId(),
+				context.className(),
+				context.sectionId(),
+				context.sectionName(),
+				summaryRecords.size(),
+				count(summaryRecords, AttendanceStatus.PRESENT),
+				count(summaryRecords, AttendanceStatus.ABSENT),
+				count(summaryRecords, AttendanceStatus.LATE),
+				count(summaryRecords, AttendanceStatus.HALF_DAY),
+				count(summaryRecords, AttendanceStatus.LEAVE),
+				attendancePercentage(summaryRecords),
+				PageResponse.from(page, this::toHistoryRecordResponse));
+	}
+
+	@Transactional(readOnly = true)
+	public byte[] exportStudentAttendanceHistory(
+			UUID studentId,
+			UUID academicYearId,
+			LocalDate fromDate,
+			LocalDate toDate,
+			AttendanceStatus status) {
+		validateDateRange(fromDate, toDate);
+		if (academicYearId != null) {
+			academicHierarchyService.loadAcademicYear(academicYearId);
+		}
+		Student student = studentRepository.findByIdAndDeletedFalse(studentId)
+				.orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
+		List<AttendanceRecord> records = attendanceRecordRepository.findStudentHistoryForSummary(
+				studentId,
+				academicYearId,
+				fromDate,
+				toDate,
+				status);
+		StringBuilder csv = new StringBuilder("Student,Admission Number,Date,Status,Remarks,Marked By,Marked At,Updated By,Updated At\n");
+		for (AttendanceRecord record : records) {
+			csv.append(escape(student.getDisplayName())).append(',')
+					.append(escape(student.getAdmissionNumber())).append(',')
+					.append(record.getAttendanceDate()).append(',')
+					.append(record.getStatus()).append(',')
+					.append(escape(record.getRemarks())).append(',')
+					.append(escape(record.getCreatedBy())).append(',')
+					.append(record.getCreatedAt()).append(',')
+					.append(escape(record.getUpdatedBy())).append(',')
+					.append(record.getUpdatedAt()).append('\n');
+		}
+		return csv.toString().getBytes(StandardCharsets.UTF_8);
+	}
+
+	@Transactional(readOnly = true)
 	public byte[] export(UUID academicYearId, UUID classId, UUID sectionId, LocalDate fromDate, LocalDate toDate) {
 		if (fromDate.isAfter(toDate)) {
 			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "From date must be before or equal to to date.");
@@ -275,6 +365,113 @@ public class AttendanceService {
 		return records.stream().filter(record -> record.getStatus() == status).count();
 	}
 
+	private BigDecimal attendancePercentage(List<AttendanceRecord> records) {
+		long total = records.size();
+		if (total == 0) {
+			return BigDecimal.ZERO;
+		}
+		return BigDecimal.valueOf(count(records, AttendanceStatus.PRESENT) + count(records, AttendanceStatus.LATE))
+				.add(BigDecimal.valueOf(count(records, AttendanceStatus.HALF_DAY)).multiply(BigDecimal.valueOf(0.5)))
+				.multiply(BigDecimal.valueOf(100))
+				.divide(BigDecimal.valueOf(total), 2, RoundingMode.HALF_UP);
+	}
+
+	private StudentAttendanceHistoryRecordResponse toHistoryRecordResponse(AttendanceRecord record) {
+		return new StudentAttendanceHistoryRecordResponse(
+				record.getAttendanceDate(),
+				record.getStatus(),
+				record.getRemarks(),
+				record.getCreatedBy(),
+				record.getCreatedAt(),
+				record.getUpdatedBy(),
+				record.getUpdatedAt());
+	}
+
+	private AttendanceContext attendanceContext(
+			Student student,
+			AcademicYear selectedYear,
+			List<AttendanceRecord> records) {
+		if (!records.isEmpty()) {
+			AttendanceRecord first = records.getFirst();
+			return new AttendanceContext(
+					first.getAcademicYear().getId(),
+					first.getAcademicYear().getName(),
+					first.getClassEntity().getId(),
+					first.getClassEntity().getName(),
+					first.getSection().getId(),
+					first.getSection().getName());
+		}
+		StudentClassAssignment assignment = student.getClassAssignments().stream()
+				.filter(existing -> !existing.isDeleted())
+				.filter(existing -> selectedYear == null || existing.isForAcademicYear(selectedYear))
+				.filter(StudentClassAssignment::isActive)
+				.findFirst()
+				.or(() -> student.getCurrentAssignment())
+				.orElse(null);
+		if (assignment == null) {
+			return new AttendanceContext(
+					selectedYear == null ? null : selectedYear.getId(),
+					selectedYear == null ? null : selectedYear.getName(),
+					null,
+					null,
+					null,
+					null);
+		}
+		return new AttendanceContext(
+				assignment.getAcademicYearEntity() == null ? selectedYear == null ? null : selectedYear.getId() : assignment.getAcademicYearEntity().getId(),
+				assignment.getAcademicYearEntity() == null ? assignment.getAcademicYear() : assignment.getAcademicYearEntity().getName(),
+				assignment.getClassEntity() == null ? null : assignment.getClassEntity().getId(),
+				assignment.getClassName(),
+				assignment.getSectionEntity() == null ? null : assignment.getSectionEntity().getId(),
+				assignment.getSectionName());
+	}
+
+	private void validateDateRange(LocalDate fromDate, LocalDate toDate) {
+		if (fromDate != null && toDate != null && fromDate.isAfter(toDate)) {
+			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "From date must be before or equal to to date.");
+		}
+	}
+
+	private Pageable studentHistoryPageable(PageRequestDto pageRequest, String sort) {
+		int page = pageRequest == null ? 0 : pageRequest.page();
+		int size = pageRequest == null ? 20 : pageRequest.size();
+		Sort.Direction direction = Sort.Direction.DESC;
+		String property = "attendanceDate";
+		if (StringUtils.hasText(sort)) {
+			String[] parts = sort.split(",");
+			property = attendanceSortProperty(parts[0]);
+			if (parts.length > 1) {
+				direction = sortDirection(parts[1], direction);
+			}
+		}
+		else if (pageRequest != null && StringUtils.hasText(pageRequest.sortBy())) {
+			property = attendanceSortProperty(pageRequest.sortBy());
+			direction = pageRequest.direction();
+		}
+		return PageRequest.of(page, size, Sort.by(direction, property));
+	}
+
+	private Sort.Direction sortDirection(String value, Sort.Direction defaultDirection) {
+		try {
+			return Sort.Direction.fromString(value);
+		}
+		catch (IllegalArgumentException ex) {
+			return defaultDirection;
+		}
+	}
+
+	private String attendanceSortProperty(String value) {
+		if (!StringUtils.hasText(value)) {
+			return "attendanceDate";
+		}
+		return switch (value.trim()) {
+			case "status" -> "status";
+			case "markedAt", "createdAt" -> "createdAt";
+			case "updatedAt" -> "updatedAt";
+			default -> "attendanceDate";
+		};
+	}
+
 	private String escape(String value) {
 		if (value == null) {
 			return "";
@@ -296,5 +493,14 @@ public class AttendanceService {
 	}
 
 	private record Hierarchy(AcademicYear academicYear, ClassEntity classEntity, SectionEntity section) {
+	}
+
+	private record AttendanceContext(
+			UUID academicYearId,
+			String academicYear,
+			UUID classId,
+			String className,
+			UUID sectionId,
+			String sectionName) {
 	}
 }

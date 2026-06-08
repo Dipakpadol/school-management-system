@@ -10,6 +10,8 @@ import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/models/student_models.dart';
 import '../../data/repositories/students_repository_impl.dart';
 import '../controllers/students_providers.dart';
+import '../widgets/student_attendance_tab.dart';
+import '../widgets/student_exam_results_tab.dart';
 
 class StudentProfilePage extends ConsumerWidget {
   const StudentProfilePage({required this.studentId, super.key});
@@ -49,7 +51,7 @@ class _ProfileScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 8,
+      length: 9,
       child: Column(
         children: [
           Material(
@@ -105,6 +107,7 @@ class _ProfileScaffold extends StatelessWidget {
                     Tab(text: 'Documents'),
                     Tab(text: 'Hostel'),
                     Tab(text: 'Transport'),
+                    Tab(text: 'Exams & Results'),
                   ],
                 ),
               ],
@@ -117,11 +120,7 @@ class _ProfileScaffold extends StatelessWidget {
                 _PersonalTab(student: student),
                 _ParentsTab(student: student),
                 _AcademicTab(student: student),
-                const _ActionTab(
-                  title: 'Attendance',
-                  message: 'No attendance records are available yet.',
-                  icon: Icons.fact_check_outlined,
-                ),
+                StudentAttendanceTab(student: student),
                 _FeesTab(student: student),
                 _DocumentsTab(student: student),
                 const _ActionTab(
@@ -134,6 +133,7 @@ class _ProfileScaffold extends StatelessWidget {
                   message: 'No transport assignment is recorded.',
                   icon: Icons.directions_bus_outlined,
                 ),
+                StudentExamResultsTab(student: student),
               ],
             ),
           ),

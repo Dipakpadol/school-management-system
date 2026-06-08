@@ -4,8 +4,9 @@ import '../../../../core/constants/api_paths.dart';
 import '../../../../core/network/api_client.dart';
 import '../models/dashboard_summary_model.dart';
 
-final dashboardRemoteDataSourceProvider =
-    Provider<DashboardRemoteDataSource>((ref) {
+final dashboardRemoteDataSourceProvider = Provider<DashboardRemoteDataSource>((
+  ref,
+) {
   return DashboardRemoteDataSource(ref.watch(apiClientProvider));
 });
 
@@ -20,6 +21,14 @@ class DashboardRemoteDataSource {
     );
     final data = _unwrapData(response.data);
     return DashboardSummaryModel.fromJson(data);
+  }
+
+  Future<TodayAttendanceModel> fetchTodayAttendance() async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.dashboardTodayAttendance,
+    );
+    final data = _unwrapData(response.data);
+    return TodayAttendanceModel.fromJson(data);
   }
 
   Future<String> fetchSystemStatus() async {

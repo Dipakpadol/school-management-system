@@ -34,8 +34,8 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
   String? _examTypeId;
   String? _subjectId;
   String? _scheduleId;
-  DateTime _examDate = DateTime.now();
   bool _loading = false;
+  bool _savingMarks = false;
 
   @override
   void initState() {
@@ -124,7 +124,9 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
                       child: ListTile(
                         leading: const Icon(Icons.assignment_outlined),
                         title: Text(type.name),
-                        subtitle: Text('${type.code} | ${type.active ? 'Active' : 'Inactive'}'),
+                        subtitle: Text(
+                          '${type.code} | ${type.active ? 'Active' : 'Inactive'}',
+                        ),
                         trailing: PopupMenuButton<String>(
                           onSelected: (action) {
                             if (action == 'edit') {
@@ -135,7 +137,10 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
                           },
                           itemBuilder: (context) => const [
                             PopupMenuItem(value: 'edit', child: Text('Edit')),
-                            PopupMenuItem(value: 'delete', child: Text('Delete')),
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Text('Delete'),
+                            ),
                           ],
                         ),
                       ),
@@ -150,17 +155,12 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
   Widget _schedulesTab() {
     return Column(
       children: [
-        _hierarchyFilters(showExamType: true, showSubject: true),
+        _hierarchyFilters(showExamType: true, showSubject: false),
         _toolbar([
-          OutlinedButton.icon(
-            onPressed: _pickExamDate,
-            icon: const Icon(Icons.calendar_today_outlined),
-            label: Text(_dateLabel(_examDate)),
-          ),
           AppButton(
             label: 'Add schedule',
             icon: Icons.add,
-            onPressed: _saveSchedule,
+            onPressed: () => _showScheduleDialog(),
           ),
           OutlinedButton.icon(
             onPressed: _loadSchedules,
@@ -180,19 +180,29 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
                     return Card(
                       child: ListTile(
                         leading: const Icon(Icons.event_note_outlined),
-                        title: Text('${schedule.examTypeName} - ${schedule.subjectName}'),
-                        subtitle: Text('${_dateLabel(schedule.examDate)} | Max ${schedule.maxMarks.toStringAsFixed(0)} | ${schedule.status}'),
+                        title: Text(
+                          schedule.examName.isEmpty
+                              ? schedule.examTypeName
+                              : schedule.examName,
+                        ),
+                        subtitle: Text(
+                          '${schedule.examTypeName} | ${schedule.subjects.length} subject${schedule.subjects.length == 1 ? '' : 's'} | ${schedule.status}\n'
+                          '${schedule.subjects.map(_scheduleSubjectSummary).join(' | ')}',
+                        ),
                         trailing: PopupMenuButton<String>(
                           onSelected: (action) {
                             if (action == 'edit') {
-                              _showScheduleDialog(schedule);
+                              _showScheduleDialog(schedule: schedule);
                             } else {
                               _deleteSchedule(schedule.id);
                             }
                           },
                           itemBuilder: (context) => const [
                             PopupMenuItem(value: 'edit', child: Text('Edit')),
-                            PopupMenuItem(value: 'delete', child: Text('Delete')),
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Text('Delete'),
+                            ),
                           ],
                         ),
                       ),
@@ -205,9 +215,11 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
   }
 
   Widget _marksTab() {
+    final selectedSubject = _selectedScheduleSubject;
+    final passingMarks = selectedSubject?.passingMarks;
     return Column(
       children: [
-        _hierarchyFilters(showExamType: false, showSubject: true),
+        _hierarchyFilters(showExamType: false, showSubject: false),
         _toolbar([
           _dropdown(
             width: 300,
@@ -216,13 +228,36 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
             items: _schedules.map(
               (item) => MapEntry(
                 item.id,
-                '${item.examTypeName} - ${item.subjectName}',
+                item.examName.isEmpty
+                    ? item.examTypeName
+                    : '${item.examName} - ${item.examTypeName}',
               ),
             ),
             onChanged: (value) => setState(() {
               _scheduleId = value;
-              _subjectId = _subjectForSchedule(value);
+              _subjectId = _selectedSchedule?.subjects.isEmpty ?? true
+                  ? null
+                  : _selectedSchedule!.subjects.first.subjectId;
             }),
+          ),
+          _dropdown(
+            width: 240,
+            label: 'Subject',
+            value: _subjectId,
+            items: (_selectedSchedule?.subjects ?? const []).map(
+              (item) => MapEntry(item.subjectId, item.subjectName),
+            ),
+            onChanged: (value) => setState(() => _subjectId = value),
+          ),
+          _readonlyMetric(
+            'Max',
+            selectedSubject == null
+                ? '-'
+                : selectedSubject.maxMarks.toStringAsFixed(0),
+          ),
+          _readonlyMetric(
+            'Passing',
+            passingMarks == null ? '-' : passingMarks.toStringAsFixed(0),
           ),
           AppButton(
             label: 'Load students',
@@ -232,7 +267,8 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
           AppButton(
             label: 'Save marks',
             icon: Icons.save_outlined,
-            onPressed: _saveMarks,
+            onPressed: _savingMarks ? null : _saveMarks,
+            isLoading: _savingMarks,
           ),
         ]),
         Expanded(
@@ -251,13 +287,17 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
                     return Card(
                       child: ListTile(
                         title: Text(student.displayName),
-                        subtitle: Text('${student.rollNumber ?? '-'} | ${student.admissionNumber}'),
+                        subtitle: Text(
+                          '${student.rollNumber ?? '-'} | ${student.admissionNumber}',
+                        ),
                         trailing: SizedBox(
                           width: 120,
                           child: TextField(
                             controller: controller,
                             keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(labelText: 'Marks'),
+                            decoration: const InputDecoration(
+                              labelText: 'Marks',
+                            ),
                           ),
                         ),
                       ),
@@ -330,6 +370,9 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
             _classes = const [];
             _sections = const [];
             _subjects = const [];
+            _schedules = const [];
+            _scheduleId = null;
+            _subjectId = null;
           });
           if (value != null) {
             _loadClasses(value);
@@ -347,6 +390,9 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
             _sectionId = null;
             _sections = const [];
             _subjects = const [];
+            _schedules = const [];
+            _scheduleId = null;
+            _subjectId = null;
           });
           if (value != null) {
             _loadSections(value);
@@ -359,9 +405,15 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
         value: _sectionId,
         items: _sections.map((item) => MapEntry(item.id, item.name)),
         onChanged: (value) {
-          setState(() => _sectionId = value);
+          setState(() {
+            _sectionId = value;
+            _scheduleId = null;
+            _subjectId = null;
+            _schedules = const [];
+          });
           if (_classId != null && value != null) {
             _loadSubjects(_classId!, value);
+            _loadSchedules();
           }
         },
       ),
@@ -378,7 +430,9 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
           width: 220,
           label: 'Subject',
           value: _subjectId,
-          items: _subjects.map((item) => MapEntry(item.subjectId, item.subjectName)),
+          items: _subjects.map(
+            (item) => MapEntry(item.subjectId, item.subjectName),
+          ),
           onChanged: (value) => setState(() => _subjectId = value),
         ),
     ]);
@@ -421,6 +475,16 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
     );
   }
 
+  Widget _readonlyMetric(String label, String value) {
+    return SizedBox(
+      width: 110,
+      child: InputDecorator(
+        decoration: InputDecoration(labelText: label),
+        child: Text(value),
+      ),
+    );
+  }
+
   Future<void> _initialLoad() async {
     setState(() => _loading = true);
     await Future.wait([_loadYears(), _loadTypes()]);
@@ -454,8 +518,9 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
   }
 
   Future<void> _loadSubjects(String classId, String sectionId) async {
-    final result =
-        await ref.read(examsRepositoryProvider).subjects(classId, sectionId);
+    final result = await ref
+        .read(examsRepositoryProvider)
+        .subjects(classId, sectionId);
     result.when(
       success: (subjects) => setState(() => _subjects = subjects),
       failure: (failure) => _snack(failure.message),
@@ -471,13 +536,22 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
   }
 
   Future<void> _loadSchedules() async {
-    final result = await ref.read(examsRepositoryProvider).schedules(
+    final result = await ref
+        .read(examsRepositoryProvider)
+        .schedules(
           academicYearId: _yearId,
           classId: _classId,
           sectionId: _sectionId,
         );
     result.when(
-      success: (schedules) => setState(() => _schedules = schedules),
+      success: (schedules) => setState(() {
+        _schedules = schedules;
+        if (_scheduleId != null &&
+            !schedules.any((schedule) => schedule.id == _scheduleId)) {
+          _scheduleId = null;
+          _subjectId = null;
+        }
+      }),
       failure: (failure) => _snack(failure.message),
     );
   }
@@ -499,15 +573,27 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextField(controller: code, decoration: const InputDecoration(labelText: 'Code')),
+                    TextField(
+                      controller: code,
+                      decoration: const InputDecoration(labelText: 'Code'),
+                    ),
                     const SizedBox(height: 12),
-                    TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+                    TextField(
+                      controller: name,
+                      decoration: const InputDecoration(labelText: 'Name'),
+                    ),
                     const SizedBox(height: 12),
-                    TextField(controller: description, decoration: const InputDecoration(labelText: 'Description')),
+                    TextField(
+                      controller: description,
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     SwitchListTile(
                       value: active,
-                      onChanged: (value) => setDialogState(() => active = value),
+                      onChanged: (value) =>
+                          setDialogState(() => active = value),
                       title: const Text('Active'),
                     ),
                   ],
@@ -516,16 +602,21 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
             },
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
             FilledButton.icon(
               onPressed: () async {
-                final result = await ref.read(examsRepositoryProvider).saveType(type?.id, {
-                  'code': code.text.trim(),
-                  'name': name.text.trim(),
-                  'description': _blankToNull(description.text),
-                  'displayOrder': 0,
-                  'active': active,
-                });
+                final result = await ref
+                    .read(examsRepositoryProvider)
+                    .saveType(type?.id, {
+                      'code': code.text.trim(),
+                      'name': name.text.trim(),
+                      'description': _blankToNull(description.text),
+                      'displayOrder': 0,
+                      'active': active,
+                    });
                 if (!context.mounted) {
                   return;
                 }
@@ -557,30 +648,6 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
     );
   }
 
-  Future<void> _saveSchedule() async {
-    if (_yearId == null || _classId == null || _sectionId == null || _examTypeId == null || _subjectId == null) {
-      _snack('Select academic year, class, division, exam type, and subject.');
-      return;
-    }
-    final result = await ref.read(examsRepositoryProvider).saveSchedule(null, {
-      'academicYearId': _yearId,
-      'classId': _classId,
-      'sectionId': _sectionId,
-      'examTypeId': _examTypeId,
-      'subjectId': _subjectId,
-      'examDate': _dateLabel(_examDate),
-      'maxMarks': 100,
-      'status': 'SCHEDULED',
-    });
-    result.when(
-      success: (_) {
-        _snack('Exam schedule saved.');
-        _loadSchedules();
-      },
-      failure: (failure) => _snack(failure.message),
-    );
-  }
-
   Future<void> _deleteSchedule(String id) async {
     final result = await ref.read(examsRepositoryProvider).deleteSchedule(id);
     result.when(
@@ -589,92 +656,190 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
     );
   }
 
-  Future<void> _showScheduleDialog(ExamScheduleModel schedule) async {
-    DateTime examDate = schedule.examDate;
-    String status = schedule.status;
-    final maxMarks = TextEditingController(
-      text: schedule.maxMarks.toStringAsFixed(0),
-    );
+  Future<void> _showScheduleDialog({ExamScheduleModel? schedule}) async {
+    if (schedule == null &&
+        (_yearId == null ||
+            _classId == null ||
+            _sectionId == null ||
+            _examTypeId == null)) {
+      _snack('Select academic year, class, division, and exam type.');
+      return;
+    }
+    if (_subjects.isEmpty && _classId != null && _sectionId != null) {
+      await _loadSubjects(_classId!, _sectionId!);
+      if (!mounted) {
+        return;
+      }
+    }
+    final examName = TextEditingController(text: schedule?.examName ?? '');
+    final rows = schedule == null
+        ? <_ScheduleSubjectDraft>[]
+        : schedule.subjects.map(_ScheduleSubjectDraft.fromModel).toList();
+    String status = schedule?.status ?? 'SCHEDULED';
+    String? subjectToAdd;
+    bool saving = false;
     await showDialog<void>(
       context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Edit schedule'),
+              title: Text(schedule == null ? 'Add schedule' : 'Edit schedule'),
               content: SizedBox(
-                width: 420,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text('${schedule.examTypeName} - ${schedule.subjectName}'),
-                      subtitle: Text(_dateLabel(examDate)),
-                      trailing: IconButton(
-                        tooltip: 'Pick date',
-                        icon: const Icon(Icons.calendar_today_outlined),
-                        onPressed: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: examDate,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2100),
-                          );
-                          if (picked != null) {
-                            setDialogState(() => examDate = picked);
-                          }
-                        },
+                width: 760,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
+                        controller: examName,
+                        decoration: const InputDecoration(
+                          labelText: 'Exam name',
+                        ),
                       ),
-                    ),
-                    TextField(
-                      controller: maxMarks,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Max marks'),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: status,
-                      decoration: const InputDecoration(labelText: 'Status'),
-                      items: const [
-                        DropdownMenuItem(value: 'SCHEDULED', child: Text('Scheduled')),
-                        DropdownMenuItem(value: 'COMPLETED', child: Text('Completed')),
-                        DropdownMenuItem(value: 'CANCELLED', child: Text('Cancelled')),
-                      ],
-                      onChanged: (value) => status = value ?? status,
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: status,
+                        decoration: const InputDecoration(labelText: 'Status'),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'SCHEDULED',
+                            child: Text('Scheduled'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'COMPLETED',
+                            child: Text('Completed'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'CANCELLED',
+                            child: Text('Cancelled'),
+                          ),
+                        ],
+                        onChanged: (value) => status = value ?? status,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              key: ValueKey(
+                                'schedule-subject-${rows.length}-$subjectToAdd',
+                              ),
+                              initialValue: subjectToAdd,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Subject',
+                              ),
+                              items: [
+                                for (final subject in _subjects.where(
+                                  (subject) => !rows.any(
+                                    (row) => row.subjectId == subject.subjectId,
+                                  ),
+                                ))
+                                  DropdownMenuItem(
+                                    value: subject.subjectId,
+                                    child: Text(subject.subjectName),
+                                  ),
+                              ],
+                              onChanged: (value) {
+                                setDialogState(() => subjectToAdd = value);
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          FilledButton.icon(
+                            onPressed: subjectToAdd == null
+                                ? null
+                                : () {
+                                    final subject = _subjects.firstWhere(
+                                      (item) => item.subjectId == subjectToAdd,
+                                    );
+                                    setDialogState(() {
+                                      rows.add(
+                                        _ScheduleSubjectDraft.fromSubject(
+                                          subject,
+                                        ),
+                                      );
+                                      subjectToAdd = null;
+                                    });
+                                  },
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add subject'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      if (rows.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Center(child: Text('No subjects selected.')),
+                        )
+                      else
+                        Column(
+                          children: [
+                            for (final row in rows)
+                              _scheduleSubjectRow(
+                                context,
+                                row,
+                                onDateChanged: (date) {
+                                  setDialogState(() => row.examDate = date);
+                                },
+                                onRemove: () {
+                                  setDialogState(() {
+                                    rows.remove(row);
+                                    row.dispose();
+                                  });
+                                },
+                              ),
+                          ],
+                        ),
+                    ],
+                  ),
                 ),
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: saving ? null : () => Navigator.of(context).pop(),
                   child: const Text('Cancel'),
                 ),
                 FilledButton.icon(
-                  onPressed: () async {
-                    final result = await ref.read(examsRepositoryProvider).saveSchedule(schedule.id, {
-                      'academicYearId': schedule.academicYearId,
-                      'classId': schedule.classId,
-                      'sectionId': schedule.sectionId,
-                      'examTypeId': schedule.examTypeId,
-                      'subjectId': schedule.subjectId,
-                      'examDate': _dateLabel(examDate),
-                      'maxMarks': double.tryParse(maxMarks.text) ?? schedule.maxMarks,
-                      'status': status,
-                    });
-                    if (!context.mounted) {
-                      return;
-                    }
-                    result.when(
-                      success: (_) {
-                        Navigator.of(context).pop();
-                        _loadSchedules();
-                      },
-                      failure: (failure) => _snack(failure.message),
-                    );
-                  },
-                  icon: const Icon(Icons.save_outlined),
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          final payload = _schedulePayload(
+                            schedule: schedule,
+                            examName: examName.text,
+                            status: status,
+                            rows: rows,
+                          );
+                          if (payload == null) {
+                            return;
+                          }
+                          setDialogState(() => saving = true);
+                          final result = await ref
+                              .read(examsRepositoryProvider)
+                              .saveSchedule(schedule?.id, payload);
+                          setDialogState(() => saving = false);
+                          if (!context.mounted) {
+                            return;
+                          }
+                          result.when(
+                            success: (_) {
+                              Navigator.of(context).pop();
+                              _snack('Exam schedule saved.');
+                              _loadSchedules();
+                            },
+                            failure: (failure) => _snack(failure.message),
+                          );
+                        },
+                  icon: saving
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save_outlined),
                   label: const Text('Save'),
                 ),
               ],
@@ -683,12 +848,139 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
         );
       },
     );
-    maxMarks.dispose();
+    examName.dispose();
+    for (final row in rows) {
+      row.dispose();
+    }
+  }
+
+  Widget _scheduleSubjectRow(
+    BuildContext context,
+    _ScheduleSubjectDraft row, {
+    required ValueChanged<DateTime> onDateChanged,
+    required VoidCallback onRemove,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 14),
+              child: Text(row.subjectName),
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 150,
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: row.examDate,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2100),
+                );
+                if (picked != null) {
+                  onDateChanged(picked);
+                }
+              },
+              icon: const Icon(Icons.calendar_today_outlined),
+              label: Text(_dateLabel(row.examDate)),
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 120,
+            child: TextField(
+              controller: row.maxMarks,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Max marks'),
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 130,
+            child: TextField(
+              controller: row.passingMarks,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Passing'),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Remove subject',
+            onPressed: onRemove,
+            icon: const Icon(Icons.delete_outline),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Map<String, dynamic>? _schedulePayload({
+    required ExamScheduleModel? schedule,
+    required String examName,
+    required String status,
+    required List<_ScheduleSubjectDraft> rows,
+  }) {
+    final academicYearId = schedule?.academicYearId ?? _yearId;
+    final classId = schedule?.classId ?? _classId;
+    final sectionId = schedule?.sectionId ?? _sectionId;
+    final examTypeId = schedule?.examTypeId ?? _examTypeId;
+    if (academicYearId == null ||
+        classId == null ||
+        sectionId == null ||
+        examTypeId == null) {
+      _snack('Select academic year, class, division, and exam type.');
+      return null;
+    }
+    if (_blankToNull(examName) == null) {
+      _snack('Enter exam name.');
+      return null;
+    }
+    if (rows.isEmpty) {
+      _snack('Select at least one subject.');
+      return null;
+    }
+    final subjects = <Map<String, dynamic>>[];
+    for (final row in rows) {
+      final maxMarks = double.tryParse(row.maxMarks.text.trim());
+      final passingMarks = double.tryParse(row.passingMarks.text.trim());
+      if (maxMarks == null || maxMarks <= 0) {
+        _snack('Enter valid max marks for ${row.subjectName}.');
+        return null;
+      }
+      if (passingMarks != null && passingMarks > maxMarks) {
+        _snack('Passing marks cannot exceed max marks for ${row.subjectName}.');
+        return null;
+      }
+      subjects.add({
+        'subjectId': row.subjectId,
+        'examDate': _dateLabel(row.examDate),
+        'maxMarks': maxMarks,
+        'passingMarks': ?passingMarks,
+      });
+    }
+    return {
+      'academicYearId': academicYearId,
+      'classId': classId,
+      'sectionId': sectionId,
+      'examTypeId': examTypeId,
+      'examName': examName.trim(),
+      'status': status,
+      'subjects': subjects,
+    };
   }
 
   Future<void> _loadMarksStudents() async {
-    if (_yearId == null || _classId == null || _sectionId == null || _scheduleId == null) {
-      _snack('Select academic year, class, division, and schedule.');
+    if (_yearId == null ||
+        _classId == null ||
+        _sectionId == null ||
+        _scheduleId == null ||
+        _subjectId == null) {
+      _snack('Select academic year, class, division, schedule, and subject.');
       return;
     }
     final repository = ref.read(examsRepositoryProvider);
@@ -697,15 +989,13 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
       classId: _classId!,
       sectionId: _sectionId!,
     );
-    final marksResult = _subjectId == null
-        ? null
-        : await repository.marks({
-            'academicYearId': _yearId,
-            'classId': _classId,
-            'sectionId': _sectionId,
-            'examScheduleId': _scheduleId,
-            'subjectId': _subjectId,
-          });
+    final marksResult = await repository.marks({
+      'academicYearId': _yearId,
+      'classId': _classId,
+      'sectionId': _sectionId,
+      'examScheduleId': _scheduleId,
+      'subjectId': _subjectId,
+    });
     studentsResult.when(
       success: (students) {
         setState(() => _students = students);
@@ -719,37 +1009,64 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
       },
       failure: (failure) => _snack(failure.message),
     );
-    marksResult?.when(
+    marksResult.when(
       success: (marks) {
         for (final mark in marks.records) {
-          _markControllers[mark.student.studentId]?.text =
-              mark.marksObtained.toStringAsFixed(0);
+          _markControllers[mark.student.studentId]?.text = mark.marksObtained
+              .toStringAsFixed(0);
         }
       },
-      failure: (_) {},
+      failure: (failure) => _snack(failure.message),
     );
   }
 
   Future<void> _saveMarks() async {
-    if (_yearId == null || _classId == null || _sectionId == null || _scheduleId == null || _subjectId == null) {
+    if (_yearId == null ||
+        _classId == null ||
+        _sectionId == null ||
+        _scheduleId == null ||
+        _subjectId == null) {
       _snack('Select academic year, class, division, schedule, and subject.');
       return;
     }
+    final scheduleSubject = _selectedScheduleSubject;
+    if (scheduleSubject == null) {
+      _snack('Selected subject is not part of the selected schedule.');
+      return;
+    }
+    if (_students.isEmpty) {
+      _snack('Load students before saving marks.');
+      return;
+    }
+    final records = <Map<String, dynamic>>[];
+    for (final student in _students) {
+      final marks = double.tryParse(
+        _markControllers[student.studentId]?.text.trim() ?? '',
+      );
+      if (marks == null || marks < 0) {
+        _snack('Enter valid marks for ${student.displayName}.');
+        return;
+      }
+      if (marks > scheduleSubject.maxMarks) {
+        _snack(
+          'Marks for ${student.displayName} cannot exceed ${scheduleSubject.maxMarks.toStringAsFixed(0)}.',
+        );
+        return;
+      }
+      records.add({'studentId': student.studentId, 'marksObtained': marks});
+    }
+    setState(() => _savingMarks = true);
     final result = await ref.read(examsRepositoryProvider).saveMarks({
       'academicYearId': _yearId,
       'classId': _classId,
       'sectionId': _sectionId,
       'examScheduleId': _scheduleId,
       'subjectId': _subjectId,
-      'records': [
-        for (final student in _students)
-          {
-            'studentId': student.studentId,
-            'marksObtained': double.tryParse(_markControllers[student.studentId]?.text ?? '') ?? 0,
-            'maxMarks': 100,
-          },
-      ],
+      'records': records,
     });
+    if (mounted) {
+      setState(() => _savingMarks = false);
+    }
     result.when(
       success: (_) => _snack('Marks saved successfully.'),
       failure: (failure) => _snack(failure.message),
@@ -777,8 +1094,9 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
     if (_yearId == null) {
       return;
     }
-    final result =
-        await ref.read(examsRepositoryProvider).reportCard(studentId, _yearId!);
+    final result = await ref
+        .read(examsRepositoryProvider)
+        .reportCard(studentId, _yearId!);
     result.when(
       success: (bytes) async {
         await downloadBytes(bytes, 'report-card.csv', 'text/csv');
@@ -788,35 +1106,75 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
     );
   }
 
-  Future<void> _pickExamDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _examDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null) {
-      setState(() => _examDate = picked);
-    }
-  }
-
   void _snack(String message) {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  String? _subjectForSchedule(String? scheduleId) {
-    if (scheduleId == null) {
+  ExamScheduleModel? get _selectedSchedule {
+    if (_scheduleId == null) {
       return null;
     }
     for (final schedule in _schedules) {
-      if (schedule.id == scheduleId) {
-        return schedule.subjectId;
+      if (schedule.id == _scheduleId) {
+        return schedule;
       }
     }
     return null;
+  }
+
+  ExamScheduleSubjectModel? get _selectedScheduleSubject {
+    return _selectedSchedule?.subjectById(_subjectId);
+  }
+}
+
+class _ScheduleSubjectDraft {
+  _ScheduleSubjectDraft({
+    required this.subjectId,
+    required this.subjectName,
+    required this.examDate,
+    required String maxMarks,
+    required String passingMarks,
+  }) : maxMarks = TextEditingController(text: maxMarks),
+       passingMarks = TextEditingController(text: passingMarks);
+
+  factory _ScheduleSubjectDraft.fromSubject(ExamSubjectModel subject) {
+    return _ScheduleSubjectDraft(
+      subjectId: subject.subjectId,
+      subjectName: subject.subjectName,
+      examDate: DateTime.now(),
+      maxMarks: '',
+      passingMarks: '',
+    );
+  }
+
+  factory _ScheduleSubjectDraft.fromModel(ExamScheduleSubjectModel subject) {
+    return _ScheduleSubjectDraft(
+      subjectId: subject.subjectId,
+      subjectName: subject.subjectName,
+      examDate: subject.examDate,
+      maxMarks: subject.maxMarks == 0
+          ? ''
+          : subject.maxMarks.toStringAsFixed(0),
+      passingMarks: subject.passingMarks == null
+          ? ''
+          : subject.passingMarks!.toStringAsFixed(0),
+    );
+  }
+
+  final String subjectId;
+  final String subjectName;
+  DateTime examDate;
+  final TextEditingController maxMarks;
+  final TextEditingController passingMarks;
+
+  void dispose() {
+    maxMarks.dispose();
+    passingMarks.dispose();
   }
 }
 
@@ -828,4 +1186,11 @@ String _dateLabel(DateTime date) {
 
 String? _blankToNull(String value) {
   return value.trim().isEmpty ? null : value.trim();
+}
+
+String _scheduleSubjectSummary(ExamScheduleSubjectModel subject) {
+  final passing = subject.passingMarks == null
+      ? ''
+      : ', Pass ${subject.passingMarks!.toStringAsFixed(0)}';
+  return '${subject.subjectName} ${_dateLabel(subject.examDate)} Max ${subject.maxMarks.toStringAsFixed(0)}$passing';
 }
