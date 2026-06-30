@@ -11,7 +11,11 @@ import java.util.Set;
 import com.school.erp.common.domain.BaseEntity;
 import com.school.erp.modules.academic.domain.AcademicYear;
 import com.school.erp.modules.academic.domain.ClassEntity;
+import com.school.erp.modules.hostel.domain.Hostel;
+import com.school.erp.modules.hostel.domain.HostelRoom;
 import com.school.erp.modules.students.domain.Student;
+import com.school.erp.modules.transport.domain.TransportPickupPoint;
+import com.school.erp.modules.transport.domain.TransportRoute;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -62,6 +66,29 @@ public class StudentFeeAssignment extends BaseEntity {
 	@JoinColumn(name = "class_id")
 	private ClassEntity classEntity;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "fee_scope", nullable = false, length = 30)
+	private FeeScope feeScope = FeeScope.CLASS;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "hostel_id")
+	private Hostel hostel;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "hostel_room_id")
+	private HostelRoom hostelRoom;
+
+	@Column(name = "room_type", length = 80)
+	private String roomType;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "transport_route_id")
+	private TransportRoute transportRoute;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "transport_pickup_point_id")
+	private TransportPickupPoint transportPickupPoint;
+
 	@Column(name = "assigned_date", nullable = false)
 	private LocalDate assignedDate;
 
@@ -104,6 +131,12 @@ public class StudentFeeAssignment extends BaseEntity {
 		this.sectionName = feeStructure.getSectionName();
 		this.academicYearEntity = feeStructure.getAcademicYearEntity();
 		this.classEntity = feeStructure.getClassEntity();
+		this.feeScope = feeStructure.getFeeScope();
+		this.hostel = feeStructure.getHostel();
+		this.hostelRoom = feeStructure.getHostelRoom();
+		this.roomType = feeStructure.getRoomType();
+		this.transportRoute = feeStructure.getTransportRoute();
+		this.transportPickupPoint = feeStructure.getTransportPickupPoint();
 		this.assignedDate = assignedDate;
 		this.notes = notes;
 		this.grossAmount = feeStructure.getTotalAmount();

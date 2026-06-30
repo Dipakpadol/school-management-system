@@ -7,6 +7,12 @@ import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../hostel/data/models/hostel_models.dart';
+import '../../../hostel/data/repositories/hostel_repository_impl.dart';
+import '../../../hostel/presentation/controllers/hostel_providers.dart';
+import '../../../transport/data/models/transport_models.dart';
+import '../../../transport/data/repositories/transport_repository_impl.dart';
+import '../../../transport/presentation/controllers/transport_providers.dart';
 import '../../data/models/student_models.dart';
 import '../../data/repositories/students_repository_impl.dart';
 import '../controllers/students_providers.dart';
@@ -123,16 +129,8 @@ class _ProfileScaffold extends StatelessWidget {
                 StudentAttendanceTab(student: student),
                 _FeesTab(student: student),
                 _DocumentsTab(student: student),
-                const _ActionTab(
-                  title: 'Hostel',
-                  message: 'No hostel allocation is recorded.',
-                  icon: Icons.hotel_outlined,
-                ),
-                const _ActionTab(
-                  title: 'Transport',
-                  message: 'No transport assignment is recorded.',
-                  icon: Icons.directions_bus_outlined,
-                ),
+                _HostelTab(student: student),
+                _TransportTab(student: student),
                 StudentExamResultsTab(student: student),
               ],
             ),
@@ -494,6 +492,983 @@ class _DocumentsTab extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _HostelTab extends ConsumerWidget {
+  const _HostelTab({required this.student});
+
+  final StudentProfileModel student;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final academicYearId = student.currentAssignment?.academicYearId;
+    final allocationKey = academicYearId == null || academicYearId.isEmpty
+        ? null
+        : StudentHostelAllocationKey(
+            studentId: student.id,
+            academicYearId: academicYearId,
+          );
+    final allocation = allocationKey == null
+        ? null
+        : ref.watch(studentCurrentHostelAllocationProvider(allocationKey));
+    final fees = ref.watch(studentHostelFeesProvider(student.id));
+
+    return _TabSurface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionHeader(
+            title: 'Hostel',
+            actions: [
+              OutlinedButton.icon(
+                onPressed: () =>
+                    _showStudentHostelAssignmentDialog(context, ref, student),
+                icon: const Icon(Icons.hotel_outlined),
+                label: const Text('Assign hostel'),
+              ),
+              FilledButton.icon(
+                onPressed: () => context.go(
+                  AppRoutes.studentFeePaymentCollection(student.id),
+                ),
+                icon: const Icon(Icons.point_of_sale_outlined),
+                label: const Text('Collect payment'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (allocationKey == null)
+            const _InlineEmpty(
+              message: 'Assign class and academic year before hostel.',
+            )
+          else
+            allocation!.when(
+              data: (item) {
+                if (item == null) {
+                  return const _InlineEmpty(
+                    message: 'No hostel allocation found.',
+                  );
+                }
+                return _HostelAllocationTile(
+                  allocation: item,
+                  onChange: () => _showStudentHostelAssignmentDialog(
+                    context,
+                    ref,
+                    student,
+                    existingAllocation: item,
+                  ),
+                  onVacate: () => _vacateStudentHostelAllocation(
+                    context,
+                    ref,
+                    student,
+                    item,
+                  ),
+                );
+              },
+              error: (error, _) => AppErrorState(
+                message: _message(error),
+                onRetry: () => ref.invalidate(
+                  studentCurrentHostelAllocationProvider(allocationKey),
+                ),
+              ),
+              loading: () => const AppLoadingState(label: 'Loading hostel'),
+            ),
+          const SizedBox(height: 20),
+          Text(
+            'Hostel Allocation History',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          ref
+              .watch(studentHostelAllocationsProvider(student.id))
+              .when(
+                data: (items) {
+                  final history = items.where(
+                    (item) => item.status != 'ACTIVE',
+                  );
+                  if (history.isEmpty) {
+                    return const _InlineEmpty(
+                      message: 'No previous hostel allocation is recorded.',
+                    );
+                  }
+                  return Column(
+                    children: [
+                      for (final allocation in history)
+                        _HostelAllocationTile(allocation: allocation),
+                    ],
+                  );
+                },
+                error: (error, _) => AppErrorState(
+                  message: _message(error),
+                  onRetry: () => ref.invalidate(
+                    studentHostelAllocationsProvider(student.id),
+                  ),
+                ),
+                loading: () => const AppLoadingState(label: 'Loading hostel'),
+              ),
+          const SizedBox(height: 20),
+          Text(
+            'Hostel Fees',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          fees.when(
+            data: (items) {
+              if (items.isEmpty) {
+                return const _InlineEmpty(message: 'No hostel fees assigned.');
+              }
+              return Column(
+                children: [
+                  for (final fee in items)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.receipt_long_outlined),
+                      title: Text(fee.feeStructureName),
+                      subtitle: Text(
+                        [
+                          fee.academicYear,
+                          'Paid ${fee.paidAmount.toStringAsFixed(2)}',
+                          'Pending ${fee.balanceAmount.toStringAsFixed(2)}',
+                        ].join(' - '),
+                      ),
+                      trailing: _SmallBadge(label: fee.status),
+                    ),
+                  const SizedBox(height: 8),
+                  ExpandedGrid(
+                    items: {
+                      'Total assigned': items
+                          .fold<double>(0, (sum, fee) => sum + fee.grossAmount)
+                          .toStringAsFixed(2),
+                      'Total paid': items
+                          .fold<double>(0, (sum, fee) => sum + fee.paidAmount)
+                          .toStringAsFixed(2),
+                      'Total pending': items
+                          .fold<double>(
+                            0,
+                            (sum, fee) => sum + fee.balanceAmount,
+                          )
+                          .toStringAsFixed(2),
+                    },
+                  ),
+                ],
+              );
+            },
+            error: (error, _) => AppErrorState(
+              message: _message(error),
+              onRetry: () =>
+                  ref.invalidate(studentHostelFeesProvider(student.id)),
+            ),
+            loading: () => const AppLoadingState(label: 'Loading hostel fees'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HostelAllocationTile extends StatelessWidget {
+  const _HostelAllocationTile({
+    required this.allocation,
+    this.onChange,
+    this.onVacate,
+  });
+
+  final HostelAllocationModel allocation;
+  final VoidCallback? onChange;
+  final VoidCallback? onVacate;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.hotel_outlined),
+      title: Text(
+        '${allocation.hostelName} - Room ${allocation.roomNumber}',
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        [
+          allocation.academicYear,
+          allocation.roomType,
+          if (allocation.bedNumber != null) 'Bed ${allocation.bedNumber}',
+          'From ${_nullableDateLabel(allocation.allocationDate)}',
+          'Fee ${allocation.feeAssignedStatus}',
+          if (allocation.vacateDate != null)
+            'Vacated ${_nullableDateLabel(allocation.vacateDate)}',
+        ].join(' - '),
+      ),
+      trailing: Wrap(
+        spacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          _SmallBadge(label: allocation.status),
+          if (onChange != null)
+            IconButton(
+              tooltip: 'Change room',
+              onPressed: onChange,
+              icon: const Icon(Icons.swap_horiz_outlined),
+            ),
+          if (onVacate != null)
+            IconButton(
+              tooltip: 'Vacate',
+              onPressed: onVacate,
+              icon: const Icon(Icons.logout_outlined),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TransportTab extends ConsumerWidget {
+  const _TransportTab({required this.student});
+
+  final StudentProfileModel student;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final academicYearId = student.currentAssignment?.academicYearId;
+    final assignmentKey = academicYearId == null || academicYearId.isEmpty
+        ? null
+        : StudentTransportAssignmentKey(
+            studentId: student.id,
+            academicYearId: academicYearId,
+          );
+    final assignment = assignmentKey == null
+        ? null
+        : ref.watch(studentCurrentTransportAssignmentProvider(assignmentKey));
+
+    return _TabSurface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionHeader(
+            title: 'Transport',
+            actions: [
+              OutlinedButton.icon(
+                onPressed: () =>
+                    _showStudentTransportDialog(context, ref, student),
+                icon: const Icon(Icons.directions_bus_outlined),
+                label: const Text('Assign transport'),
+              ),
+              FilledButton.icon(
+                onPressed: () => context.go(
+                  AppRoutes.studentFeePaymentCollection(student.id),
+                ),
+                icon: const Icon(Icons.point_of_sale_outlined),
+                label: const Text('Collect payment'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (assignmentKey == null)
+            const _InlineEmpty(
+              message: 'Assign class and academic year before transport.',
+            )
+          else
+            assignment!.when(
+              data: (item) {
+                if (item == null) {
+                  return const _InlineEmpty(
+                    message: 'No transport assignment found.',
+                  );
+                }
+                return _TransportAssignmentTile(
+                  assignment: item,
+                  onChange: () => _showStudentTransportDialog(
+                    context,
+                    ref,
+                    student,
+                    existingAssignment: item,
+                  ),
+                  onRemove: () => _removeStudentTransportAssignment(
+                    context,
+                    ref,
+                    student,
+                    item,
+                  ),
+                );
+              },
+              error: (error, _) => AppErrorState(
+                message: _message(error),
+                onRetry: () => ref.invalidate(
+                  studentCurrentTransportAssignmentProvider(assignmentKey),
+                ),
+              ),
+              loading: () => const AppLoadingState(label: 'Loading transport'),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TransportAssignmentTile extends StatelessWidget {
+  const _TransportAssignmentTile({
+    required this.assignment,
+    this.onChange,
+    this.onRemove,
+  });
+
+  final StudentTransportAssignmentModel assignment;
+  final VoidCallback? onChange;
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.directions_bus_outlined),
+      title: Text(
+        '${assignment.vehicleNumber} - ${assignment.routeName}',
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: ExpandedGrid(
+          items: {
+            'Academic year': assignment.academicYear,
+            'Vehicle': '${assignment.vehicleNumber} ${assignment.vehicleName}',
+            'Route': assignment.routeName,
+            'Pickup point': assignment.pickupPointName,
+            'Pickup time': assignment.pickupTime,
+            'Drop time': assignment.dropTime,
+            'Driver': assignment.driverName,
+            'Driver mobile': assignment.driverMobile,
+            'Assignment date': _nullableDateLabel(assignment.assignmentDate),
+            'Fee status': assignment.feeAssignedStatus,
+          },
+        ),
+      ),
+      trailing: Wrap(
+        spacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          _SmallBadge(label: assignment.status),
+          if (onChange != null)
+            IconButton(
+              tooltip: 'Change transport',
+              onPressed: onChange,
+              icon: const Icon(Icons.swap_horiz_outlined),
+            ),
+          if (onRemove != null)
+            IconButton(
+              tooltip: 'Remove transport',
+              onPressed: onRemove,
+              icon: const Icon(Icons.logout_outlined),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+Future<void> _showStudentTransportDialog(
+  BuildContext context,
+  WidgetRef ref,
+  StudentProfileModel student, {
+  StudentTransportAssignmentModel? existingAssignment,
+}) async {
+  final academicYearId = student.currentAssignment?.academicYearId;
+  if (academicYearId == null || academicYearId.isEmpty) {
+    _snack(context, 'Assign class and academic year before transport.');
+    return;
+  }
+
+  final formKey = GlobalKey<FormState>();
+  final assignmentDate = TextEditingController(
+    text: existingAssignment?.assignmentDate == null
+        ? _dateLabel(DateTime.now())
+        : _dateLabel(existingAssignment!.assignmentDate!),
+  );
+  var selectedRouteId = existingAssignment?.routeId;
+  var selectedPickupPointId = existingAssignment?.pickupPointId;
+  var transportFeeApplicable = true;
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) {
+      return StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          return Consumer(
+            builder: (dialogContext, ref, _) {
+              final routes = ref.watch(transportRoutesProvider(academicYearId));
+              final pickupPoints = selectedRouteId == null
+                  ? const AsyncValue.data(<TransportPickupPointModel>[])
+                  : ref.watch(transportPickupPointsProvider(selectedRouteId!));
+              final routeItems = routes.maybeWhen(
+                data: (items) => items,
+                orElse: () => const <TransportRouteModel>[],
+              );
+              final pickupItems = pickupPoints.maybeWhen(
+                data: (items) => items,
+                orElse: () => const <TransportPickupPointModel>[],
+              );
+              final selectedRoute = _transportRouteById(
+                routeItems,
+                selectedRouteId,
+              );
+
+              return AlertDialog(
+                title: Text(
+                  existingAssignment == null
+                      ? 'Assign transport'
+                      : 'Change transport',
+                ),
+                content: Form(
+                  key: formKey,
+                  child: SizedBox(
+                    width: 620,
+                    child: Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        _Field(
+                          controller: assignmentDate,
+                          label: 'Assignment date',
+                          validator: _date,
+                        ),
+                        SizedBox(
+                          width: 290,
+                          child: routes.when(
+                            data: (_) => DropdownButtonFormField<String>(
+                              initialValue: selectedRouteId,
+                              decoration: const InputDecoration(
+                                labelText: 'Route',
+                              ),
+                              isExpanded: true,
+                              items: [
+                                for (final route in routeItems)
+                                  DropdownMenuItem(
+                                    value: route.id,
+                                    child: Text(
+                                      '${route.routeName} (${_dash(route.vehicleNumber)})',
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                              ],
+                              validator: _required,
+                              onChanged: (value) => setDialogState(() {
+                                selectedRouteId = value;
+                                selectedPickupPointId = null;
+                              }),
+                            ),
+                            error: (error, _) => Text(_message(error)),
+                            loading: () => const LinearProgressIndicator(),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 290,
+                          child: pickupPoints.when(
+                            data: (_) => DropdownButtonFormField<String>(
+                              initialValue: selectedPickupPointId,
+                              decoration: const InputDecoration(
+                                labelText: 'Pickup point',
+                              ),
+                              isExpanded: true,
+                              items: [
+                                for (final point in pickupItems)
+                                  DropdownMenuItem(
+                                    value: point.id,
+                                    child: Text(
+                                      point.pointName,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                              ],
+                              validator: _required,
+                              onChanged: (value) => setDialogState(
+                                () => selectedPickupPointId = value,
+                              ),
+                            ),
+                            error: (error, _) => Text(_message(error)),
+                            loading: () => const LinearProgressIndicator(),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 290,
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'Vehicle',
+                            ),
+                            child: Text(
+                              selectedRoute?.vehicleNumber ?? '-',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 290,
+                          child: SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Transport fee applicable'),
+                            value: transportFeeApplicable,
+                            onChanged: (value) => setDialogState(
+                              () => transportFeeApplicable = value,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: () async {
+                      if (!(formKey.currentState?.validate() ?? false)) {
+                        return;
+                      }
+                      final payload = {
+                        'transportRequired': true,
+                        'academicYearId': academicYearId,
+                        'vehicleId': selectedRoute?.vehicleId,
+                        'routeId': selectedRouteId,
+                        'pickupPointId': selectedPickupPointId,
+                        'assignmentDate': assignmentDate.text.trim(),
+                        'transportFeeApplicable': transportFeeApplicable,
+                      };
+                      final repository = ref.read(transportRepositoryProvider);
+                      final result = existingAssignment == null
+                          ? await repository.assignStudentTransport(
+                              student.id,
+                              payload,
+                            )
+                          : await repository.changeStudentTransport(
+                              student.id,
+                              existingAssignment.id,
+                              payload,
+                            );
+                      if (!dialogContext.mounted) {
+                        return;
+                      }
+                      result.when(
+                        success: (_) {
+                          _refreshStudentTransportState(
+                            ref,
+                            student.id,
+                            academicYearId,
+                          );
+                          _snack(context, 'Transport assignment saved.');
+                          Navigator.of(dialogContext).pop();
+                        },
+                        failure: (failure) =>
+                            _snack(dialogContext, failure.message),
+                      );
+                    },
+                    icon: const Icon(Icons.save_outlined),
+                    label: const Text('Save'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    },
+  );
+
+  assignmentDate.dispose();
+}
+
+Future<void> _removeStudentTransportAssignment(
+  BuildContext context,
+  WidgetRef ref,
+  StudentProfileModel student,
+  StudentTransportAssignmentModel assignment,
+) async {
+  final endDate = TextEditingController(text: _dateLabel(DateTime.now()));
+  final formKey = GlobalKey<FormState>();
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: const Text('Remove transport'),
+        content: Form(
+          key: formKey,
+          child: _Field(
+            controller: endDate,
+            label: 'End date',
+            validator: _date,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () async {
+              if (!(formKey.currentState?.validate() ?? false)) {
+                return;
+              }
+              final result = await ref
+                  .read(transportRepositoryProvider)
+                  .removeStudentTransport(
+                    student.id,
+                    assignment.id,
+                    {'endDate': endDate.text.trim()},
+                  );
+              if (!dialogContext.mounted) {
+                return;
+              }
+              result.when(
+                success: (_) {
+                  _refreshStudentTransportState(
+                    ref,
+                    student.id,
+                    assignment.academicYearId,
+                  );
+                  _snack(context, 'Transport assignment removed.');
+                  Navigator.of(dialogContext).pop();
+                },
+                failure: (failure) => _snack(dialogContext, failure.message),
+              );
+            },
+            icon: const Icon(Icons.logout_outlined),
+            label: const Text('Remove'),
+          ),
+        ],
+      );
+    },
+  );
+
+  endDate.dispose();
+}
+
+Future<void> _showStudentHostelAssignmentDialog(
+  BuildContext context,
+  WidgetRef ref,
+  StudentProfileModel student, {
+  HostelAllocationModel? existingAllocation,
+}) async {
+  final academicYearId = student.currentAssignment?.academicYearId;
+  if (academicYearId == null || academicYearId.isEmpty) {
+    _snack(context, 'Assign class and academic year before hostel.');
+    return;
+  }
+
+  final isChange = existingAllocation != null;
+  final formKey = GlobalKey<FormState>();
+  final allocationDate = TextEditingController(
+    text: _dateLabel(DateTime.now()),
+  );
+  String? selectedHostelId = existingAllocation?.hostelId;
+  String? selectedRoomId;
+  String? selectedBedId;
+  var hostelFeeApplicable = true;
+
+  await showDialog<void>(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Consumer(
+            builder: (context, ref, _) {
+              final hostels = ref.watch(hostelsProvider);
+              final rooms = ref.watch(hostelRoomsProvider(academicYearId));
+              final roomItems = rooms.maybeWhen(
+                data: (items) => selectedHostelId == null
+                    ? items
+                    : items
+                          .where((room) => room.hostelId == selectedHostelId)
+                          .where(
+                            (room) => room.id != existingAllocation?.roomId,
+                          )
+                          .toList(),
+                orElse: () => const <HostelRoomSummaryModel>[],
+              );
+              final selectedRoom = _profileHostelRoomById(
+                roomItems,
+                selectedRoomId,
+              );
+              final freeBeds = selectedRoom == null
+                  ? const <HostelBedModel>[]
+                  : selectedRoom.beds
+                        .where((bed) => bed.active && !bed.occupied)
+                        .toList();
+
+              return AlertDialog(
+                title: Text(
+                  '${isChange ? 'Change hostel' : 'Assign hostel'} - ${student.fullName}',
+                ),
+                content: Form(
+                  key: formKey,
+                  child: SizedBox(
+                    width: 560,
+                    child: SingleChildScrollView(
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          SizedBox(
+                            width: 260,
+                            child: hostels.when(
+                              data: (items) => DropdownButtonFormField<String>(
+                                initialValue: selectedHostelId,
+                                decoration: const InputDecoration(
+                                  labelText: 'Hostel',
+                                ),
+                                items: [
+                                  for (final hostel in items)
+                                    DropdownMenuItem(
+                                      value: hostel.id,
+                                      child: Text(hostel.name),
+                                    ),
+                                ],
+                                validator: _required,
+                                onChanged: (value) => setDialogState(() {
+                                  selectedHostelId = value;
+                                  selectedRoomId = null;
+                                  selectedBedId = null;
+                                }),
+                              ),
+                              error: (error, _) => Text(_message(error)),
+                              loading: () => const LinearProgressIndicator(),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 260,
+                            child: rooms.when(
+                              data: (_) => DropdownButtonFormField<String>(
+                                initialValue: selectedRoomId,
+                                decoration: const InputDecoration(
+                                  labelText: 'Room',
+                                ),
+                                items: [
+                                  for (final room in roomItems)
+                                    DropdownMenuItem(
+                                      value: room.id,
+                                      child: Text(
+                                        '${room.roomNumber} (${room.availableBeds} free)',
+                                      ),
+                                    ),
+                                ],
+                                validator: (value) {
+                                  final required = _required(value);
+                                  if (required != null) {
+                                    return required;
+                                  }
+                                  final room = _profileHostelRoomById(
+                                    roomItems,
+                                    value,
+                                  );
+                                  if (room != null && room.availableBeds <= 0) {
+                                    return 'Room is full';
+                                  }
+                                  return null;
+                                },
+                                onChanged: (value) => setDialogState(() {
+                                  selectedRoomId = value;
+                                  selectedBedId = null;
+                                }),
+                              ),
+                              error: (error, _) => Text(_message(error)),
+                              loading: () => const LinearProgressIndicator(),
+                            ),
+                          ),
+                          if (selectedRoom?.bedConceptEnabled ?? false)
+                            SizedBox(
+                              width: 260,
+                              child: DropdownButtonFormField<String>(
+                                initialValue: selectedBedId,
+                                decoration: const InputDecoration(
+                                  labelText: 'Bed',
+                                ),
+                                items: [
+                                  for (final bed in freeBeds)
+                                    DropdownMenuItem(
+                                      value: bed.id,
+                                      child: Text(bed.bedNumber),
+                                    ),
+                                ],
+                                validator: _required,
+                                onChanged: (value) =>
+                                    setDialogState(() => selectedBedId = value),
+                              ),
+                            ),
+                          SizedBox(
+                            width: 260,
+                            child: TextFormField(
+                              controller: allocationDate,
+                              decoration: const InputDecoration(
+                                labelText: 'Allocation date',
+                              ),
+                              validator: _date,
+                            ),
+                          ),
+                          SizedBox(
+                            width: 260,
+                            child: SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Hostel fee applicable'),
+                              value: hostelFeeApplicable,
+                              onChanged: (value) => setDialogState(
+                                () => hostelFeeApplicable = value,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: () async {
+                      if (!(formKey.currentState?.validate() ?? false)) {
+                        return;
+                      }
+                      final repository = ref.read(hostelRepositoryProvider);
+                      final result = isChange
+                          ? await repository.changeStudentHostelRoom(
+                              student.id,
+                              existingAllocation.id,
+                              {
+                                'roomId': selectedRoomId,
+                                'bedId': selectedBedId,
+                                'allocationDate': allocationDate.text.trim(),
+                                'hostelFeeApplicable': hostelFeeApplicable,
+                              },
+                            )
+                          : await repository
+                                .assignStudentHostelAllocation(student.id, {
+                                  'hostelRequired': true,
+                                  'academicYearId': academicYearId,
+                                  'hostelId': selectedHostelId,
+                                  'roomId': selectedRoomId,
+                                  'bedId': selectedBedId,
+                                  'allocationDate': allocationDate.text.trim(),
+                                  'hostelFeeApplicable': hostelFeeApplicable,
+                                });
+                      if (!context.mounted) {
+                        return;
+                      }
+                      result.when(
+                        success: (_) {
+                          ref.invalidate(
+                            studentCurrentHostelAllocationProvider(
+                              StudentHostelAllocationKey(
+                                studentId: student.id,
+                                academicYearId: academicYearId,
+                              ),
+                            ),
+                          );
+                          ref.invalidate(
+                            studentHostelAllocationsProvider(student.id),
+                          );
+                          ref.invalidate(studentHostelFeesProvider(student.id));
+                          ref.invalidate(hostelRoomsProvider(academicYearId));
+                          _snack(
+                            context,
+                            isChange
+                                ? 'Hostel room changed.'
+                                : 'Hostel assigned.',
+                          );
+                          Navigator.of(context).pop();
+                        },
+                        failure: (failure) => _snack(context, failure.message),
+                      );
+                    },
+                    icon: Icon(
+                      isChange
+                          ? Icons.swap_horiz_outlined
+                          : Icons.check_outlined,
+                    ),
+                    label: Text(isChange ? 'Change' : 'Assign'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    },
+  );
+  allocationDate.dispose();
+}
+
+Future<void> _vacateStudentHostelAllocation(
+  BuildContext context,
+  WidgetRef ref,
+  StudentProfileModel student,
+  HostelAllocationModel allocation,
+) async {
+  final academicYearId =
+      allocation.academicYearId ?? student.currentAssignment?.academicYearId;
+  final formKey = GlobalKey<FormState>();
+  final vacateDate = TextEditingController(text: _dateLabel(DateTime.now()));
+  await showDialog<void>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Text('Vacate hostel - ${student.fullName}'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: vacateDate,
+            decoration: const InputDecoration(labelText: 'Vacate date'),
+            validator: _date,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () async {
+              if (!(formKey.currentState?.validate() ?? false)) {
+                return;
+              }
+              final result = await ref
+                  .read(hostelRepositoryProvider)
+                  .vacateStudentHostelAllocation(student.id, allocation.id, {
+                    'vacateDate': vacateDate.text.trim(),
+                  });
+              if (!context.mounted) {
+                return;
+              }
+              result.when(
+                success: (_) {
+                  if (academicYearId != null && academicYearId.isNotEmpty) {
+                    ref.invalidate(
+                      studentCurrentHostelAllocationProvider(
+                        StudentHostelAllocationKey(
+                          studentId: student.id,
+                          academicYearId: academicYearId,
+                        ),
+                      ),
+                    );
+                    ref.invalidate(hostelRoomsProvider(academicYearId));
+                  }
+                  ref.invalidate(studentHostelAllocationsProvider(student.id));
+                  ref.invalidate(studentHostelFeesProvider(student.id));
+                  _snack(context, 'Hostel allocation vacated.');
+                  Navigator.of(context).pop();
+                },
+                failure: (failure) => _snack(context, failure.message),
+              );
+            },
+            icon: const Icon(Icons.logout_outlined),
+            label: const Text('Vacate'),
+          ),
+        ],
+      );
+    },
+  );
+  vacateDate.dispose();
 }
 
 class _ActionTab extends StatelessWidget {
@@ -1673,6 +2648,52 @@ void _refreshParentState(WidgetRef ref, String studentId) {
 
 String _dateLabel(DateTime value) {
   return value.toIso8601String().split('T').first;
+}
+
+String _nullableDateLabel(DateTime? value) {
+  return value == null ? '-' : _dateLabel(value);
+}
+
+HostelRoomSummaryModel? _profileHostelRoomById(
+  List<HostelRoomSummaryModel> rooms,
+  String? roomId,
+) {
+  for (final room in rooms) {
+    if (room.id == roomId) {
+      return room;
+    }
+  }
+  return null;
+}
+
+TransportRouteModel? _transportRouteById(
+  List<TransportRouteModel> routes,
+  String? routeId,
+) {
+  for (final route in routes) {
+    if (route.id == routeId) {
+      return route;
+    }
+  }
+  return null;
+}
+
+void _refreshStudentTransportState(
+  WidgetRef ref,
+  String studentId,
+  String academicYearId,
+) {
+  ref.invalidate(studentProfileProvider(studentId));
+  ref.invalidate(
+    studentCurrentTransportAssignmentProvider(
+      StudentTransportAssignmentKey(
+        studentId: studentId,
+        academicYearId: academicYearId,
+      ),
+    ),
+  );
+  ref.invalidate(transportVehiclesProvider(academicYearId));
+  ref.invalidate(transportRoutesProvider(academicYearId));
 }
 
 String? _required(String? value) {

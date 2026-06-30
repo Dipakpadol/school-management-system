@@ -13,6 +13,17 @@ import com.school.erp.modules.attendance.application.AttendanceService;
 import com.school.erp.modules.attendance.domain.AttendanceStatus;
 import com.school.erp.modules.exams.api.dto.StudentExamResultsResponse;
 import com.school.erp.modules.exams.application.ExamService;
+import com.school.erp.modules.fees.api.dto.StudentFeeAssignmentResponse;
+import com.school.erp.modules.fees.application.FeeService;
+import com.school.erp.modules.hostel.api.dto.ChangeRoomRequest;
+import com.school.erp.modules.hostel.api.dto.HostelAllocationResponse;
+import com.school.erp.modules.hostel.api.dto.HostelAssignmentRequest;
+import com.school.erp.modules.hostel.api.dto.VacateHostelRequest;
+import com.school.erp.modules.hostel.application.HostelService;
+import com.school.erp.modules.transport.api.dto.StudentTransportAssignmentResponse;
+import com.school.erp.modules.transport.api.dto.TransportAssignmentRequest;
+import com.school.erp.modules.transport.api.dto.TransportRemoveRequest;
+import com.school.erp.modules.transport.application.TransportService;
 import com.school.erp.modules.students.api.dto.ClassSectionAssignmentRequest;
 import com.school.erp.modules.students.api.dto.ParentMappingRequest;
 import com.school.erp.modules.students.api.dto.ParentMappingResponse;
@@ -66,6 +77,9 @@ public class StudentController {
 	private final StudentImportExportService studentImportExportService;
 	private final AttendanceService attendanceService;
 	private final ExamService examService;
+	private final FeeService feeService;
+	private final HostelService hostelService;
+	private final TransportService transportService;
 
 	@PostMapping("/admissions")
 	@PreAuthorize("hasAuthority('STUDENTS_CREATE')")
@@ -230,6 +244,132 @@ public class StudentController {
 				examService.exportStudentProfileReportCard(studentId, resultId, academicYearId),
 				"student-report-card-" + studentId + ".csv",
 				"text/csv");
+	}
+
+	@GetMapping("/{studentId}/hostel-fees")
+	@PreAuthorize("hasAnyAuthority('STUDENTS_READ','HOSTEL_READ','FEES_READ')")
+	@Operation(summary = "Get student hostel fees", description = "Reads hostel fee assignments reflected in the student fee ledger.")
+	public ResponseEntity<ApiResponse<List<StudentFeeAssignmentResponse>>> getStudentHostelFees(
+			@PathVariable UUID studentId,
+			HttpServletRequest httpRequest) {
+		return ok(feeService.studentHostelFees(studentId), "Student hostel fees fetched successfully", httpRequest);
+	}
+
+	@GetMapping("/{studentId}/transport-fees")
+	@PreAuthorize("hasAnyAuthority('STUDENTS_READ','TRANSPORT_READ','FEES_READ')")
+	@Operation(summary = "Get student transport fees", description = "Reads transport fee assignments reflected in the student fee ledger.")
+	public ResponseEntity<ApiResponse<List<StudentFeeAssignmentResponse>>> getStudentTransportFees(
+			@PathVariable UUID studentId,
+			HttpServletRequest httpRequest) {
+		return ok(feeService.studentTransportFees(studentId), "Student transport fees fetched successfully", httpRequest);
+	}
+
+	@GetMapping("/{studentId}/hostel-allocation")
+	@PreAuthorize("hasAnyAuthority('STUDENTS_READ','HOSTEL_READ')")
+	@Operation(summary = "Get current student hostel allocation", description = "Returns the active hostel allocation for the student and academic year, or null when none exists.")
+	public ResponseEntity<ApiResponse<HostelAllocationResponse>> getStudentHostelAllocation(
+			@PathVariable UUID studentId,
+			@RequestParam(required = false) UUID academicYearId,
+			HttpServletRequest httpRequest) {
+		return ok(
+				hostelService.currentStudentAllocation(studentId, academicYearId).orElse(null),
+				"Student hostel allocation fetched successfully",
+				httpRequest);
+	}
+
+	@PostMapping("/{studentId}/hostel-allocation")
+	@PreAuthorize("hasAnyAuthority('STUDENTS_UPDATE','HOSTEL_MANAGE')")
+	@Operation(summary = "Assign hostel to student", description = "Creates an active hostel allocation for the student profile flow.")
+	public ResponseEntity<ApiResponse<HostelAllocationResponse>> assignStudentHostelAllocation(
+			@PathVariable UUID studentId,
+			@Valid @RequestBody HostelAssignmentRequest request,
+			HttpServletRequest httpRequest) {
+		return created(
+				hostelService.assignStudentFromProfile(studentId, request),
+				"Student hostel allocation saved successfully",
+				httpRequest);
+	}
+
+	@PutMapping("/{studentId}/hostel-allocation/{allocationId}/change-room")
+	@PreAuthorize("hasAnyAuthority('STUDENTS_UPDATE','HOSTEL_MANAGE')")
+	@Operation(summary = "Change student hostel room")
+	public ResponseEntity<ApiResponse<HostelAllocationResponse>> changeStudentHostelRoom(
+			@PathVariable UUID studentId,
+			@PathVariable UUID allocationId,
+			@Valid @RequestBody ChangeRoomRequest request,
+			HttpServletRequest httpRequest) {
+		return ok(
+				hostelService.changeStudentRoom(studentId, allocationId, request),
+				"Student hostel room changed successfully",
+				httpRequest);
+	}
+
+	@PutMapping("/{studentId}/hostel-allocation/{allocationId}/vacate")
+	@PreAuthorize("hasAnyAuthority('STUDENTS_UPDATE','HOSTEL_MANAGE')")
+	@Operation(summary = "Vacate student hostel allocation")
+	public ResponseEntity<ApiResponse<HostelAllocationResponse>> vacateStudentHostelAllocation(
+			@PathVariable UUID studentId,
+			@PathVariable UUID allocationId,
+			@Valid @RequestBody VacateHostelRequest request,
+			HttpServletRequest httpRequest) {
+		return ok(
+				hostelService.vacateStudentAllocation(studentId, allocationId, request),
+				"Student hostel allocation vacated successfully",
+				httpRequest);
+	}
+
+	@GetMapping("/{studentId}/transport-assignment")
+	@PreAuthorize("hasAnyAuthority('STUDENTS_READ','TRANSPORT_READ')")
+	@Operation(summary = "Get current student transport assignment", description = "Returns the active transport assignment for the student and academic year, or null when none exists.")
+	public ResponseEntity<ApiResponse<StudentTransportAssignmentResponse>> getStudentTransportAssignment(
+			@PathVariable UUID studentId,
+			@RequestParam(required = false) UUID academicYearId,
+			HttpServletRequest httpRequest) {
+		return ok(
+				transportService.currentStudentAssignment(studentId, academicYearId).orElse(null),
+				"Student transport assignment fetched successfully",
+				httpRequest);
+	}
+
+	@PostMapping("/{studentId}/transport-assignment")
+	@PreAuthorize("hasAnyAuthority('STUDENTS_UPDATE','TRANSPORT_MANAGE')")
+	@Operation(summary = "Assign transport to student", description = "Creates an active transport assignment for the student profile flow.")
+	public ResponseEntity<ApiResponse<StudentTransportAssignmentResponse>> assignStudentTransport(
+			@PathVariable UUID studentId,
+			@Valid @RequestBody TransportAssignmentRequest request,
+			HttpServletRequest httpRequest) {
+		return created(
+				transportService.assignStudentFromProfile(studentId, request),
+				"Student transport assignment saved successfully",
+				httpRequest);
+	}
+
+	@PutMapping("/{studentId}/transport-assignment/{assignmentId}/change")
+	@PreAuthorize("hasAnyAuthority('STUDENTS_UPDATE','TRANSPORT_MANAGE')")
+	@Operation(summary = "Change student transport assignment")
+	public ResponseEntity<ApiResponse<StudentTransportAssignmentResponse>> changeStudentTransport(
+			@PathVariable UUID studentId,
+			@PathVariable UUID assignmentId,
+			@Valid @RequestBody TransportAssignmentRequest request,
+			HttpServletRequest httpRequest) {
+		return ok(
+				transportService.changeStudentAssignment(studentId, assignmentId, request),
+				"Student transport assignment changed successfully",
+				httpRequest);
+	}
+
+	@PutMapping("/{studentId}/transport-assignment/{assignmentId}/remove")
+	@PreAuthorize("hasAnyAuthority('STUDENTS_UPDATE','TRANSPORT_MANAGE')")
+	@Operation(summary = "Remove student transport assignment")
+	public ResponseEntity<ApiResponse<StudentTransportAssignmentResponse>> removeStudentTransport(
+			@PathVariable UUID studentId,
+			@PathVariable UUID assignmentId,
+			@Valid @RequestBody(required = false) TransportRemoveRequest request,
+			HttpServletRequest httpRequest) {
+		return ok(
+				transportService.removeStudentAssignment(studentId, assignmentId, request),
+				"Student transport assignment removed successfully",
+				httpRequest);
 	}
 
 	@GetMapping("/{studentId}/parents")

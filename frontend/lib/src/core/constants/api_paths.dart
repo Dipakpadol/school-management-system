@@ -42,6 +42,91 @@ abstract final class ApiPaths {
   static const reportsOptions = '/v1/reports/options';
   static const reportsExport = '/v1/reports/export';
 
+  static const notificationLogs = '/v1/notifications/logs';
+  static const notificationTemplates = '/v1/notifications/templates';
+  static const notificationTestEmail = '/v1/notifications/test/email';
+  static const notificationTestSms = '/v1/notifications/test/sms';
+  static const notificationTestWhatsApp = '/v1/notifications/test/whatsapp';
+
+  static String notificationTemplate(String id) =>
+      '/v1/notifications/templates/$id';
+
+  static const hostelAcademicYears = '/v1/hostels/academic-years';
+  static const hostels = '/v1/hostels';
+  static const hostelFeeStructures = '/v1/hostels/fees/structures';
+  static const hostelFeeAssign = '/v1/hostels/fees/assign';
+
+  static const transportAcademicYears = '/v1/transport/academic-years';
+  static const transportDrivers = '/v1/transport/drivers';
+  static const transportVehicles = '/v1/transport/vehicles';
+  static const transportRoutes = '/v1/transport/routes';
+
+  static String hostelAcademicYearRooms(String academicYearId) =>
+      '/v1/hostels/academic-years/$academicYearId/rooms';
+
+  static String hostelRoomDetails(String roomId) =>
+      '/v1/hostels/rooms/$roomId/details';
+
+  static String hostelRoomStudents(String roomId) =>
+      '/v1/hostels/rooms/$roomId/students';
+
+  static String hostelRoomAssignStudent(String roomId) =>
+      '/v1/hostels/rooms/$roomId/assign-student';
+
+  static String hostelAllocationChangeRoom(String allocationId) =>
+      '/v1/hostels/allocations/$allocationId/change-room';
+
+  static String hostelAllocationVacate(String allocationId) =>
+      '/v1/hostels/allocations/$allocationId/vacate';
+
+  static String hostelStudentAllocations(String studentId) =>
+      '/v1/hostels/students/$studentId/allocations';
+
+  static String hostelFeeStructure(String id) =>
+      '/v1/hostels/fees/structures/$id';
+
+  static String transportAcademicYearVehicles(String academicYearId) =>
+      '/v1/transport/academic-years/$academicYearId/vehicles';
+
+  static String transportAcademicYearRoutes(String academicYearId) =>
+      '/v1/transport/academic-years/$academicYearId/routes';
+
+  static String transportDriver(String id) => '/v1/transport/drivers/$id';
+
+  static String transportVehicle(String id) => '/v1/transport/vehicles/$id';
+
+  static String transportRoute(String id) => '/v1/transport/routes/$id';
+
+  static String transportRoutePickupPoints(String routeId) =>
+      '/v1/transport/routes/$routeId/pickup-points';
+
+  static String transportPickupPoint(String id) =>
+      '/v1/transport/pickup-points/$id';
+
+  static String transportVehicleDetails(String vehicleId) =>
+      '/v1/transport/vehicles/$vehicleId/details';
+
+  static String transportVehicleStudents(String vehicleId) =>
+      '/v1/transport/vehicles/$vehicleId/students';
+
+  static const teacherAcademicYears = '/v1/teachers/academic-years';
+  static const teacherManagement = '/v1/teachers';
+
+  static String teacher(String id) => '/v1/teachers/$id';
+
+  static String teacherProfile(String id) => '/v1/teachers/$id/profile';
+
+  static String teacherAssignments(String id) =>
+      '/v1/teachers/$id/assignments';
+
+  static String teacherAssignment(String id, String assignmentId) =>
+      '/v1/teachers/$id/assignments/$assignmentId';
+
+  static String teacherDocuments(String id) => '/v1/teachers/$id/documents';
+
+  static String teacherDocument(String id, String documentId) =>
+      '/v1/teachers/$id/documents/$documentId';
+
   static const feeCategories = '/v1/fees/categories';
   static const feeStructures = '/v1/fees/structures';
   static const lateFeeRules = '/v1/fees/late-fee-rules';
@@ -122,6 +207,37 @@ abstract final class ApiPaths {
 
   static String studentExamReportCard(String id, String resultId) =>
       '/v1/students/$id/exam-results/$resultId/report-card';
+
+  static String studentHostelFees(String id) => '/v1/students/$id/hostel-fees';
+
+  static String studentTransportFees(String id) =>
+      '/v1/students/$id/transport-fees';
+
+  static String studentHostelAllocation(String id) =>
+      '/v1/students/$id/hostel-allocation';
+
+  static String studentHostelAllocationChangeRoom(
+    String studentId,
+    String allocationId,
+  ) => '/v1/students/$studentId/hostel-allocation/$allocationId/change-room';
+
+  static String studentHostelAllocationVacate(
+    String studentId,
+    String allocationId,
+  ) => '/v1/students/$studentId/hostel-allocation/$allocationId/vacate';
+
+  static String studentTransportAssignment(String id) =>
+      '/v1/students/$id/transport-assignment';
+
+  static String studentTransportAssignmentChange(
+    String studentId,
+    String assignmentId,
+  ) => '/v1/students/$studentId/transport-assignment/$assignmentId/change';
+
+  static String studentTransportAssignmentRemove(
+    String studentId,
+    String assignmentId,
+  ) => '/v1/students/$studentId/transport-assignment/$assignmentId/remove';
 
   static String studentPhoto(String id) => '/v1/students/$id/photo';
 

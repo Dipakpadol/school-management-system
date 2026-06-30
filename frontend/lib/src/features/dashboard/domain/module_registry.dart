@@ -46,6 +46,20 @@ const erpModules = <ErpModule>[
     description: 'Hostel rooms, allocations, wardens, occupancy.',
   ),
   ErpModule(
+    id: 'transport',
+    title: 'Transport Management',
+    icon: Icons.directions_bus_outlined,
+    status: 'API ready',
+    description: 'Buses, routes, pickup points, drivers, assignments.',
+  ),
+  ErpModule(
+    id: 'teachers',
+    title: 'Teacher Management',
+    icon: Icons.badge_outlined,
+    status: 'API ready',
+    description: 'Teacher profiles, documents, classes, subjects.',
+  ),
+  ErpModule(
     id: 'attendance',
     title: 'Attendance',
     icon: Icons.fact_check_outlined,

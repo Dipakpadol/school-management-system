@@ -18,7 +18,6 @@ import com.school.erp.modules.academic.api.dto.DivisionSubjectRequest;
 import com.school.erp.modules.academic.api.dto.DivisionSubjectResponse;
 import com.school.erp.modules.academic.api.dto.SectionResponse;
 import com.school.erp.modules.academic.api.dto.SubjectResponse;
-import com.school.erp.modules.academic.api.dto.TeacherSummaryResponse;
 import com.school.erp.modules.academic.application.AcademicHierarchyService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -202,13 +201,6 @@ public class AcademicHierarchyController {
 	@Operation(summary = "Get subjects")
 	public ResponseEntity<ApiResponse<List<SubjectResponse>>> subjects(HttpServletRequest request) {
 		return ok(academicHierarchyService.getSubjects(), "Subjects fetched successfully", request);
-	}
-
-	@GetMapping("/teachers")
-	@PreAuthorize("hasAuthority('ACADEMIC_READ')")
-	@Operation(summary = "Get teachers")
-	public ResponseEntity<ApiResponse<List<TeacherSummaryResponse>>> teachers(HttpServletRequest request) {
-		return ok(academicHierarchyService.getTeachers(), "Teachers fetched successfully", request);
 	}
 
 	@GetMapping("/divisions/{divisionId}/subjects")

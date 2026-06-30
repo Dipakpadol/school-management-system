@@ -11,6 +11,10 @@ import '../../../../core/widgets/app_data_table.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../hostel/data/models/hostel_models.dart';
+import '../../../hostel/presentation/controllers/hostel_providers.dart';
+import '../../../transport/data/models/transport_models.dart';
+import '../../../transport/presentation/controllers/transport_providers.dart';
 import '../../data/models/student_models.dart';
 import '../../data/repositories/students_repository_impl.dart';
 import '../controllers/students_providers.dart';
@@ -459,25 +463,85 @@ Future<void> _showAdmissionDialog(
   final parentPhone = TextEditingController(text: '+9198');
   final parentEmail = TextEditingController();
   final parentOccupation = TextEditingController();
+  final hostelAllocationDate = TextEditingController(
+    text: admissionDate.text,
+  );
+  final transportAssignmentDate = TextEditingController(
+    text: admissionDate.text,
+  );
   final formKey = GlobalKey<FormState>();
   var gender = 'MALE';
   var status = 'ACTIVE';
   var parentRelation = 'GUARDIAN';
+  var hostelRequired = false;
+  var hostelFeeApplicable = true;
+  var transportRequired = false;
+  var transportFeeApplicable = true;
+  String? selectedHostelId;
+  String? selectedRoomId;
+  String? selectedBedId;
+  String? selectedTransportRouteId;
+  String? selectedTransportPickupPointId;
 
   await showDialog<void>(
     context: context,
     builder: (context) {
-      return AlertDialog(
-        title: const Text('Add student'),
-        content: Form(
-          key: formKey,
-          child: SizedBox(
-            width: 620,
-            child: SingleChildScrollView(
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Consumer(
+            builder: (context, ref, _) {
+              final hostels = ref.watch(hostelsProvider);
+              final rooms = filter.academicYearId == null
+                  ? const AsyncValue.data(<HostelRoomSummaryModel>[])
+                  : ref.watch(hostelRoomsProvider(filter.academicYearId!));
+              final roomItems = rooms.maybeWhen(
+                data: (items) => selectedHostelId == null
+                    ? items
+                    : items
+                        .where((room) => room.hostelId == selectedHostelId)
+                        .toList(),
+                orElse: () => const <HostelRoomSummaryModel>[],
+              );
+              final selectedRoom = _hostelRoomById(roomItems, selectedRoomId);
+              final availableBeds = selectedRoom == null
+                  ? const <HostelBedModel>[]
+                  : selectedRoom.beds
+                      .where((bed) => bed.active && !bed.occupied)
+                      .toList();
+              final transportRoutes = filter.academicYearId == null
+                  ? const AsyncValue.data(<TransportRouteModel>[])
+                  : ref.watch(transportRoutesProvider(filter.academicYearId!));
+              final transportRouteItems = transportRoutes.maybeWhen(
+                data: (items) => items,
+                orElse: () => const <TransportRouteModel>[],
+              );
+              final selectedTransportRoute = _transportRouteById(
+                transportRouteItems,
+                selectedTransportRouteId,
+              );
+              final pickupPoints = selectedTransportRouteId == null
+                  ? const AsyncValue.data(<TransportPickupPointModel>[])
+                  : ref.watch(
+                      transportPickupPointsProvider(
+                        selectedTransportRouteId!,
+                      ),
+                    );
+              final pickupPointItems = pickupPoints.maybeWhen(
+                data: (items) => items,
+                orElse: () => const <TransportPickupPointModel>[],
+              );
+
+              return AlertDialog(
+                title: const Text('Add student'),
+                content: Form(
+                  key: formKey,
+                  child: SizedBox(
+                    width: 620,
+                    child: SingleChildScrollView(
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
                   _Field(
                     width: 290,
                     child: TextFormField(
@@ -721,6 +785,231 @@ Future<void> _showAdmissionDialog(
                       decoration: const InputDecoration(labelText: 'Country'),
                     ),
                   ),
+                  _Field(
+                    width: 592,
+                    child: SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Hostel required'),
+                      value: hostelRequired,
+                      onChanged: (value) => setDialogState(() {
+                        hostelRequired = value;
+                        selectedHostelId = null;
+                        selectedRoomId = null;
+                        selectedBedId = null;
+                        hostelAllocationDate.text = admissionDate.text.trim();
+                      }),
+                    ),
+                  ),
+                  if (hostelRequired) ...[
+                    _Field(
+                      width: 290,
+                      child: hostels.when(
+                        data: (items) => DropdownButtonFormField<String>(
+                          initialValue: selectedHostelId,
+                          decoration: const InputDecoration(labelText: 'Hostel'),
+                          items: [
+                            for (final hostel in items)
+                              DropdownMenuItem(
+                                value: hostel.id,
+                                child: Text(hostel.name),
+                              ),
+                          ],
+                          validator: _required,
+                          onChanged: (value) => setDialogState(() {
+                            selectedHostelId = value;
+                            selectedRoomId = null;
+                            selectedBedId = null;
+                          }),
+                        ),
+                        error: (error, _) => Text(_message(error)),
+                        loading: () => const LinearProgressIndicator(),
+                      ),
+                    ),
+                    _Field(
+                      width: 290,
+                      child: rooms.when(
+                        data: (_) => DropdownButtonFormField<String>(
+                          initialValue: selectedRoomId,
+                          decoration: const InputDecoration(labelText: 'Room'),
+                          items: [
+                            for (final room in roomItems)
+                              DropdownMenuItem(
+                                value: room.id,
+                                child: Text(
+                                  '${room.roomNumber} (${room.availableBeds} free)',
+                                ),
+                              ),
+                          ],
+                          validator: (value) {
+                            final required = _required(value);
+                            if (required != null) {
+                              return required;
+                            }
+                            final room = _hostelRoomById(roomItems, value);
+                            if (room != null && room.availableBeds <= 0) {
+                              return 'Room is full';
+                            }
+                            return null;
+                          },
+                          onChanged: (value) => setDialogState(() {
+                            selectedRoomId = value;
+                            selectedBedId = null;
+                          }),
+                        ),
+                        error: (error, _) => Text(_message(error)),
+                        loading: () => const LinearProgressIndicator(),
+                      ),
+                    ),
+                    if (selectedRoom != null)
+                      _Field(
+                        width: 592,
+                        child: _HostelAvailabilityLine(room: selectedRoom),
+                      ),
+                    if (selectedRoom?.bedConceptEnabled ?? false)
+                      _Field(
+                        width: 290,
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedBedId,
+                          decoration: const InputDecoration(labelText: 'Bed'),
+                          items: [
+                            for (final bed in availableBeds)
+                              DropdownMenuItem(
+                                value: bed.id,
+                                child: Text(bed.bedNumber),
+                              ),
+                          ],
+                          validator: _required,
+                          onChanged: (value) =>
+                              setDialogState(() => selectedBedId = value),
+                        ),
+                      ),
+                    _Field(
+                      width: 290,
+                      child: TextFormField(
+                        controller: hostelAllocationDate,
+                        decoration: const InputDecoration(
+                          labelText: 'Allocation date',
+                          hintText: 'YYYY-MM-DD',
+                        ),
+                        validator: _date,
+                      ),
+                    ),
+                    _Field(
+                      width: 290,
+                      child: SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Hostel fee applicable'),
+                        value: hostelFeeApplicable,
+                        onChanged: (value) => setDialogState(
+                          () => hostelFeeApplicable = value,
+                        ),
+                      ),
+                    ),
+                  ],
+                  _Field(
+                    width: 592,
+                    child: SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Transport required'),
+                      value: transportRequired,
+                      onChanged: (value) => setDialogState(() {
+                        transportRequired = value;
+                        selectedTransportRouteId = null;
+                        selectedTransportPickupPointId = null;
+                        transportAssignmentDate.text =
+                            admissionDate.text.trim();
+                      }),
+                    ),
+                  ),
+                  if (transportRequired) ...[
+                    _Field(
+                      width: 290,
+                      child: TextFormField(
+                        controller: transportAssignmentDate,
+                        decoration: const InputDecoration(
+                          labelText: 'Transport assignment date',
+                          hintText: 'YYYY-MM-DD',
+                        ),
+                        validator: _date,
+                      ),
+                    ),
+                    _Field(
+                      width: 290,
+                      child: transportRoutes.when(
+                        data: (_) => DropdownButtonFormField<String>(
+                          initialValue: selectedTransportRouteId,
+                          decoration: const InputDecoration(labelText: 'Route'),
+                          isExpanded: true,
+                          items: [
+                            for (final route in transportRouteItems)
+                              DropdownMenuItem(
+                                value: route.id,
+                                child: Text(
+                                  '${route.routeName} (${_dash(route.vehicleNumber)})',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                          ],
+                          validator: _required,
+                          onChanged: (value) => setDialogState(() {
+                            selectedTransportRouteId = value;
+                            selectedTransportPickupPointId = null;
+                          }),
+                        ),
+                        error: (error, _) => Text(_message(error)),
+                        loading: () => const LinearProgressIndicator(),
+                      ),
+                    ),
+                    _Field(
+                      width: 290,
+                      child: pickupPoints.when(
+                        data: (_) => DropdownButtonFormField<String>(
+                          initialValue: selectedTransportPickupPointId,
+                          decoration: const InputDecoration(
+                            labelText: 'Pickup point',
+                          ),
+                          isExpanded: true,
+                          items: [
+                            for (final point in pickupPointItems)
+                              DropdownMenuItem(
+                                value: point.id,
+                                child: Text(
+                                  point.pointName,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                          ],
+                          validator: _required,
+                          onChanged: (value) => setDialogState(
+                            () => selectedTransportPickupPointId = value,
+                          ),
+                        ),
+                        error: (error, _) => Text(_message(error)),
+                        loading: () => const LinearProgressIndicator(),
+                      ),
+                    ),
+                    _Field(
+                      width: 290,
+                      child: InputDecorator(
+                        decoration: const InputDecoration(labelText: 'Vehicle'),
+                        child: Text(
+                          selectedTransportRoute?.vehicleNumber ?? '-',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    _Field(
+                      width: 290,
+                      child: SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Transport fee applicable'),
+                        value: transportFeeApplicable,
+                        onChanged: (value) => setDialogState(
+                          () => transportFeeApplicable = value,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -791,6 +1080,28 @@ Future<void> _showAdmissionDialog(
                   'effectiveFrom': admissionDate.text.trim(),
                 },
                 'documents': [],
+                'hostelAssignment': hostelRequired
+                    ? {
+                        'hostelRequired': true,
+                        'academicYearId': filter.academicYearId,
+                        'hostelId': selectedHostelId,
+                        'roomId': selectedRoomId,
+                        'bedId': selectedBedId,
+                        'allocationDate': hostelAllocationDate.text.trim(),
+                        'hostelFeeApplicable': hostelFeeApplicable,
+                      }
+                    : null,
+                'transportAssignment': transportRequired
+                    ? {
+                        'transportRequired': true,
+                        'academicYearId': filter.academicYearId,
+                        'vehicleId': selectedTransportRoute?.vehicleId,
+                        'routeId': selectedTransportRouteId,
+                        'pickupPointId': selectedTransportPickupPointId,
+                        'assignmentDate': transportAssignmentDate.text.trim(),
+                        'transportFeeApplicable': transportFeeApplicable,
+                      }
+                    : null,
               });
               if (!context.mounted) {
                 return;
@@ -808,6 +1119,10 @@ Future<void> _showAdmissionDialog(
             label: const Text('Save'),
           ),
         ],
+              );
+            },
+          );
+        },
       );
     },
   );
@@ -833,6 +1148,8 @@ Future<void> _showAdmissionDialog(
   parentPhone.dispose();
   parentEmail.dispose();
   parentOccupation.dispose();
+  hostelAllocationDate.dispose();
+  transportAssignmentDate.dispose();
 }
 
 class _Field extends StatelessWidget {
@@ -847,11 +1164,38 @@ class _Field extends StatelessWidget {
   }
 }
 
+class _HostelAvailabilityLine extends StatelessWidget {
+  const _HostelAvailabilityLine({required this.room});
+
+  final HostelRoomSummaryModel room;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = room.availableBeds > 0 ? Colors.green : Colors.red;
+    return Row(
+      children: [
+        Icon(Icons.bed_outlined, color: color, size: 20),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            'Room ${room.roomNumber}: ${room.occupiedCount}/${room.capacity} occupied, ${room.availableBeds} available',
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 Future<void> _runPickedStudentImport(
   BuildContext context,
   WidgetRef ref,
   StudentSectionFilter filter,
 ) async {
+  final proceed = await _showStudentImportGuide(context);
+  if (proceed != true || !context.mounted) {
+    return;
+  }
   final file = await pickUploadFile(accept: '.xlsx,.xls,.csv,text/csv');
   if (file == null || !context.mounted) {
     return;
@@ -864,11 +1208,59 @@ Future<void> _runPickedStudentImport(
     return;
   }
   result.when(
-    success: (_) {
-      _snack(context, 'Student import completed.');
+    success: (summary) {
+      final warningText = summary.warningRows > 0
+          ? ' ${summary.warningRows} row(s) have hostel warnings.'
+          : '';
+      final failedText = summary.failedRows > 0
+          ? ' ${summary.failedRows} row(s) failed.'
+          : '';
+      _snack(
+        context,
+        'Imported ${summary.successRows}/${summary.totalRows} student row(s).$warningText$failedText',
+      );
       ref.invalidate(sectionStudentsProvider(filter));
     },
     failure: (failure) => _snack(context, failure.message),
+  );
+}
+
+Future<bool?> _showStudentImportGuide(BuildContext context) {
+  return showDialog<bool>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Import students'),
+        content: const SizedBox(
+          width: 520,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Hostel columns supported in the template:'),
+              SizedBox(height: 8),
+              Text('hostelRequired, hostelName, roomNumber, bedNumber'),
+              Text('hostelAllocationDate, hostelFeeApplicable'),
+              SizedBox(height: 12),
+              Text(
+                'If student data is valid but hostel assignment fails, the student row is imported with a warning.',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(context).pop(true),
+            icon: const Icon(Icons.upload_file_outlined),
+            label: const Text('Choose file'),
+          ),
+        ],
+      );
+    },
   );
 }
 
@@ -943,8 +1335,36 @@ String? _optionalPinCode(String? value) {
       : 'Enter a valid pin code';
 }
 
+HostelRoomSummaryModel? _hostelRoomById(
+  List<HostelRoomSummaryModel> rooms,
+  String? roomId,
+) {
+  for (final room in rooms) {
+    if (room.id == roomId) {
+      return room;
+    }
+  }
+  return null;
+}
+
+TransportRouteModel? _transportRouteById(
+  List<TransportRouteModel> routes,
+  String? routeId,
+) {
+  for (final route in routes) {
+    if (route.id == routeId) {
+      return route;
+    }
+  }
+  return null;
+}
+
 String? _blankToNull(String value) {
   return value.trim().isEmpty ? null : value.trim();
+}
+
+String _dash(String? value) {
+  return value == null || value.trim().isEmpty ? '-' : value.trim();
 }
 
 String _message(Object error) {

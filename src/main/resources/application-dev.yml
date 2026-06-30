@@ -1,0 +1,18 @@
+notifications:
+  scheduler:
+    enabled: true
+    fee-due-cron: "${NOTIFICATIONS_FEE_DUE_CRON:0 * * * * *}"
+    zone: Asia/Kolkata
+    email-enabled: true
+    sms-enabled: false
+    whatsapp-enabled: false
+  email:
+    enabled: true
+    provider: ${NOTIFICATIONS_EMAIL_PROVIDER:console}
+    console-fallback-enabled: true
+  sms:
+    enabled: false
+    provider: none
+  whatsapp:
+    enabled: false
+    provider: none

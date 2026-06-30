@@ -9,6 +9,10 @@ import java.util.Set;
 import com.school.erp.common.domain.BaseEntity;
 import com.school.erp.modules.academic.domain.AcademicYear;
 import com.school.erp.modules.academic.domain.ClassEntity;
+import com.school.erp.modules.hostel.domain.Hostel;
+import com.school.erp.modules.hostel.domain.HostelRoom;
+import com.school.erp.modules.transport.domain.TransportPickupPoint;
+import com.school.erp.modules.transport.domain.TransportRoute;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -51,6 +55,29 @@ public class FeeStructure extends BaseEntity {
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "class_id")
 	private ClassEntity classEntity;
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "fee_scope", nullable = false, length = 30)
+	private FeeScope feeScope = FeeScope.CLASS;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "hostel_id")
+	private Hostel hostel;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "hostel_room_id")
+	private HostelRoom hostelRoom;
+
+	@Column(name = "room_type", length = 80)
+	private String roomType;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "transport_route_id")
+	private TransportRoute transportRoute;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "transport_pickup_point_id")
+	private TransportPickupPoint transportPickupPoint;
 
 	@Column(nullable = false, length = 140)
 	private String name;
@@ -111,13 +138,62 @@ public class FeeStructure extends BaseEntity {
 	}
 
 	public void updateAcademicMapping(AcademicYear academicYearEntity, ClassEntity classEntity) {
+		this.feeScope = FeeScope.CLASS;
 		this.academicYearEntity = academicYearEntity;
 		this.classEntity = classEntity;
+		this.hostel = null;
+		this.hostelRoom = null;
+		this.roomType = null;
+		this.transportRoute = null;
+		this.transportPickupPoint = null;
 		if (academicYearEntity != null) {
 			this.academicYear = academicYearEntity.getName();
 		}
 		if (classEntity != null) {
 			this.className = classEntity.getName();
+		}
+	}
+
+	public void updateHostelMapping(
+			AcademicYear academicYearEntity,
+			Hostel hostel,
+			HostelRoom hostelRoom,
+			String roomType) {
+		this.feeScope = FeeScope.HOSTEL;
+		this.academicYearEntity = academicYearEntity;
+		this.classEntity = null;
+		this.hostel = hostel;
+		this.hostelRoom = hostelRoom;
+		this.roomType = normalizeRoomType(roomType);
+		this.transportRoute = null;
+		this.transportPickupPoint = null;
+		if (academicYearEntity != null) {
+			this.academicYear = academicYearEntity.getName();
+		}
+		if (hostel != null) {
+			this.className = "HOSTEL-" + hostel.getCode();
+		}
+		this.sectionName = hostelRoom == null ? this.roomType : hostelRoom.getRoomNumber();
+	}
+
+	public void updateTransportMapping(
+			AcademicYear academicYearEntity,
+			TransportRoute route,
+			TransportPickupPoint pickupPoint) {
+		this.feeScope = FeeScope.TRANSPORT;
+		this.academicYearEntity = academicYearEntity;
+		this.classEntity = null;
+		this.hostel = null;
+		this.hostelRoom = null;
+		this.roomType = null;
+		this.transportRoute = route;
+		this.transportPickupPoint = pickupPoint;
+		if (academicYearEntity != null) {
+			this.academicYear = academicYearEntity.getName();
+		}
+		if (route != null) {
+			this.className = "TRANSPORT-" + route.getRouteCode();
+			this.sectionName = pickupPoint == null ? route.getRouteName() : pickupPoint.getPointName();
 		}
 	}
 
@@ -134,6 +210,10 @@ public class FeeStructure extends BaseEntity {
 
 	public void activate() {
 		status = FeeStructureStatus.ACTIVE;
+	}
+
+	public void draft() {
+		status = FeeStructureStatus.DRAFT;
 	}
 
 	public void deactivate() {
@@ -171,5 +251,12 @@ public class FeeStructure extends BaseEntity {
 			return null;
 		}
 		return value.trim();
+	}
+
+	private String normalizeRoomType(String value) {
+		if (!StringUtils.hasText(value)) {
+			return null;
+		}
+		return value.trim().toUpperCase();
 	}
 }

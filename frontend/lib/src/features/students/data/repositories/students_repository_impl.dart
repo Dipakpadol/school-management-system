@@ -212,12 +212,18 @@ class StudentsRepositoryImpl implements StudentsRepository {
   }
 
   @override
-  Future<Result<void>> importExcel(List<int> bytes, String filename) {
+  Future<Result<StudentImportResultModel>> importExcel(
+    List<int> bytes,
+    String filename,
+  ) {
     return _guard(() => _remoteDataSource.importExcel(bytes, filename));
   }
 
   @override
-  Future<Result<void>> importCsv(List<int> bytes, String filename) {
+  Future<Result<StudentImportResultModel>> importCsv(
+    List<int> bytes,
+    String filename,
+  ) {
     return _guard(() => _remoteDataSource.importCsv(bytes, filename));
   }
 

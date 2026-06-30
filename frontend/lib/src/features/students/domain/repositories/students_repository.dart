@@ -88,7 +88,13 @@ abstract interface class StudentsRepository {
 
   Future<Result<void>> downloadProfilePdf(String studentId);
 
-  Future<Result<void>> importExcel(List<int> bytes, String filename);
+  Future<Result<StudentImportResultModel>> importExcel(
+    List<int> bytes,
+    String filename,
+  );
 
-  Future<Result<void>> importCsv(List<int> bytes, String filename);
+  Future<Result<StudentImportResultModel>> importCsv(
+    List<int> bytes,
+    String filename,
+  );
 }

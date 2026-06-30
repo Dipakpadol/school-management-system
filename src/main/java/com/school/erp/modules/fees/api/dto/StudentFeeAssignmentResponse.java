@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.school.erp.modules.fees.domain.FeeAssignmentStatus;
+import com.school.erp.modules.fees.domain.FeeScope;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -20,6 +21,16 @@ public record StudentFeeAssignmentResponse(
 		String feeStructureName,
 		UUID academicYearId,
 		UUID classId,
+		FeeScope feeScope,
+		UUID hostelId,
+		String hostelName,
+		UUID hostelRoomId,
+		String hostelRoomNumber,
+		String roomType,
+		UUID transportRouteId,
+		String transportRouteName,
+		UUID transportPickupPointId,
+		String transportPickupPointName,
 		String academicYear,
 		String className,
 		String sectionName,

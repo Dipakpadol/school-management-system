@@ -26,6 +26,8 @@ import com.school.erp.common.importexport.ImportResultDto;
 import com.school.erp.common.importexport.ImportRow;
 import com.school.erp.common.importexport.PdfExportService;
 import com.school.erp.common.importexport.TemplateGeneratorService;
+import com.school.erp.modules.hostel.api.dto.HostelAssignmentRequest;
+import com.school.erp.modules.hostel.application.HostelService;
 import com.school.erp.modules.students.api.dto.ClassSectionAssignmentRequest;
 import com.school.erp.modules.students.api.dto.ParentGuardianRequest;
 import com.school.erp.modules.students.api.dto.ParentMappingRequest;
@@ -36,6 +38,8 @@ import com.school.erp.modules.students.domain.Gender;
 import com.school.erp.modules.students.domain.ParentRelation;
 import com.school.erp.modules.students.domain.StudentStatus;
 import com.school.erp.modules.students.infrastructure.StudentRepository;
+import com.school.erp.modules.transport.api.dto.TransportAssignmentRequest;
+import com.school.erp.modules.transport.application.TransportService;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -77,7 +81,19 @@ public class StudentImportExportService {
 			"parentLastName",
 			"parentEmail",
 			"parentPhoneNumber",
-			"parentOccupation");
+			"parentOccupation",
+			"hostelRequired",
+			"hostelName",
+			"roomNumber",
+			"bedNumber",
+			"hostelAllocationDate",
+			"hostelFeeApplicable",
+			"transportRequired",
+			"vehicleNumber",
+			"routeName",
+			"pickupPointName",
+			"transportAssignmentDate",
+			"transportFeeApplicable");
 
 	private static final Pattern MOBILE_PATTERN = Pattern.compile("^\\+?[0-9]{10,15}$");
 
@@ -89,6 +105,8 @@ public class StudentImportExportService {
 	private final TemplateGeneratorService templateGeneratorService;
 	private final ImportErrorReportStore importErrorReportStore;
 	private final StudentService studentService;
+	private final HostelService hostelService;
+	private final TransportService transportService;
 	private final StudentRepository studentRepository;
 	private final StudentMapper studentMapper;
 	private final AuditLogService auditLogService;
@@ -169,8 +187,10 @@ public class StudentImportExportService {
 				continue;
 			}
 			try {
-				studentService.admitStudent(toAdmissionRequest(row.values()));
+				StudentResponse student = studentService.admitStudent(toAdmissionRequest(row.values()));
 				successRows++;
+				assignHostelForImport(row, student, errors);
+				assignTransportForImport(row, student, errors);
 			}
 			catch (BusinessException ex) {
 				errors.add(new ImportErrorDto(row.rowNumber(), "row", ex.getMessage()));
@@ -188,7 +208,14 @@ public class StudentImportExportService {
 				batchId.toString(),
 				AuditAction.IMPORT,
 				null,
-				Map.of("batchId", batchId, "totalRows", rows.size(), "successRows", successRows, "failedRows", errors.size())));
+				Map.of(
+						"batchId", batchId,
+						"totalRows", rows.size(),
+						"successRows", successRows,
+						"failedRows", result.failedRows(),
+						"warningRows", result.warningRows(),
+						"hostelColumnsSupported", true,
+						"transportColumnsSupported", true)));
 		return result;
 	}
 
@@ -307,7 +334,211 @@ public class StudentImportExportService {
 						true,
 						parent)),
 				assignment,
-				List.of());
+				List.of(),
+				null,
+				null);
+	}
+
+	private void assignHostelForImport(ImportRow row, StudentResponse student, List<ImportErrorDto> errors) {
+		toHostelAssignmentRequest(row.values(), row.rowNumber(), errors).ifPresent(request -> {
+			if (student.currentAssignment() == null || student.currentAssignment().academicYearId() == null) {
+				errors.add(ImportErrorDto.warning(
+						row.rowNumber(),
+						"hostel",
+						"Student was created, but hostel assignment was skipped because academic year could not be resolved."));
+				return;
+			}
+			try {
+				hostelService.assignStudentByRequest(student.id(), student.currentAssignment().academicYearId(), request);
+			}
+			catch (BusinessException ex) {
+				errors.add(ImportErrorDto.warning(
+						row.rowNumber(),
+						"hostel",
+						"Student was created, but hostel assignment failed: " + ex.getMessage()));
+			}
+			catch (RuntimeException ex) {
+				errors.add(ImportErrorDto.warning(
+						row.rowNumber(),
+						"hostel",
+						"Student was created, but hostel assignment failed: " + ex.getMessage()));
+			}
+		});
+	}
+
+	private java.util.Optional<HostelAssignmentRequest> toHostelAssignmentRequest(
+			Map<String, String> values,
+			int rowNumber,
+			List<ImportErrorDto> errors) {
+		if (!hasHostelColumns(values)) {
+			return java.util.Optional.empty();
+		}
+		Boolean hostelRequired = parseYesNo(value(values, "hostelRequired"));
+		if (hostelRequired == null) {
+			errors.add(ImportErrorDto.warning(
+					rowNumber,
+					"hostelRequired",
+					"Student was created, but hostel assignment was skipped because hostelRequired must be YES or NO."));
+			return java.util.Optional.empty();
+		}
+		if (!hostelRequired) {
+			return java.util.Optional.empty();
+		}
+
+		String hostelName = value(values, "hostelName");
+		String roomNumber = value(values, "roomNumber");
+		if (!StringUtils.hasText(hostelName) || !StringUtils.hasText(roomNumber)) {
+			errors.add(ImportErrorDto.warning(
+					rowNumber,
+					"hostel",
+					"Student was created, but hostelName and roomNumber are required when hostelRequired is YES."));
+			return java.util.Optional.empty();
+		}
+
+		LocalDate allocationDate = null;
+		if (StringUtils.hasText(value(values, "hostelAllocationDate"))) {
+			try {
+				allocationDate = LocalDate.parse(value(values, "hostelAllocationDate"));
+			}
+			catch (DateTimeParseException ex) {
+				errors.add(ImportErrorDto.warning(
+						rowNumber,
+						"hostelAllocationDate",
+						"Student was created, but hostel assignment was skipped because hostelAllocationDate must use yyyy-MM-dd format."));
+				return java.util.Optional.empty();
+			}
+		}
+
+		Boolean feeApplicable = parseYesNo(value(values, "hostelFeeApplicable"));
+		if (feeApplicable == null && StringUtils.hasText(value(values, "hostelFeeApplicable"))) {
+			errors.add(ImportErrorDto.warning(
+					rowNumber,
+					"hostelFeeApplicable",
+					"hostelFeeApplicable must be YES or NO. Hostel assignment will use YES."));
+			feeApplicable = true;
+		}
+
+		return java.util.Optional.of(new HostelAssignmentRequest(
+				true,
+				null,
+				null,
+				hostelName,
+				null,
+				roomNumber,
+				null,
+				blankToNull(value(values, "bedNumber")),
+				allocationDate,
+				feeApplicable));
+	}
+
+	private boolean hasHostelColumns(Map<String, String> values) {
+		return StringUtils.hasText(value(values, "hostelRequired"))
+				|| StringUtils.hasText(value(values, "hostelName"))
+				|| StringUtils.hasText(value(values, "roomNumber"))
+				|| StringUtils.hasText(value(values, "bedNumber"))
+				|| StringUtils.hasText(value(values, "hostelAllocationDate"))
+				|| StringUtils.hasText(value(values, "hostelFeeApplicable"));
+	}
+
+	private void assignTransportForImport(ImportRow row, StudentResponse student, List<ImportErrorDto> errors) {
+		toTransportAssignmentRequest(row.values(), row.rowNumber(), errors).ifPresent(request -> {
+			if (student.currentAssignment() == null || student.currentAssignment().academicYearId() == null) {
+				errors.add(ImportErrorDto.warning(
+						row.rowNumber(),
+						"transport",
+						"Student was created, but transport assignment was skipped because academic year could not be resolved."));
+				return;
+			}
+			try {
+				transportService.assignStudentByRequest(student.id(), student.currentAssignment().academicYearId(), request);
+			}
+			catch (BusinessException ex) {
+				errors.add(ImportErrorDto.warning(
+						row.rowNumber(),
+						"transport",
+						"Student was created, but transport assignment failed: " + ex.getMessage()));
+			}
+			catch (RuntimeException ex) {
+				errors.add(ImportErrorDto.warning(
+						row.rowNumber(),
+						"transport",
+						"Student was created, but transport assignment failed: " + ex.getMessage()));
+			}
+		});
+	}
+
+	private java.util.Optional<TransportAssignmentRequest> toTransportAssignmentRequest(
+			Map<String, String> values,
+			int rowNumber,
+			List<ImportErrorDto> errors) {
+		if (!hasTransportColumns(values)) {
+			return java.util.Optional.empty();
+		}
+		Boolean transportRequired = parseYesNo(value(values, "transportRequired"));
+		if (transportRequired == null) {
+			errors.add(ImportErrorDto.warning(
+					rowNumber,
+					"transportRequired",
+					"Student was created, but transport assignment was skipped because transportRequired must be YES or NO."));
+			return java.util.Optional.empty();
+		}
+		if (!transportRequired) {
+			return java.util.Optional.empty();
+		}
+
+		String routeName = value(values, "routeName");
+		String pickupPointName = value(values, "pickupPointName");
+		if (!StringUtils.hasText(routeName) || !StringUtils.hasText(pickupPointName)) {
+			errors.add(ImportErrorDto.warning(
+					rowNumber,
+					"transport",
+					"Student was created, but routeName and pickupPointName are required when transportRequired is YES."));
+			return java.util.Optional.empty();
+		}
+
+		LocalDate assignmentDate = null;
+		if (StringUtils.hasText(value(values, "transportAssignmentDate"))) {
+			try {
+				assignmentDate = LocalDate.parse(value(values, "transportAssignmentDate"));
+			}
+			catch (DateTimeParseException ex) {
+				errors.add(ImportErrorDto.warning(
+						rowNumber,
+						"transportAssignmentDate",
+						"Student was created, but transport assignment was skipped because transportAssignmentDate must use yyyy-MM-dd format."));
+				return java.util.Optional.empty();
+			}
+		}
+
+		Boolean feeApplicable = parseYesNo(value(values, "transportFeeApplicable"));
+		if (feeApplicable == null && StringUtils.hasText(value(values, "transportFeeApplicable"))) {
+			errors.add(ImportErrorDto.warning(
+					rowNumber,
+					"transportFeeApplicable",
+					"transportFeeApplicable must be YES or NO. Transport assignment will use YES."));
+			feeApplicable = true;
+		}
+
+		return java.util.Optional.of(new TransportAssignmentRequest(
+				true,
+				null,
+				null,
+				blankToNull(value(values, "vehicleNumber")),
+				null,
+				routeName,
+				null,
+				pickupPointName,
+				assignmentDate,
+				feeApplicable));
+	}
+
+	private boolean hasTransportColumns(Map<String, String> values) {
+		return StringUtils.hasText(value(values, "transportRequired"))
+				|| StringUtils.hasText(value(values, "vehicleNumber"))
+				|| StringUtils.hasText(value(values, "routeName"))
+				|| StringUtils.hasText(value(values, "pickupPointName"))
+				|| StringUtils.hasText(value(values, "transportAssignmentDate"))
+				|| StringUtils.hasText(value(values, "transportFeeApplicable"));
 	}
 
 	private List<Map<String, Object>> exportRows() {
@@ -401,5 +632,16 @@ public class StudentImportExportService {
 
 	private String firstText(String primary, String fallback) {
 		return StringUtils.hasText(primary) ? primary.trim() : fallback;
+	}
+
+	private Boolean parseYesNo(String value) {
+		if (!StringUtils.hasText(value)) {
+			return null;
+		}
+		return switch (value.trim().toUpperCase()) {
+			case "YES", "Y", "TRUE", "1" -> true;
+			case "NO", "N", "FALSE", "0" -> false;
+			default -> null;
+		};
 	}
 }

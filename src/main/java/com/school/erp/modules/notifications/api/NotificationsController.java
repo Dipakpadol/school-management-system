@@ -11,13 +11,25 @@ import com.school.erp.common.modules.api.dto.ModuleRecordCountResponse;
 import com.school.erp.common.modules.api.dto.ModuleRecordRequest;
 import com.school.erp.common.modules.api.dto.ModuleRecordResponse;
 import com.school.erp.common.modules.api.dto.ModuleRecordSearchRequest;
+import com.school.erp.common.web.CorrelationIdFilter;
+import com.school.erp.modules.notifications.api.dto.NotificationLogResponse;
+import com.school.erp.modules.notifications.api.dto.NotificationTemplateRequest;
+import com.school.erp.modules.notifications.api.dto.NotificationTemplateResponse;
+import com.school.erp.modules.notifications.api.dto.TestEmailNotificationRequest;
+import com.school.erp.modules.notifications.api.dto.TestSmsNotificationRequest;
+import com.school.erp.modules.notifications.api.dto.TestWhatsAppNotificationRequest;
+import com.school.erp.modules.notifications.application.NotificationService;
+import com.school.erp.modules.notifications.domain.NotificationChannel;
+import com.school.erp.modules.notifications.domain.NotificationStatus;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
+import org.slf4j.MDC;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -45,6 +57,97 @@ public class NotificationsController {
 	private static final String MODULE = "NOTIFICATIONS";
 
 	private final ModuleRecordControllerSupport support;
+	private final NotificationService notificationService;
+
+	@PostMapping("/test/email")
+	@PreAuthorize("hasAuthority('NOTIFICATIONS_SEND')")
+	@Operation(summary = "Send test email notification")
+	public ResponseEntity<ApiResponse<NotificationLogResponse>> sendTestEmail(
+			@Valid @RequestBody TestEmailNotificationRequest body,
+			HttpServletRequest request) {
+		return created(notificationService.sendTestEmail(body), "Test email notification processed", request);
+	}
+
+	@PostMapping("/test/sms")
+	@PreAuthorize("hasAuthority('NOTIFICATIONS_SEND')")
+	@Operation(summary = "Send test SMS notification")
+	public ResponseEntity<ApiResponse<NotificationLogResponse>> sendTestSms(
+			@Valid @RequestBody TestSmsNotificationRequest body,
+			HttpServletRequest request) {
+		return created(notificationService.sendTestSms(body), "Test SMS notification processed", request);
+	}
+
+	@PostMapping("/test/whatsapp")
+	@PreAuthorize("hasAuthority('NOTIFICATIONS_SEND')")
+	@Operation(summary = "Send test WhatsApp notification")
+	public ResponseEntity<ApiResponse<NotificationLogResponse>> sendTestWhatsApp(
+			@Valid @RequestBody TestWhatsAppNotificationRequest body,
+			HttpServletRequest request) {
+		return created(notificationService.sendTestWhatsApp(body), "Test WhatsApp notification processed", request);
+	}
+
+	@GetMapping("/logs")
+	@PreAuthorize("hasAuthority('NOTIFICATIONS_READ')")
+	@Operation(summary = "List notification logs")
+	public ResponseEntity<ApiResponse<PageResponse<NotificationLogResponse>>> logs(
+			@RequestParam(required = false) NotificationChannel channel,
+			@RequestParam(required = false) NotificationStatus status,
+			@RequestParam(required = false) String referenceType,
+			@RequestParam(required = false) UUID referenceId,
+			@Valid @ParameterObject PageRequestDto pageRequest,
+			HttpServletRequest request) {
+		return ok(
+				notificationService.logs(channel, status, referenceType, referenceId, pageRequest),
+				"Notification logs fetched successfully",
+				request);
+	}
+
+	@GetMapping("/templates")
+	@PreAuthorize("hasAuthority('NOTIFICATIONS_READ')")
+	@Operation(summary = "List notification templates")
+	public ResponseEntity<ApiResponse<PageResponse<NotificationTemplateResponse>>> templates(
+			@Valid @ParameterObject PageRequestDto pageRequest,
+			HttpServletRequest request) {
+		return ok(notificationService.templates(pageRequest), "Notification templates fetched successfully", request);
+	}
+
+	@PostMapping("/templates")
+	@PreAuthorize("hasAuthority('NOTIFICATIONS_MANAGE')")
+	@Operation(summary = "Create notification template")
+	public ResponseEntity<ApiResponse<NotificationTemplateResponse>> createTemplate(
+			@Valid @RequestBody NotificationTemplateRequest body,
+			HttpServletRequest request) {
+		return created(notificationService.createTemplate(body), "Notification template created successfully", request);
+	}
+
+	@GetMapping("/templates/{templateId}")
+	@PreAuthorize("hasAuthority('NOTIFICATIONS_READ')")
+	@Operation(summary = "Get notification template")
+	public ResponseEntity<ApiResponse<NotificationTemplateResponse>> getTemplate(
+			@PathVariable UUID templateId,
+			HttpServletRequest request) {
+		return ok(notificationService.getTemplate(templateId), "Notification template fetched successfully", request);
+	}
+
+	@PutMapping("/templates/{templateId}")
+	@PreAuthorize("hasAuthority('NOTIFICATIONS_MANAGE')")
+	@Operation(summary = "Update notification template")
+	public ResponseEntity<ApiResponse<NotificationTemplateResponse>> updateTemplate(
+			@PathVariable UUID templateId,
+			@Valid @RequestBody NotificationTemplateRequest body,
+			HttpServletRequest request) {
+		return ok(notificationService.updateTemplate(templateId, body), "Notification template updated successfully", request);
+	}
+
+	@DeleteMapping("/templates/{templateId}")
+	@PreAuthorize("hasAuthority('NOTIFICATIONS_MANAGE')")
+	@Operation(summary = "Delete notification template")
+	public ResponseEntity<ApiResponse<Void>> deleteTemplate(
+			@PathVariable UUID templateId,
+			HttpServletRequest request) {
+		notificationService.deleteTemplate(templateId);
+		return ok(null, "Notification template deleted successfully", request);
+	}
 
 	@GetMapping("/{recordType}")
 	@PreAuthorize("hasAuthority('NOTIFICATIONS_READ')")
@@ -161,5 +264,21 @@ public class NotificationsController {
 			@PathVariable UUID id,
 			HttpServletRequest request) {
 		return support.delete(MODULE, recordType, id, request);
+	}
+
+	private <T> ResponseEntity<ApiResponse<T>> ok(T data, String message, HttpServletRequest request) {
+		return ResponseEntity.ok(response(data, message, request));
+	}
+
+	private <T> ResponseEntity<ApiResponse<T>> created(T data, String message, HttpServletRequest request) {
+		return ResponseEntity.status(HttpStatus.CREATED).body(response(data, message, request));
+	}
+
+	private <T> ApiResponse<T> response(T data, String message, HttpServletRequest request) {
+		return ApiResponse.success(
+				data,
+				message,
+				request.getRequestURI(),
+				MDC.get(CorrelationIdFilter.CORRELATION_ID));
 	}
 }

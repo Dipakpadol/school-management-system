@@ -17,12 +17,16 @@ import '../../features/fees/presentation/pages/fees_management_page.dart';
 import '../../features/fees/presentation/pages/payment_collection_page.dart';
 import '../../features/fees/presentation/pages/student_fee_assignment_page.dart';
 import '../../features/exams/presentation/pages/exams_page.dart';
+import '../../features/hostel/presentation/pages/hostel_management_page.dart';
+import '../../features/notifications/presentation/pages/notification_management_page.dart';
 import '../../features/reports/presentation/pages/reports_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/students/presentation/pages/student_profile_page.dart';
 import '../../features/students/presentation/pages/student_section_detail_page.dart';
 import '../../features/students/presentation/pages/student_sections_page.dart';
 import '../../features/students/presentation/pages/students_page.dart';
+import '../../features/teachers/presentation/pages/teacher_management_page.dart';
+import '../../features/transport/presentation/pages/transport_management_page.dart';
 import '../../features/users/presentation/pages/users_page.dart';
 import 'app_routes.dart';
 
@@ -137,6 +141,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const FeesManagementPage(),
       ),
       GoRoute(
+        path: AppRoutes.hostel,
+        name: AppRouteName.hostel,
+        builder: (context, state) => const HostelManagementPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.transport,
+        name: AppRouteName.transport,
+        builder: (context, state) => const TransportManagementPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.teachers,
+        name: AppRouteName.teachers,
+        builder: (context, state) => const TeacherManagementPage(),
+      ),
+      GoRoute(
         path: AppRoutes.users,
         name: AppRouteName.users,
         builder: (context, state) => const UsersPage(),
@@ -190,6 +209,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.reports,
         name: AppRouteName.reports,
         builder: (context, state) => const ReportsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.notifications,
+        name: AppRouteName.notifications,
+        builder: (context, state) => const NotificationManagementPage(),
       ),
       GoRoute(
         path: AppRoutes.settings,

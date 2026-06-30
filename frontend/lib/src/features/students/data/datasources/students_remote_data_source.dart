@@ -228,22 +228,30 @@ class StudentsRemoteDataSource {
     return _apiClient.download(ApiPaths.studentPdf(studentId));
   }
 
-  Future<void> importExcel(List<int> bytes, String filename) async {
-    await _apiClient.post<Map<String, dynamic>>(
+  Future<StudentImportResultModel> importExcel(
+    List<int> bytes,
+    String filename,
+  ) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
       ApiPaths.studentsImportExcel,
       data: FormData.fromMap({
         'file': MultipartFile.fromBytes(bytes, filename: filename),
       }),
     );
+    return StudentImportResultModel.fromJson(_unwrapData(response.data));
   }
 
-  Future<void> importCsv(List<int> bytes, String filename) async {
-    await _apiClient.post<Map<String, dynamic>>(
+  Future<StudentImportResultModel> importCsv(
+    List<int> bytes,
+    String filename,
+  ) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
       ApiPaths.studentsImportCsv,
       data: FormData.fromMap({
         'file': MultipartFile.fromBytes(bytes, filename: filename),
       }),
     );
+    return StudentImportResultModel.fromJson(_unwrapData(response.data));
   }
 
   Map<String, dynamic> _unwrapData(Map<String, dynamic>? body) {

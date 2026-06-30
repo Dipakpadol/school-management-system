@@ -9,6 +9,8 @@ const _allModuleIds = {
   'audit-logs',
   'academic',
   'hostel',
+  'transport',
+  'teachers',
   'attendance',
   'exams',
   'reports',
@@ -23,6 +25,8 @@ const _modulePermissions = <String, Set<String>>{
   'audit-logs': {'AUDIT_LOGS_READ'},
   'academic': {'ACADEMIC_READ', 'ACADEMIC_MANAGE'},
   'hostel': {'HOSTEL_READ', 'HOSTEL_MANAGE'},
+  'transport': {'TRANSPORT_READ', 'TRANSPORT_MANAGE'},
+  'teachers': {'TEACHERS_READ', 'TEACHERS_MANAGE'},
   'attendance': {'ATTENDANCE_READ', 'ATTENDANCE_MARK'},
   'exams': {'EXAMS_READ', 'EXAMS_MANAGE'},
   'reports': {'REPORTS_READ', 'REPORTS_MANAGE'},
@@ -44,11 +48,13 @@ const _roleModuleFallback = <String, Set<String>>{
     'exams',
     'reports',
     'notifications',
+    'transport',
+    'teachers',
     'settings',
   },
-  'TEACHER': {'students', 'academic', 'attendance', 'exams', 'reports'},
+  'TEACHER': {'students', 'academic', 'attendance', 'exams', 'reports', 'teachers'},
   'ACCOUNTANT': {'students', 'fees', 'reports'},
-  'RECEPTIONIST': {'students', 'fees', 'notifications'},
+  'RECEPTIONIST': {'students', 'fees', 'notifications', 'transport'},
   'WARDEN': {'students', 'hostel', 'attendance', 'reports'},
   'STUDENT': {'students', 'academic', 'attendance', 'fees'},
   'PARENT': {'students', 'academic', 'attendance', 'fees', 'notifications'},
@@ -108,6 +114,15 @@ String? moduleIdForPath(String path) {
   if (path == '/fees' || path.startsWith('/fees/')) {
     return 'fees';
   }
+  if (path == '/hostels' || path.startsWith('/hostels/')) {
+    return 'hostel';
+  }
+  if (path == '/transport' || path.startsWith('/transport/')) {
+    return 'transport';
+  }
+  if (path == '/teachers' || path.startsWith('/teachers/')) {
+    return 'teachers';
+  }
   if (path == '/users' || path.startsWith('/users/')) {
     return 'users';
   }
@@ -122,6 +137,9 @@ String? moduleIdForPath(String path) {
   }
   if (path == '/reports' || path.startsWith('/reports/')) {
     return 'reports';
+  }
+  if (path == '/notifications' || path.startsWith('/notifications/')) {
+    return 'notifications';
   }
   if (path == '/settings' || path.startsWith('/settings/')) {
     return 'settings';

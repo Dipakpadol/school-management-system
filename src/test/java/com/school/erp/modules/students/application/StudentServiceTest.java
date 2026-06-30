@@ -22,6 +22,8 @@ import com.school.erp.modules.academic.domain.AcademicYear;
 import com.school.erp.modules.academic.domain.ClassEntity;
 import com.school.erp.modules.academic.domain.SectionEntity;
 import com.school.erp.modules.fees.application.FeeService;
+import com.school.erp.modules.hostel.application.HostelService;
+import com.school.erp.modules.transport.application.TransportService;
 import com.school.erp.modules.students.api.dto.ClassSectionAssignmentRequest;
 import com.school.erp.modules.students.api.dto.ParentGuardianRequest;
 import com.school.erp.modules.students.api.dto.ParentMappingRequest;
@@ -74,6 +76,12 @@ class StudentServiceTest {
 	private FeeService feeService;
 
 	@Mock
+	private HostelService hostelService;
+
+	@Mock
+	private TransportService transportService;
+
+	@Mock
 	private AuditLogService auditLogService;
 
 	private StudentService studentService;
@@ -90,6 +98,8 @@ class StudentServiceTest {
 				studentClassAssignmentRepository,
 				academicHierarchyService,
 				feeService,
+				hostelService,
+				transportService,
 				new StudentMapper(),
 				auditLogService);
 		academicYear = new AcademicYear("AY-2026-27", "2026-2027", LocalDate.of(2026, 4, 1), LocalDate.of(2027, 3, 31));
@@ -290,7 +300,9 @@ class StudentServiceTest {
 						240128L,
 						"students/ADM-2026-0001/birth-certificate.pdf",
 						null,
-						"Original verified during admission")));
+						"Original verified during admission")),
+				null,
+				null);
 	}
 
 	private Student student() {

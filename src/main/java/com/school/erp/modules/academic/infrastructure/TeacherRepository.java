@@ -11,5 +11,9 @@ public interface TeacherRepository extends BaseRepository<Teacher, UUID> {
 
 	List<Teacher> findAllByDeletedFalseAndActiveTrueOrderByFirstNameAscLastNameAsc();
 
+	List<Teacher> findAllByDeletedFalseOrderByFirstNameAscLastNameAsc();
+
 	Optional<Teacher> findByEmployeeNumberIgnoreCaseAndDeletedFalse(String employeeNumber);
+
+	boolean existsByEmployeeNumberIgnoreCaseAndDeletedFalse(String employeeNumber);
 }

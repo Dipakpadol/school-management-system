@@ -52,6 +52,7 @@ import com.school.erp.modules.fees.domain.FeeInstallmentStatus;
 import com.school.erp.modules.fees.domain.FeePayment;
 import com.school.erp.modules.fees.domain.FeePaymentStatus;
 import com.school.erp.modules.fees.domain.FeeReceipt;
+import com.school.erp.modules.fees.domain.FeeScope;
 import com.school.erp.modules.fees.domain.FeeStructure;
 import com.school.erp.modules.fees.domain.FeeStructureInstallment;
 import com.school.erp.modules.fees.domain.FeeStructureStatus;
@@ -297,6 +298,104 @@ public class FeeService {
 		return created;
 	}
 
+	@Transactional
+	public StudentFeeAssignmentResponse assignHostelFeeToStudent(
+			UUID studentId,
+			UUID feeStructureId,
+			LocalDate assignedDate,
+			String notes) {
+		Student student = studentRepository.findByIdAndDeletedFalse(studentId)
+				.orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
+		FeeStructure structure = loadStructure(feeStructureId);
+		validateHostelFeeStructure(structure);
+		if (assignmentRepository.existsByStudentIdAndFeeStructureIdAndDeletedFalse(student.getId(), structure.getId())) {
+			throw new BusinessException(ErrorCode.CONFLICT, "Hostel fee structure is already assigned to this student.");
+		}
+		StudentFeeAssignment assignment = buildAssignment(
+				student,
+				structure,
+				defaultDate(assignedDate),
+				firstText(notes, "Assigned from hostel fee structure."));
+		StudentFeeAssignmentResponse response = feeMapper.toAssignmentResponse(assignmentRepository.save(assignment));
+		audit("StudentFeeAssignment", response.id(), "HOSTEL_FEE_ASSIGNED", null, response);
+		return response;
+	}
+
+	@Transactional
+	public List<StudentFeeAssignmentResponse> assignActiveHostelFeesToStudent(
+			UUID studentId,
+			List<UUID> feeStructureIds,
+			LocalDate assignedDate) {
+		Student student = studentRepository.findByIdAndDeletedFalse(studentId)
+				.orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
+		List<StudentFeeAssignmentResponse> created = new ArrayList<>();
+		for (UUID feeStructureId : feeStructureIds) {
+			FeeStructure structure = loadStructure(feeStructureId);
+			validateHostelFeeStructure(structure);
+			if (assignmentRepository.existsByStudentIdAndFeeStructureIdAndDeletedFalse(studentId, structure.getId())) {
+				continue;
+			}
+			StudentFeeAssignment assignment = buildAssignment(
+					student,
+					structure,
+					defaultDate(assignedDate),
+					"Auto assigned from hostel allocation.");
+			StudentFeeAssignmentResponse response = feeMapper.toAssignmentResponse(assignmentRepository.save(assignment));
+			created.add(response);
+			audit("StudentFeeAssignment", response.id(), "HOSTEL_FEE_ASSIGNED", null, response);
+		}
+		return created;
+	}
+
+	@Transactional
+	public StudentFeeAssignmentResponse assignTransportFeeToStudent(
+			UUID studentId,
+			UUID feeStructureId,
+			LocalDate assignedDate,
+			String notes) {
+		Student student = studentRepository.findByIdAndDeletedFalse(studentId)
+				.orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
+		FeeStructure structure = loadStructure(feeStructureId);
+		validateTransportFeeStructure(structure);
+		if (assignmentRepository.existsByStudentIdAndFeeStructureIdAndDeletedFalse(student.getId(), structure.getId())) {
+			throw new BusinessException(ErrorCode.CONFLICT, "Transport fee structure is already assigned to this student.");
+		}
+		StudentFeeAssignment assignment = buildAssignment(
+				student,
+				structure,
+				defaultDate(assignedDate),
+				firstText(notes, "Assigned from transport fee structure."));
+		StudentFeeAssignmentResponse response = feeMapper.toAssignmentResponse(assignmentRepository.save(assignment));
+		audit("StudentFeeAssignment", response.id(), "TRANSPORT_FEE_ASSIGNED", null, response);
+		return response;
+	}
+
+	@Transactional
+	public List<StudentFeeAssignmentResponse> assignActiveTransportFeesToStudent(
+			UUID studentId,
+			List<UUID> feeStructureIds,
+			LocalDate assignedDate) {
+		Student student = studentRepository.findByIdAndDeletedFalse(studentId)
+				.orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
+		List<StudentFeeAssignmentResponse> created = new ArrayList<>();
+		for (UUID feeStructureId : feeStructureIds) {
+			FeeStructure structure = loadStructure(feeStructureId);
+			validateTransportFeeStructure(structure);
+			if (assignmentRepository.existsByStudentIdAndFeeStructureIdAndDeletedFalse(studentId, structure.getId())) {
+				continue;
+			}
+			StudentFeeAssignment assignment = buildAssignment(
+					student,
+					structure,
+					defaultDate(assignedDate),
+					"Auto assigned from transport assignment.");
+			StudentFeeAssignmentResponse response = feeMapper.toAssignmentResponse(assignmentRepository.save(assignment));
+			created.add(response);
+			audit("StudentFeeAssignment", response.id(), "TRANSPORT_FEE_ASSIGNED", null, response);
+		}
+		return created;
+	}
+
 	@Transactional(readOnly = true)
 	public List<ClassStudentFeeResponse> studentsForClass(UUID classId) {
 		ClassEntity classEntity = academicHierarchyService.loadClass(classId);
@@ -379,6 +478,11 @@ public class FeeService {
 		if (!structure.isActive()) {
 			throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Only active fee structures can be assigned.");
 		}
+		if (structure.getFeeScope() != FeeScope.CLASS) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Only class fee structures can be assigned to a class.");
+		}
 		if (structure.getClassEntity() != null && !structure.getClassEntity().getId().equals(classId)) {
 			throw new BusinessException(
 					ErrorCode.BUSINESS_RULE_VIOLATION,
@@ -404,6 +508,32 @@ public class FeeService {
 			throw new BusinessException(
 					ErrorCode.BUSINESS_RULE_VIOLATION,
 					"Fee structure academic year does not match the selected class.");
+		}
+	}
+
+	private void validateHostelFeeStructure(FeeStructure structure) {
+		if (!structure.isActive()) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Only active hostel fee structures can be assigned.");
+		}
+		if (structure.getFeeScope() != FeeScope.HOSTEL) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Only hostel fee structures can be assigned here.");
+		}
+	}
+
+	private void validateTransportFeeStructure(FeeStructure structure) {
+		if (!structure.isActive()) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Only active transport fee structures can be assigned.");
+		}
+		if (structure.getFeeScope() != FeeScope.TRANSPORT) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Only transport fee structures can be assigned here.");
 		}
 	}
 
@@ -447,6 +577,26 @@ public class FeeService {
 				paid,
 				balance,
 				assignments);
+	}
+
+	@Transactional(readOnly = true)
+	public List<StudentFeeAssignmentResponse> studentHostelFees(UUID studentId) {
+		studentRepository.findByIdAndDeletedFalse(studentId)
+				.orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
+		return assignmentRepository.findByStudentIdAndDeletedFalseOrderByAssignedDateDesc(studentId).stream()
+				.filter(assignment -> assignment.getFeeScope() == FeeScope.HOSTEL)
+				.map(feeMapper::toAssignmentResponse)
+				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public List<StudentFeeAssignmentResponse> studentTransportFees(UUID studentId) {
+		studentRepository.findByIdAndDeletedFalse(studentId)
+				.orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
+		return assignmentRepository.findByStudentIdAndDeletedFalseOrderByAssignedDateDesc(studentId).stream()
+				.filter(assignment -> assignment.getFeeScope() == FeeScope.TRANSPORT)
+				.map(feeMapper::toAssignmentResponse)
+				.toList();
 	}
 
 	@Transactional(readOnly = true)

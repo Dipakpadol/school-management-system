@@ -16,6 +16,8 @@ import com.school.erp.modules.academic.domain.AcademicYear;
 import com.school.erp.modules.academic.domain.ClassEntity;
 import com.school.erp.modules.academic.domain.SectionEntity;
 import com.school.erp.modules.fees.application.FeeService;
+import com.school.erp.modules.hostel.application.HostelService;
+import com.school.erp.modules.transport.application.TransportService;
 import com.school.erp.modules.students.api.dto.ClassSectionAssignmentRequest;
 import com.school.erp.modules.students.api.dto.ParentGuardianRequest;
 import com.school.erp.modules.students.api.dto.ParentMappingRequest;
@@ -59,6 +61,8 @@ public class StudentService {
 	private final StudentClassAssignmentRepository studentClassAssignmentRepository;
 	private final AcademicHierarchyService academicHierarchyService;
 	private final FeeService feeService;
+	private final HostelService hostelService;
+	private final TransportService transportService;
 	private final StudentMapper studentMapper;
 	private final AuditLogService auditLogService;
 
@@ -80,6 +84,8 @@ public class StudentService {
 				saved.getId(),
 				resolved.classEntity().getId(),
 				request.classAssignment().effectiveFrom());
+		hostelService.assignStudentDuringAdmission(saved, resolved.academicYear(), request.hostelAssignment());
+		transportService.assignStudentDuringAdmission(saved, resolved.academicYear(), request.transportAssignment());
 		StudentResponse response = studentMapper.toProfileResponse(saved);
 		auditStudent(response.id(), "CREATE", null, response);
 		return response;

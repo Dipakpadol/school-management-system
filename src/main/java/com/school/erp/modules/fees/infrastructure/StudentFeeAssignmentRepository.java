@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import com.school.erp.common.domain.BaseRepository;
 import com.school.erp.modules.fees.domain.FeeAssignmentStatus;
+import com.school.erp.modules.fees.domain.FeeScope;
 import com.school.erp.modules.fees.domain.FeeInstallmentStatus;
 import com.school.erp.modules.fees.domain.StudentFeeAssignment;
 
@@ -25,11 +26,79 @@ public interface StudentFeeAssignmentRepository
 
 	boolean existsByFeeStructureIdAndDeletedFalse(UUID feeStructureId);
 
+	@Query("""
+			select count(assignment) > 0
+			from StudentFeeAssignment assignment
+			where assignment.deleted = false
+			  and assignment.student.id = :studentId
+			  and assignment.feeScope = :feeScope
+			  and assignment.status <> :cancelledStatus
+			  and assignment.academicYearEntity.id = :academicYearId
+			  and assignment.hostel.id = :hostelId
+			  and (
+			    assignment.hostelRoom.id = :roomId
+			    or (assignment.hostelRoom is null and :roomType is not null and lower(assignment.roomType) = lower(:roomType))
+			    or (assignment.hostelRoom is null and assignment.roomType is null)
+			  )
+			""")
+	boolean existsActiveHostelAssignmentForAllocation(
+			@Param("studentId") UUID studentId,
+			@Param("academicYearId") UUID academicYearId,
+			@Param("hostelId") UUID hostelId,
+			@Param("roomId") UUID roomId,
+			@Param("roomType") String roomType,
+			@Param("feeScope") FeeScope feeScope,
+			@Param("cancelledStatus") FeeAssignmentStatus cancelledStatus);
+
+	@Query("""
+			select count(assignment) > 0
+			from StudentFeeAssignment assignment
+			where assignment.deleted = false
+			  and assignment.student.id = :studentId
+			  and assignment.feeScope = :feeScope
+			  and assignment.status <> :cancelledStatus
+			  and assignment.academicYearEntity.id = :academicYearId
+			  and assignment.transportRoute.id = :routeId
+			  and (
+			    assignment.transportPickupPoint.id = :pickupPointId
+			    or assignment.transportPickupPoint is null
+			  )
+			""")
+	boolean existsActiveTransportAssignmentForRoute(
+			@Param("studentId") UUID studentId,
+			@Param("academicYearId") UUID academicYearId,
+			@Param("routeId") UUID routeId,
+			@Param("pickupPointId") UUID pickupPointId,
+			@Param("feeScope") FeeScope feeScope,
+			@Param("cancelledStatus") FeeAssignmentStatus cancelledStatus);
+
 	Optional<StudentFeeAssignment> findByStudentIdAndFeeStructureIdAndDeletedFalse(UUID studentId, UUID feeStructureId);
 
 	List<StudentFeeAssignment> findByStudentIdAndDeletedFalseOrderByAssignedDateDesc(UUID studentId);
 
 	List<StudentFeeAssignment> findByClassEntityIdAndDeletedFalseOrderByAssignedDateDesc(UUID classId);
+
+	@EntityGraph(attributePaths = {
+			"student",
+			"student.parents",
+			"student.parents.parent",
+			"installments"
+	})
+	@Query("""
+			select distinct assignment
+			from StudentFeeAssignment assignment
+			join assignment.installments installment
+			where assignment.deleted = false
+			  and installment.deleted = false
+			  and assignment.status in :statuses
+			  and assignment.balanceAmount > 0
+			  and installment.balanceAmount > 0
+			  and installment.dueDate <= :asOf
+			order by assignment.assignedDate asc
+			""")
+	List<StudentFeeAssignment> findDueReminderCandidates(
+			@Param("asOf") LocalDate asOf,
+			@Param("statuses") List<FeeAssignmentStatus> statuses);
 
 	@EntityGraph(attributePaths = {
 			"student",

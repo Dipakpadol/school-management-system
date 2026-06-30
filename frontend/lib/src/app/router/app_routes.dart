@@ -8,6 +8,9 @@ abstract final class AppRoutes {
   static const studentClasses = '/students/classes';
   static const academic = '/academic';
   static const fees = '/fees';
+  static const hostel = '/hostels';
+  static const transport = '/transport';
+  static const teachers = '/teachers';
   static const users = '/users';
   static const auditLogs = '/audit-logs';
   static const attendance = '/attendance';
@@ -19,6 +22,7 @@ abstract final class AppRoutes {
   static const examMarks = '/exams/marks';
   static const examResults = '/exams/results';
   static const reports = '/reports';
+  static const notifications = '/notifications';
   static const settings = '/settings';
   static const newFeeStructure = '/fees/structures/new';
   static const feeAssignments = '/fees/assignments';
@@ -33,11 +37,15 @@ abstract final class AppRoutes {
       'students' => students,
       'academic' => academic,
       'fees' => fees,
+      'hostel' => hostel,
+      'transport' => transport,
+      'teachers' => teachers,
       'users' => users,
       'audit-logs' => auditLogs,
       'attendance' => attendance,
       'exams' => exams,
       'reports' => reports,
+      'notifications' => notifications,
       'settings' => settings,
       _ => '/modules/$moduleId',
     };
@@ -110,6 +118,9 @@ abstract final class AppRouteName {
   static const studentProfile = 'student-profile';
   static const academic = 'academic';
   static const fees = 'fees';
+  static const hostel = 'hostel';
+  static const transport = 'transport';
+  static const teachers = 'teachers';
   static const users = 'users';
   static const auditLogs = 'audit-logs';
   static const attendance = 'attendance';
@@ -121,6 +132,7 @@ abstract final class AppRouteName {
   static const examMarks = 'exam-marks';
   static const examResults = 'exam-results';
   static const reports = 'reports';
+  static const notifications = 'notifications';
   static const settings = 'settings';
   static const newFeeStructure = 'new-fee-structure';
   static const editFeeStructure = 'edit-fee-structure';

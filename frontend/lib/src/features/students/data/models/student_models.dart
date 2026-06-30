@@ -88,6 +88,58 @@ class SectionModel {
   final bool active;
 }
 
+class StudentImportResultModel {
+  const StudentImportResultModel({
+    required this.batchId,
+    required this.totalRows,
+    required this.successRows,
+    required this.failedRows,
+    required this.warningRows,
+    required this.errors,
+  });
+
+  factory StudentImportResultModel.fromJson(Map<String, dynamic> json) {
+    return StudentImportResultModel(
+      batchId: json['batchId'] as String? ?? '',
+      totalRows: json['totalRows'] as int? ?? 0,
+      successRows: json['successRows'] as int? ?? 0,
+      failedRows: json['failedRows'] as int? ?? 0,
+      warningRows: json['warningRows'] as int? ?? 0,
+      errors: _list(json['errors'], StudentImportIssueModel.fromJson),
+    );
+  }
+
+  final String batchId;
+  final int totalRows;
+  final int successRows;
+  final int failedRows;
+  final int warningRows;
+  final List<StudentImportIssueModel> errors;
+}
+
+class StudentImportIssueModel {
+  const StudentImportIssueModel({
+    required this.rowNumber,
+    required this.fieldName,
+    required this.errorMessage,
+    required this.severity,
+  });
+
+  factory StudentImportIssueModel.fromJson(Map<String, dynamic> json) {
+    return StudentImportIssueModel(
+      rowNumber: json['rowNumber'] as int? ?? 0,
+      fieldName: json['fieldName'] as String? ?? '',
+      errorMessage: json['errorMessage'] as String? ?? '',
+      severity: json['severity'] as String? ?? 'ERROR',
+    );
+  }
+
+  final int rowNumber;
+  final String fieldName;
+  final String errorMessage;
+  final String severity;
+}
+
 class StudentSummaryModel {
   const StudentSummaryModel({
     required this.id,

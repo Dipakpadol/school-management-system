@@ -21,4 +21,12 @@ public interface SubjectTeacherMappingRepository extends BaseRepository<SubjectT
 			UUID sectionId,
 			UUID subjectId,
 			UUID teacherId);
+
+	@EntityGraph(attributePaths = { "teacher", "subject", "classEntity", "classEntity.academicYear", "section" })
+	List<SubjectTeacherMapping> findByTeacherIdAndActiveTrueAndDeletedFalseOrderByEffectiveFromDesc(UUID teacherId);
+
+	@EntityGraph(attributePaths = { "teacher", "subject", "classEntity", "classEntity.academicYear", "section" })
+	List<SubjectTeacherMapping> findByTeacherIdAndClassEntityAcademicYearIdAndActiveTrueAndDeletedFalseOrderByEffectiveFromDesc(
+			UUID teacherId,
+			UUID academicYearId);
 }

@@ -10,6 +10,17 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/school_erp}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:root}
+  mail:
+    host: ${SPRING_MAIL_HOST:}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${SPRING_MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${SPRING_MAIL_SMTP_STARTTLS_ENABLE:true}
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -69,3 +80,35 @@ app:
       access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:60m}
       refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:7d}
       password-reset-token-ttl: ${JWT_PASSWORD_RESET_TOKEN_TTL:30m}
+
+notifications:
+  school-name: ${NOTIFICATIONS_SCHOOL_NAME:School ERP}
+  scheduler:
+    enabled: ${NOTIFICATIONS_SCHEDULER_ENABLED:true}
+    fee-due-cron: "${NOTIFICATIONS_FEE_DUE_CRON:0 0 9 * * *}"
+    fee-overdue-cron: "${NOTIFICATIONS_FEE_OVERDUE_CRON:0 30 9 * * *}"
+    absence-cron: "${NOTIFICATIONS_ABSENCE_CRON:0 0 17 * * *}"
+    exam-reminder-cron: "${NOTIFICATIONS_EXAM_REMINDER_CRON:0 0 18 * * *}"
+    hostel-fee-cron: "${NOTIFICATIONS_HOSTEL_FEE_CRON:0 15 9 * * *}"
+    zone: ${NOTIFICATIONS_SCHEDULER_ZONE:Asia/Kolkata}
+    email-enabled: ${NOTIFICATIONS_SCHEDULER_EMAIL_ENABLED:true}
+    sms-enabled: ${NOTIFICATIONS_SCHEDULER_SMS_ENABLED:false}
+    whatsapp-enabled: ${NOTIFICATIONS_SCHEDULER_WHATSAPP_ENABLED:false}
+  email:
+    enabled: ${NOTIFICATIONS_EMAIL_ENABLED:true}
+    provider: ${NOTIFICATIONS_EMAIL_PROVIDER:smtp}
+    from: ${NOTIFICATIONS_EMAIL_FROM:}
+    console-fallback-enabled: ${NOTIFICATIONS_EMAIL_CONSOLE_FALLBACK_ENABLED:false}
+  sms:
+    enabled: ${NOTIFICATIONS_SMS_ENABLED:false}
+    provider: ${NOTIFICATIONS_SMS_PROVIDER:none}
+    api-key: ${NOTIFICATIONS_SMS_API_KEY:}
+    sender-id: ${NOTIFICATIONS_SMS_SENDER_ID:}
+    template-id: ${NOTIFICATIONS_SMS_TEMPLATE_ID:}
+    base-url: ${NOTIFICATIONS_SMS_BASE_URL:}
+  whatsapp:
+    enabled: ${NOTIFICATIONS_WHATSAPP_ENABLED:false}
+    provider: ${NOTIFICATIONS_WHATSAPP_PROVIDER:none}
+    api-key: ${NOTIFICATIONS_WHATSAPP_API_KEY:}
+    base-url: ${NOTIFICATIONS_WHATSAPP_BASE_URL:}
+    sender-number: ${NOTIFICATIONS_WHATSAPP_SENDER_NUMBER:}

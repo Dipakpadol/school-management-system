@@ -2,7 +2,9 @@ package com.school.erp.modules.students.api.dto;
 
 import java.util.List;
 
+import com.school.erp.modules.hostel.api.dto.HostelAssignmentRequest;
 import com.school.erp.modules.students.domain.StudentStatus;
+import com.school.erp.modules.transport.api.dto.TransportAssignmentRequest;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
@@ -18,5 +20,7 @@ public record StudentAdmissionRequest(
 		@Schema(example = "ACTIVE") StudentStatus status,
 		@Valid @NotEmpty List<ParentMappingRequest> parents,
 		@Valid @NotNull ClassSectionAssignmentRequest classAssignment,
-		@Valid List<StudentDocumentRequest> documents) {
+		@Valid List<StudentDocumentRequest> documents,
+		@Valid HostelAssignmentRequest hostelAssignment,
+		@Valid TransportAssignmentRequest transportAssignment) {
 }

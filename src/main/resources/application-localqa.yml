@@ -31,3 +31,17 @@ app:
       secret: localqa-secret-localqa-secret-32-bytes
       access-token-ttl: 60m
       refresh-token-ttl: 7d
+
+notifications:
+  scheduler:
+    enabled: false
+  email:
+    enabled: true
+    provider: console
+    console-fallback-enabled: true
+  sms:
+    enabled: false
+    provider: none
+  whatsapp:
+    enabled: false
+    provider: none
