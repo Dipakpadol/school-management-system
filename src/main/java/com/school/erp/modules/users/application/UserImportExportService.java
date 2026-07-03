@@ -41,6 +41,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class UserImportExportService {
 
+	private static final Set<RoleName> DOMAIN_MANAGED_ROLES = Set.of(RoleName.STUDENT, RoleName.TEACHER);
+
 	public static final List<String> USER_COLUMNS = List.of(
 			"email",
 			"username",
@@ -196,7 +198,14 @@ public class UserImportExportService {
 				continue;
 			}
 			try {
-				roles.add(RoleName.valueOf(token.trim().toUpperCase()));
+				RoleName roleName = RoleName.valueOf(token.trim().toUpperCase());
+				if (DOMAIN_MANAGED_ROLES.contains(roleName)) {
+					errors.add(new ImportErrorDto(
+							rowNumber,
+							"roles",
+							"Student and Teacher users must be created from their domain management modules."));
+				}
+				roles.add(roleName);
 			}
 			catch (IllegalArgumentException ex) {
 				errors.add(new ImportErrorDto(rowNumber, "roles", "Unsupported role: " + token.trim()));

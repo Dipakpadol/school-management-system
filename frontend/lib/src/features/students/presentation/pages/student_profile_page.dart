@@ -7,6 +7,8 @@ import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../fees/data/models/fee_models.dart';
+import '../../../fees/presentation/controllers/fees_providers.dart';
 import '../../../hostel/data/models/hostel_models.dart';
 import '../../../hostel/data/repositories/hostel_repository_impl.dart';
 import '../../../hostel/presentation/controllers/hostel_providers.dart';
@@ -385,13 +387,16 @@ class _AcademicTab extends ConsumerWidget {
   }
 }
 
-class _FeesTab extends StatelessWidget {
+class _FeesTab extends ConsumerWidget {
   const _FeesTab({required this.student});
 
   final StudentProfileModel student;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summary = ref.watch(studentFeeSummaryProvider(student.id));
+    final history = ref.watch(studentPaymentHistoryProvider(student.id));
+
     return _TabSurface(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -409,16 +414,144 @@ class _FeesTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          ExpandedGrid(
-            items: {
-              'Student': student.fullName,
-              'Admission no.': student.admissionNumber,
-              'Class fee': 'Available in Fees Management',
-              'Payment history': 'Use Fees > Receipts',
+          summary.when(
+            data: (item) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ExpandedGrid(
+                  items: {
+                    'Student': item.studentName,
+                    'Admission no.': item.admissionNumber,
+                    'Total assigned': _money(item.grossAmount),
+                    'Total paid': _money(item.paidAmount),
+                    'Total pending': _money(item.balanceAmount),
+                  },
+                ),
+                const SizedBox(height: 18),
+                _FeeGroupSection(
+                  title: 'Class Fees',
+                  fees: item.classFees,
+                  emptyMessage: 'No class fees assigned.',
+                ),
+                const SizedBox(height: 16),
+                _FeeGroupSection(
+                  title: 'Hostel Fees',
+                  fees: item.hostelFees,
+                  emptyMessage: 'No hostel fees assigned.',
+                ),
+                const SizedBox(height: 16),
+                _FeeGroupSection(
+                  title: 'Transport Fees',
+                  fees: item.transportFees,
+                  emptyMessage: 'No transport fees assigned.',
+                ),
+              ],
+            ),
+            error: (error, _) => AppErrorState(
+              message: _message(error),
+              onRetry: () => ref.invalidate(studentFeeSummaryProvider(student.id)),
+            ),
+            loading: () => const AppLoadingState(label: 'Loading fees'),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            'Payment History',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          history.when(
+            data: (items) {
+              if (items.isEmpty) {
+                return const _InlineEmpty(message: 'No payments collected.');
+              }
+              return Column(
+                children: [
+                  for (final payment in items)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.receipt_long_outlined),
+                      title: Text(
+                        '${_money(payment.amount)} - ${payment.paymentMode}',
+                      ),
+                      subtitle: Text(
+                        [
+                          _dateLabel(payment.paymentDate),
+                          if ((payment.referenceNumber ?? '').isNotEmpty)
+                            payment.referenceNumber!,
+                          payment.receiptNumber,
+                        ].join(' - '),
+                      ),
+                      trailing: _SmallBadge(label: payment.status),
+                    ),
+                ],
+              );
             },
+            error: (error, _) => AppErrorState(
+              message: _message(error),
+              onRetry: () =>
+                  ref.invalidate(studentPaymentHistoryProvider(student.id)),
+            ),
+            loading: () => const AppLoadingState(label: 'Loading payments'),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _FeeGroupSection extends StatelessWidget {
+  const _FeeGroupSection({
+    required this.title,
+    required this.fees,
+    required this.emptyMessage,
+  });
+
+  final String title;
+  final List<StudentFeeAssignmentModel> fees;
+  final String emptyMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    final paid = fees.fold(0.0, (sum, fee) => sum + fee.paidAmount);
+    final pending = fees.fold(0.0, (sum, fee) => sum + fee.balanceAmount);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 8),
+        if (fees.isEmpty)
+          _InlineEmpty(message: emptyMessage)
+        else ...[
+          for (final fee in fees)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: Text(fee.feeStructureName),
+              subtitle: Text(
+                [
+                  fee.academicYear,
+                  _feeScopeLabel(fee),
+                  'Paid ${_money(fee.paidAmount)}',
+                  'Pending ${_money(fee.balanceAmount)}',
+                ].where((value) => value.trim().isNotEmpty).join(' - '),
+              ),
+              trailing: _SmallBadge(label: fee.status),
+            ),
+          ExpandedGrid(
+            items: {
+              'Paid': _money(paid),
+              'Pending': _money(pending),
+            },
+          ),
+        ],
+      ],
     );
   }
 }
@@ -2652,6 +2785,32 @@ String _dateLabel(DateTime value) {
 
 String _nullableDateLabel(DateTime? value) {
   return value == null ? '-' : _dateLabel(value);
+}
+
+String _feeScopeLabel(StudentFeeAssignmentModel fee) {
+  if (fee.sourceType == 'HOSTEL') {
+    return [
+      fee.hostelName,
+      if ((fee.hostelRoomNumber ?? '').isNotEmpty)
+        'Room ${fee.hostelRoomNumber}'
+      else
+        fee.roomType,
+    ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' - ');
+  }
+  if (fee.sourceType == 'TRANSPORT') {
+    return [
+      fee.transportRouteName,
+      fee.transportPickupPointName,
+    ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' - ');
+  }
+  final section = fee.sectionName;
+  return section == null || section.isEmpty
+      ? fee.className
+      : '${fee.className} $section';
+}
+
+String _money(double value) {
+  return 'INR ${value.toStringAsFixed(2)}';
 }
 
 HostelRoomSummaryModel? _profileHostelRoomById(

@@ -5,6 +5,7 @@ import java.util.List;
 import com.school.erp.modules.students.domain.StudentClassAssignment;
 import com.school.erp.modules.transport.api.dto.StudentTransportAssignmentResponse;
 import com.school.erp.modules.transport.api.dto.TransportDriverResponse;
+import com.school.erp.modules.transport.api.dto.TransportFeeStructureResponse;
 import com.school.erp.modules.transport.api.dto.TransportPickupPointResponse;
 import com.school.erp.modules.transport.api.dto.TransportRouteResponse;
 import com.school.erp.modules.transport.api.dto.TransportStudentAssignmentResponse;
@@ -12,6 +13,7 @@ import com.school.erp.modules.transport.api.dto.TransportVehicleDetailsResponse;
 import com.school.erp.modules.transport.api.dto.TransportVehicleResponse;
 import com.school.erp.modules.transport.domain.StudentTransportAssignment;
 import com.school.erp.modules.transport.domain.TransportDriver;
+import com.school.erp.modules.transport.domain.TransportFeeStructure;
 import com.school.erp.modules.transport.domain.TransportPickupPoint;
 import com.school.erp.modules.transport.domain.TransportRoute;
 import com.school.erp.modules.transport.domain.TransportVehicle;
@@ -89,6 +91,30 @@ public class TransportMapper {
 				point.getStatus(),
 				point.getCreatedAt(),
 				point.getUpdatedAt());
+	}
+
+	public TransportFeeStructureResponse toFeeStructureResponse(TransportFeeStructure structure) {
+		return new TransportFeeStructureResponse(
+				structure.getId(),
+				structure.getAcademicYear().getId(),
+				structure.getAcademicYear().getName(),
+				structure.getRoute().getId(),
+				structure.getRoute().getRouteName(),
+				structure.getRoute().getRouteCode(),
+				structure.getPickupPoint() == null ? null : structure.getPickupPoint().getId(),
+				structure.getPickupPoint() == null ? null : structure.getPickupPoint().getPointName(),
+				structure.getFeeCategory().getId(),
+				structure.getFeeCategory().getCode(),
+				structure.getFeeCategory().getName(),
+				structure.getBackingFeeStructure().getId(),
+				structure.getBackingFeeStructure().getName(),
+				structure.getAmount(),
+				structure.getDueDate(),
+				structure.isInstallmentAllowed(),
+				structure.getNumberOfInstallments(),
+				structure.getStatus(),
+				structure.getCreatedAt(),
+				structure.getUpdatedAt());
 	}
 
 	public StudentTransportAssignmentResponse toAssignmentResponse(StudentTransportAssignment assignment) {

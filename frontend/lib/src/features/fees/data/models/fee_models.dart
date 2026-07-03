@@ -196,7 +196,15 @@ class StudentFeeAssignmentModel {
     required this.payments,
     this.academicYearId,
     this.classId,
+    this.feeScope = 'CLASS',
+    this.sourceType = 'CLASS',
+    this.sourceReferenceId,
     this.sectionName,
+    this.hostelName,
+    this.hostelRoomNumber,
+    this.roomType,
+    this.transportRouteName,
+    this.transportPickupPointName,
   });
 
   factory StudentFeeAssignmentModel.fromJson(Map<String, dynamic> json) {
@@ -209,9 +217,18 @@ class StudentFeeAssignmentModel {
       feeStructureName: json['feeStructureName'] as String? ?? '',
       academicYearId: json['academicYearId'] as String?,
       classId: json['classId'] as String?,
+      feeScope: json['feeScope'] as String? ?? 'CLASS',
+      sourceType:
+          json['sourceType'] as String? ?? json['feeScope'] as String? ?? 'CLASS',
+      sourceReferenceId: json['sourceReferenceId'] as String?,
       academicYear: json['academicYear'] as String? ?? '',
       className: json['className'] as String? ?? '',
       sectionName: json['sectionName'] as String?,
+      hostelName: json['hostelName'] as String?,
+      hostelRoomNumber: json['hostelRoomNumber'] as String?,
+      roomType: json['roomType'] as String?,
+      transportRouteName: json['transportRouteName'] as String?,
+      transportPickupPointName: json['transportPickupPointName'] as String?,
       status: json['status'] as String? ?? 'PENDING',
       grossAmount: _money(json['grossAmount']),
       discountAmount: _money(json['discountAmount']),
@@ -231,9 +248,17 @@ class StudentFeeAssignmentModel {
   final String feeStructureName;
   final String? academicYearId;
   final String? classId;
+  final String feeScope;
+  final String sourceType;
+  final String? sourceReferenceId;
   final String academicYear;
   final String className;
   final String? sectionName;
+  final String? hostelName;
+  final String? hostelRoomNumber;
+  final String? roomType;
+  final String? transportRouteName;
+  final String? transportPickupPointName;
   final String status;
   final double grossAmount;
   final double discountAmount;
@@ -242,6 +267,66 @@ class StudentFeeAssignmentModel {
   final double balanceAmount;
   final List<FeeInstallmentModel> installments;
   final List<FeePaymentModel> payments;
+}
+
+class StudentFeeGroupModel {
+  const StudentFeeGroupModel({
+    required this.sourceType,
+    required this.label,
+    required this.grossAmount,
+    required this.discountAmount,
+    required this.lateFeeAmount,
+    required this.paidAmount,
+    required this.balanceAmount,
+    required this.assignments,
+  });
+
+  factory StudentFeeGroupModel.fromJson(Map<String, dynamic> json) {
+    return StudentFeeGroupModel(
+      sourceType: json['sourceType'] as String? ?? 'CLASS',
+      label: json['label'] as String? ?? '',
+      grossAmount: _money(json['grossAmount']),
+      discountAmount: _money(json['discountAmount']),
+      lateFeeAmount: _money(json['lateFeeAmount']),
+      paidAmount: _money(json['paidAmount']),
+      balanceAmount: _money(json['balanceAmount']),
+      assignments: _list(
+        json['assignments'],
+        StudentFeeAssignmentModel.fromJson,
+      ),
+    );
+  }
+
+  factory StudentFeeGroupModel.fromAssignments(
+    String sourceType,
+    String label,
+    List<StudentFeeAssignmentModel> assignments,
+  ) {
+    return StudentFeeGroupModel(
+      sourceType: sourceType,
+      label: label,
+      grossAmount: assignments.fold(0.0, (sum, item) => sum + item.grossAmount),
+      discountAmount: assignments.fold(
+        0.0,
+        (sum, item) => sum + item.discountAmount,
+      ),
+      lateFeeAmount:
+          assignments.fold(0.0, (sum, item) => sum + item.lateFeeAmount),
+      paidAmount: assignments.fold(0.0, (sum, item) => sum + item.paidAmount),
+      balanceAmount:
+          assignments.fold(0.0, (sum, item) => sum + item.balanceAmount),
+      assignments: assignments,
+    );
+  }
+
+  final String sourceType;
+  final String label;
+  final double grossAmount;
+  final double discountAmount;
+  final double lateFeeAmount;
+  final double paidAmount;
+  final double balanceAmount;
+  final List<StudentFeeAssignmentModel> assignments;
 }
 
 class FeeInstallmentModel {
@@ -334,9 +419,30 @@ class StudentFeeSummaryModel {
     required this.paidAmount,
     required this.balanceAmount,
     required this.assignments,
+    required this.groups,
+    required this.classFees,
+    required this.hostelFees,
+    required this.transportFees,
   });
 
   factory StudentFeeSummaryModel.fromJson(Map<String, dynamic> json) {
+    final assignments = _list(
+      json['assignments'],
+      StudentFeeAssignmentModel.fromJson,
+    );
+    final classFees = _list(
+      json['classFees'],
+      StudentFeeAssignmentModel.fromJson,
+    );
+    final hostelFees = _list(
+      json['hostelFees'],
+      StudentFeeAssignmentModel.fromJson,
+    );
+    final transportFees = _list(
+      json['transportFees'],
+      StudentFeeAssignmentModel.fromJson,
+    );
+    final groups = _list(json['groups'], StudentFeeGroupModel.fromJson);
     return StudentFeeSummaryModel(
       studentId: json['studentId'] as String,
       admissionNumber: json['admissionNumber'] as String? ?? '',
@@ -346,10 +452,35 @@ class StudentFeeSummaryModel {
       lateFeeAmount: _money(json['lateFeeAmount']),
       paidAmount: _money(json['paidAmount']),
       balanceAmount: _money(json['balanceAmount']),
-      assignments: _list(
-        json['assignments'],
-        StudentFeeAssignmentModel.fromJson,
-      ),
+      assignments: assignments,
+      groups: groups.isEmpty
+          ? [
+              StudentFeeGroupModel.fromAssignments(
+                'CLASS',
+                'Class Fees',
+                _assignmentsBySource(assignments, 'CLASS'),
+              ),
+              StudentFeeGroupModel.fromAssignments(
+                'HOSTEL',
+                'Hostel Fees',
+                _assignmentsBySource(assignments, 'HOSTEL'),
+              ),
+              StudentFeeGroupModel.fromAssignments(
+                'TRANSPORT',
+                'Transport Fees',
+                _assignmentsBySource(assignments, 'TRANSPORT'),
+              ),
+            ]
+          : groups,
+      classFees: classFees.isEmpty
+          ? _assignmentsBySource(assignments, 'CLASS')
+          : classFees,
+      hostelFees: hostelFees.isEmpty
+          ? _assignmentsBySource(assignments, 'HOSTEL')
+          : hostelFees,
+      transportFees: transportFees.isEmpty
+          ? _assignmentsBySource(assignments, 'TRANSPORT')
+          : transportFees,
     );
   }
 
@@ -362,6 +493,10 @@ class StudentFeeSummaryModel {
   final double paidAmount;
   final double balanceAmount;
   final List<StudentFeeAssignmentModel> assignments;
+  final List<StudentFeeGroupModel> groups;
+  final List<StudentFeeAssignmentModel> classFees;
+  final List<StudentFeeAssignmentModel> hostelFees;
+  final List<StudentFeeAssignmentModel> transportFees;
 }
 
 class FeeReceiptModel {
@@ -543,6 +678,19 @@ List<T> _list<T>(Object? value, T Function(Map<String, dynamic>) mapper) {
     return const [];
   }
   return value.whereType<Map<String, dynamic>>().map(mapper).toList();
+}
+
+List<StudentFeeAssignmentModel> _assignmentsBySource(
+  List<StudentFeeAssignmentModel> assignments,
+  String sourceType,
+) {
+  return assignments
+      .where(
+        (assignment) =>
+            assignment.sourceType == sourceType ||
+            assignment.feeScope == sourceType,
+      )
+      .toList(growable: false);
 }
 
 double _money(Object? value) {

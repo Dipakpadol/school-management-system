@@ -2,6 +2,7 @@ package com.school.erp.modules.fees.api.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.UUID;
 
 import com.school.erp.modules.fees.domain.PaymentMode;
 
@@ -22,5 +23,27 @@ public record PaymentCollectionRequest(
 		@Size(max = 100) @Schema(example = "accountant@school.test") String collectedBy,
 		@Size(max = 500) @Schema(example = "First installment payment.") String remarks,
 		@Schema(description = "When true, active late fee rules are assessed before allocation.", example = "true")
-		boolean assessLateFee) {
+		boolean assessLateFee,
+		@Schema(description = "Specific student fee assignment to collect against.") UUID assignmentId) {
+
+	public PaymentCollectionRequest(
+			BigDecimal amount,
+			LocalDate paymentDate,
+			PaymentMode paymentMode,
+			String referenceNumber,
+			String payerName,
+			String collectedBy,
+			String remarks,
+			boolean assessLateFee) {
+		this(
+				amount,
+				paymentDate,
+				paymentMode,
+				referenceNumber,
+				payerName,
+				collectedBy,
+				remarks,
+				assessLateFee,
+				null);
+	}
 }

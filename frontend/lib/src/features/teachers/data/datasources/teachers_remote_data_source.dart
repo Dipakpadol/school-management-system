@@ -23,6 +23,13 @@ class TeachersRemoteDataSource {
     return _unwrapList(response.data, AcademicYearModel.fromJson);
   }
 
+  Future<List<AcademicYearModel>> attendanceAcademicYears() async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.teacherAttendanceAcademicYears,
+    );
+    return _unwrapList(response.data, AcademicYearModel.fromJson);
+  }
+
   Future<List<TeacherModel>> teachers({String? academicYearId}) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.teacherManagement,
@@ -72,6 +79,62 @@ class TeachersRemoteDataSource {
       },
     );
     return TeacherProfileModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<List<TeacherAttendanceTeacherModel>> attendanceTeachers(
+    String academicYearId,
+  ) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.teacherAttendanceTeachers,
+      queryParameters: {'academicYearId': academicYearId},
+    );
+    return _unwrapList(response.data, TeacherAttendanceTeacherModel.fromJson);
+  }
+
+  Future<TeacherDailyAttendanceModel> dailyAttendance({
+    required String academicYearId,
+    required DateTime date,
+  }) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.teacherAttendanceDaily,
+      queryParameters: {
+        'academicYearId': academicYearId,
+        'date': _dateParam(date),
+      },
+    );
+    return TeacherDailyAttendanceModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<TeacherDailyAttendanceModel> saveDailyAttendance(
+    Map<String, dynamic> payload,
+  ) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.teacherAttendanceDaily,
+      data: payload,
+    );
+    return TeacherDailyAttendanceModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<TeacherAttendanceHistoryModel> attendanceHistory({
+    required String teacherId,
+    String? academicYearId,
+    DateTime? fromDate,
+    DateTime? toDate,
+    String? status,
+  }) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.teacherAttendanceHistory(teacherId),
+      queryParameters: {
+        if (academicYearId != null && academicYearId.isNotEmpty)
+          'academicYearId': academicYearId,
+        if (fromDate != null) 'fromDate': _dateParam(fromDate),
+        if (toDate != null) 'toDate': _dateParam(toDate),
+        if (status != null && status.isNotEmpty) 'status': status,
+        'size': 50,
+        'sort': 'attendanceDate,desc',
+      },
+    );
+    return TeacherAttendanceHistoryModel.fromJson(_unwrapData(response.data));
   }
 
   Future<TeacherAssignmentModel> createAssignment(
@@ -170,5 +233,11 @@ class TeachersRemoteDataSource {
           .toList();
     }
     throw const FormatException('Response payload is invalid.');
+  }
+
+  String _dateParam(DateTime value) {
+    return '${value.year.toString().padLeft(4, '0')}-'
+        '${value.month.toString().padLeft(2, '0')}-'
+        '${value.day.toString().padLeft(2, '0')}';
   }
 }

@@ -22,6 +22,10 @@ class TeachersRepositoryImpl implements TeachersRepository {
       _guard(_remote.academicYears);
 
   @override
+  Future<Result<List<AcademicYearModel>>> attendanceAcademicYears() =>
+      _guard(_remote.attendanceAcademicYears);
+
+  @override
   Future<Result<List<TeacherModel>>> teachers({String? academicYearId}) =>
       _guard(() => _remote.teachers(academicYearId: academicYearId));
 
@@ -44,6 +48,41 @@ class TeachersRepositoryImpl implements TeachersRepository {
     String id, {
     String? academicYearId,
   }) => _guard(() => _remote.profile(id, academicYearId: academicYearId));
+
+  @override
+  Future<Result<List<TeacherAttendanceTeacherModel>>> attendanceTeachers(
+    String academicYearId,
+  ) => _guard(() => _remote.attendanceTeachers(academicYearId));
+
+  @override
+  Future<Result<TeacherDailyAttendanceModel>> dailyAttendance({
+    required String academicYearId,
+    required DateTime date,
+  }) => _guard(
+    () => _remote.dailyAttendance(academicYearId: academicYearId, date: date),
+  );
+
+  @override
+  Future<Result<TeacherDailyAttendanceModel>> saveDailyAttendance(
+    Map<String, dynamic> payload,
+  ) => _guard(() => _remote.saveDailyAttendance(payload));
+
+  @override
+  Future<Result<TeacherAttendanceHistoryModel>> attendanceHistory({
+    required String teacherId,
+    String? academicYearId,
+    DateTime? fromDate,
+    DateTime? toDate,
+    String? status,
+  }) => _guard(
+    () => _remote.attendanceHistory(
+      teacherId: teacherId,
+      academicYearId: academicYearId,
+      fromDate: fromDate,
+      toDate: toDate,
+      status: status,
+    ),
+  );
 
   @override
   Future<Result<TeacherAssignmentModel>> createAssignment(

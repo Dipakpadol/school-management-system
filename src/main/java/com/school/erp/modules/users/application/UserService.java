@@ -50,6 +50,7 @@ public class UserService {
 	private static final String MODULE_NAME = "USERS";
 	private static final String ENTITY_NAME = "UserAccount";
 	private static final String ROLE_ENTITY_NAME = "Role";
+	private static final Set<RoleName> DOMAIN_MANAGED_ROLES = Set.of(RoleName.STUDENT, RoleName.TEACHER);
 
 	private final UserAccountRepository userAccountRepository;
 	private final RoleRepository roleRepository;
@@ -62,6 +63,7 @@ public class UserService {
 	public UserResponse create(UserCreateRequest request) {
 		validateUnique(request.email(), request.username(), request.phoneNumber(), null);
 		validateSuperAdminRole(request.roles());
+		validateNoDomainManagedRoles(request.roles());
 		Set<Role> roles = resolveRoles(request.roles());
 		UserAccount user = new UserAccount(
 				request.email(),
@@ -88,6 +90,7 @@ public class UserService {
 		UserResponse oldValue = userMapper.toResponse(user);
 		validateUnique(request.email(), request.username(), request.phoneNumber(), userId);
 		validateSuperAdminRole(request.roles());
+		validateDomainManagedRoleUpdate(user, request.roles());
 		user.updateProfile(
 				request.email(),
 				request.username(),
@@ -175,6 +178,7 @@ public class UserService {
 	@Transactional
 	public UserResponse assignRole(UUID userId, RoleName roleName) {
 		validateSuperAdminRole(Set.of(roleName));
+		validateNoDomainManagedRoles(Set.of(roleName));
 		UserAccount user = load(userId);
 		UserResponse oldValue = userMapper.toResponse(user);
 		user.addRole(resolveRole(roleName));
@@ -290,6 +294,30 @@ public class UserService {
 	private void validateSuperAdminRole(Set<RoleName> roles) {
 		if (roles != null && roles.contains(RoleName.SUPER_ADMIN) && !currentUserHasRole("ROLE_SUPER_ADMIN")) {
 			throw new BusinessException(ErrorCode.FORBIDDEN, "Only SUPER_ADMIN can assign SUPER_ADMIN role.");
+		}
+	}
+
+	private void validateNoDomainManagedRoles(Set<RoleName> roles) {
+		if (roles == null || roles.stream().noneMatch(DOMAIN_MANAGED_ROLES::contains)) {
+			return;
+		}
+		throw new BusinessException(
+				ErrorCode.BUSINESS_RULE_VIOLATION,
+				"Student and Teacher user accounts must be initiated from Student Management or Teacher Management.");
+	}
+
+	private void validateDomainManagedRoleUpdate(UserAccount user, Set<RoleName> requestedRoles) {
+		if (requestedRoles == null || requestedRoles.stream().noneMatch(DOMAIN_MANAGED_ROLES::contains)) {
+			return;
+		}
+		Set<RoleName> existingRoles = user.getRoles().stream()
+				.map(Role::getName)
+				.collect(java.util.stream.Collectors.toSet());
+		boolean introducesDomainRole = requestedRoles.stream()
+				.filter(DOMAIN_MANAGED_ROLES::contains)
+				.anyMatch(roleName -> !existingRoles.contains(roleName));
+		if (introducesDomainRole) {
+			validateNoDomainManagedRoles(requestedRoles);
 		}
 	}
 

@@ -3,6 +3,7 @@ package com.school.erp.modules.fees.api.dto;
 import java.util.UUID;
 
 import com.school.erp.modules.fees.domain.FeeAssignmentStatus;
+import com.school.erp.modules.fees.domain.FeeScope;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
@@ -15,5 +16,6 @@ public record FeeAssignmentSearchRequest(
 		@Size(max = 20) @Schema(example = "2026-2027") String academicYear,
 		@Size(max = 80) @Schema(example = "Class 6") String className,
 		@Size(max = 80) @Schema(example = "A") String sectionName,
+		@Schema(example = "HOSTEL") FeeScope sourceType,
 		@Schema(example = "OVERDUE") FeeAssignmentStatus status) {
 }

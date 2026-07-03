@@ -5,6 +5,8 @@ import '../../data/models/teacher_models.dart';
 abstract interface class TeachersRepository {
   Future<Result<List<AcademicYearModel>>> academicYears();
 
+  Future<Result<List<AcademicYearModel>>> attendanceAcademicYears();
+
   Future<Result<List<TeacherModel>>> teachers({String? academicYearId});
 
   Future<Result<TeacherModel>> createTeacher(Map<String, dynamic> payload);
@@ -19,6 +21,27 @@ abstract interface class TeachersRepository {
   Future<Result<TeacherProfileModel>> profile(
     String id, {
     String? academicYearId,
+  });
+
+  Future<Result<List<TeacherAttendanceTeacherModel>>> attendanceTeachers(
+    String academicYearId,
+  );
+
+  Future<Result<TeacherDailyAttendanceModel>> dailyAttendance({
+    required String academicYearId,
+    required DateTime date,
+  });
+
+  Future<Result<TeacherDailyAttendanceModel>> saveDailyAttendance(
+    Map<String, dynamic> payload,
+  );
+
+  Future<Result<TeacherAttendanceHistoryModel>> attendanceHistory({
+    required String teacherId,
+    String? academicYearId,
+    DateTime? fromDate,
+    DateTime? toDate,
+    String? status,
   });
 
   Future<Result<TeacherAssignmentModel>> createAssignment(

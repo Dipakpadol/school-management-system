@@ -84,6 +84,36 @@ class TransportRepositoryImpl implements TransportRepository {
   ) => _guard(() => _remote.pickupPoints(routeId));
 
   @override
+  Future<Result<List<TransportFeeStructureModel>>> feeStructures({
+    String? academicYearId,
+    String? routeId,
+    String? pickupPointId,
+    String? status,
+  }) => _guard(
+    () => _remote.feeStructures(
+      academicYearId: academicYearId,
+      routeId: routeId,
+      pickupPointId: pickupPointId,
+      status: status,
+    ),
+  );
+
+  @override
+  Future<Result<TransportFeeStructureModel>> createFeeStructure(
+    Map<String, dynamic> payload,
+  ) => _guard(() => _remote.createFeeStructure(payload));
+
+  @override
+  Future<Result<TransportFeeStructureModel>> updateFeeStructure(
+    String id,
+    Map<String, dynamic> payload,
+  ) => _guard(() => _remote.updateFeeStructure(id, payload));
+
+  @override
+  Future<Result<TransportFeeStructureModel>> deleteFeeStructure(String id) =>
+      _guard(() => _remote.deleteFeeStructure(id));
+
+  @override
   Future<Result<TransportPickupPointModel>> createPickupPoint(
     String routeId,
     Map<String, dynamic> payload,

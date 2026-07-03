@@ -60,6 +60,7 @@ abstract final class ApiPaths {
   static const transportDrivers = '/v1/transport/drivers';
   static const transportVehicles = '/v1/transport/vehicles';
   static const transportRoutes = '/v1/transport/routes';
+  static const transportFeeStructures = '/v1/transport/fees/structures';
 
   static String hostelAcademicYearRooms(String academicYearId) =>
       '/v1/hostels/academic-years/$academicYearId/rooms';
@@ -109,12 +110,23 @@ abstract final class ApiPaths {
   static String transportVehicleStudents(String vehicleId) =>
       '/v1/transport/vehicles/$vehicleId/students';
 
+  static String transportFeeStructure(String id) =>
+      '/v1/transport/fees/structures/$id';
+
   static const teacherAcademicYears = '/v1/teachers/academic-years';
   static const teacherManagement = '/v1/teachers';
+  static const teacherAttendanceAcademicYears =
+      '/v1/teacher-attendance/academic-years';
+  static const teacherAttendanceTeachers = '/v1/teacher-attendance/teachers';
+  static const teacherAttendanceDaily = '/v1/teacher-attendance/daily';
+  static const teacherAttendanceExport = '/v1/teacher-attendance/export';
 
   static String teacher(String id) => '/v1/teachers/$id';
 
   static String teacherProfile(String id) => '/v1/teachers/$id/profile';
+
+  static String teacherAttendanceHistory(String id) =>
+      '/v1/teachers/$id/attendance-history';
 
   static String teacherAssignments(String id) =>
       '/v1/teachers/$id/assignments';

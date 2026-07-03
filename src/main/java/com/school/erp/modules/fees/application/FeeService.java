@@ -44,6 +44,7 @@ import com.school.erp.modules.fees.api.dto.PaymentCollectionRequest;
 import com.school.erp.modules.fees.api.dto.PaymentActionRequest;
 import com.school.erp.modules.fees.api.dto.StudentFeeAssignmentRequest;
 import com.school.erp.modules.fees.api.dto.StudentFeeAssignmentResponse;
+import com.school.erp.modules.fees.api.dto.StudentFeeGroupResponse;
 import com.school.erp.modules.fees.api.dto.StudentFeeSummaryResponse;
 import com.school.erp.modules.fees.domain.DiscountCalculationType;
 import com.school.erp.modules.fees.domain.FeeCategory;
@@ -567,6 +568,17 @@ public class FeeService {
 		BigDecimal lateFee = assignments.stream().map(StudentFeeAssignmentResponse::lateFeeAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
 		BigDecimal paid = assignments.stream().map(StudentFeeAssignmentResponse::paidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
 		BigDecimal balance = assignments.stream().map(StudentFeeAssignmentResponse::balanceAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+		List<StudentFeeAssignmentResponse> classFees = assignmentsBySource(assignments, FeeScope.CLASS);
+		List<StudentFeeAssignmentResponse> hostelFees = assignmentsBySource(assignments, FeeScope.HOSTEL);
+		List<StudentFeeAssignmentResponse> transportFees = assignmentsBySource(assignments, FeeScope.TRANSPORT);
+		List<StudentFeeGroupResponse> groups = new ArrayList<>();
+		groups.add(toGroup(FeeScope.CLASS, "Class Fees", classFees));
+		groups.add(toGroup(FeeScope.HOSTEL, "Hostel Fees", hostelFees));
+		groups.add(toGroup(FeeScope.TRANSPORT, "Transport Fees", transportFees));
+		List<StudentFeeAssignmentResponse> manualFees = assignmentsBySource(assignments, FeeScope.MANUAL);
+		if (!manualFees.isEmpty()) {
+			groups.add(toGroup(FeeScope.MANUAL, "Manual Fees", manualFees));
+		}
 		return new StudentFeeSummaryResponse(
 				student.getId(),
 				student.getAdmissionNumber(),
@@ -576,7 +588,11 @@ public class FeeService {
 				lateFee,
 				paid,
 				balance,
-				assignments);
+				assignments,
+				groups,
+				classFees,
+				hostelFees,
+				transportFees);
 	}
 
 	@Transactional(readOnly = true)
@@ -613,10 +629,17 @@ public class FeeService {
 	public FeeReceiptResponse collectStudentPayment(UUID studentId, PaymentCollectionRequest request) {
 		studentRepository.findByIdAndDeletedFalse(studentId)
 				.orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
-		StudentFeeAssignment assignment = assignmentRepository.findByStudentIdAndDeletedFalseOrderByAssignedDateDesc(studentId).stream()
-				.filter(existing -> existing.getBalanceAmount().signum() > 0)
-				.findFirst()
-				.orElseThrow(() -> new ResourceNotFoundException("Open fee assignment for student", studentId));
+		StudentFeeAssignment assignment = request.assignmentId() == null
+				? assignmentRepository.findByStudentIdAndDeletedFalseOrderByAssignedDateDesc(studentId).stream()
+						.filter(existing -> existing.getBalanceAmount().signum() > 0)
+						.findFirst()
+						.orElseThrow(() -> new ResourceNotFoundException("Open fee assignment for student", studentId))
+				: loadAssignment(request.assignmentId());
+		if (!assignment.getStudent().getId().equals(studentId)) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Fee assignment does not belong to the selected student.");
+		}
 		return collectPayment(assignment.getId(), request);
 	}
 
@@ -892,6 +915,29 @@ public class FeeService {
 					installment.getAmount());
 		}
 		return assignment;
+	}
+
+	private List<StudentFeeAssignmentResponse> assignmentsBySource(
+			List<StudentFeeAssignmentResponse> assignments,
+			FeeScope sourceType) {
+		return assignments.stream()
+				.filter(assignment -> assignment.sourceType() == sourceType || assignment.feeScope() == sourceType)
+				.toList();
+	}
+
+	private StudentFeeGroupResponse toGroup(
+			FeeScope sourceType,
+			String label,
+			List<StudentFeeAssignmentResponse> assignments) {
+		return new StudentFeeGroupResponse(
+				sourceType,
+				label,
+				assignments.stream().map(StudentFeeAssignmentResponse::grossAmount).reduce(BigDecimal.ZERO, BigDecimal::add),
+				assignments.stream().map(StudentFeeAssignmentResponse::discountAmount).reduce(BigDecimal.ZERO, BigDecimal::add),
+				assignments.stream().map(StudentFeeAssignmentResponse::lateFeeAmount).reduce(BigDecimal.ZERO, BigDecimal::add),
+				assignments.stream().map(StudentFeeAssignmentResponse::paidAmount).reduce(BigDecimal.ZERO, BigDecimal::add),
+				assignments.stream().map(StudentFeeAssignmentResponse::balanceAmount).reduce(BigDecimal.ZERO, BigDecimal::add),
+				assignments);
 	}
 
 	private ClassStudentFeeResponse toClassStudentFeeResponse(Student student, ClassEntity classEntity) {

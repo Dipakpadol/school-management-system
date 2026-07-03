@@ -171,6 +171,77 @@ class TransportPickupPointModel {
   final String status;
 }
 
+class TransportFeeStructureModel {
+  const TransportFeeStructureModel({
+    required this.id,
+    required this.academicYearId,
+    required this.academicYear,
+    required this.routeId,
+    required this.routeName,
+    required this.routeCode,
+    required this.feeCategoryId,
+    required this.feeCategoryCode,
+    required this.feeCategoryName,
+    required this.feeStructureId,
+    required this.feeStructureName,
+    required this.amount,
+    required this.status,
+    required this.installmentAllowed,
+    required this.numberOfInstallments,
+    this.pickupPointId,
+    this.pickupPointName,
+    this.dueDate,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory TransportFeeStructureModel.fromJson(Map<String, dynamic> json) {
+    return TransportFeeStructureModel(
+      id: json['id'] as String? ?? '',
+      academicYearId: json['academicYearId'] as String? ?? '',
+      academicYear: json['academicYear'] as String? ?? '',
+      routeId: json['routeId'] as String? ?? '',
+      routeName: json['routeName'] as String? ?? '',
+      routeCode: json['routeCode'] as String? ?? '',
+      pickupPointId: json['pickupPointId'] as String?,
+      pickupPointName: json['pickupPointName'] as String?,
+      feeCategoryId: json['feeCategoryId'] as String? ?? '',
+      feeCategoryCode: json['feeCategoryCode'] as String? ?? '',
+      feeCategoryName: json['feeCategoryName'] as String? ?? '',
+      feeStructureId: json['feeStructureId'] as String? ?? '',
+      feeStructureName: json['feeStructureName'] as String? ?? '',
+      amount: _moneyOrNull(json['amount']) ?? 0,
+      dueDate: _dateOrNull(json['dueDate']),
+      installmentAllowed: json['installmentAllowed'] as bool? ?? false,
+      numberOfInstallments: json['numberOfInstallments'] as int? ?? 1,
+      status: json['status'] as String? ?? 'DRAFT',
+      createdAt: _dateOrNull(json['createdAt']),
+      updatedAt: _dateOrNull(json['updatedAt']),
+    );
+  }
+
+  final String id;
+  final String academicYearId;
+  final String academicYear;
+  final String routeId;
+  final String routeName;
+  final String routeCode;
+  final String? pickupPointId;
+  final String? pickupPointName;
+  final String feeCategoryId;
+  final String feeCategoryCode;
+  final String feeCategoryName;
+  final String feeStructureId;
+  final String feeStructureName;
+  final double amount;
+  final DateTime? dueDate;
+  final bool installmentAllowed;
+  final int numberOfInstallments;
+  final String status;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+}
+
 class TransportStudentAssignmentModel {
   const TransportStudentAssignmentModel({
     required this.assignmentId,

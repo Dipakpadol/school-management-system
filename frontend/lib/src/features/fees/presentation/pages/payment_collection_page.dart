@@ -211,7 +211,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
                               DropdownMenuItem(
                                 value: assignment.id,
                                 child: Text(
-                                  '${assignment.studentName} - ${assignment.feeStructureName}',
+                                  _assignmentOptionLabel(assignment),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -396,18 +396,21 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
       return;
     }
     setState(() => _saving = true);
-    final result = await ref
-        .read(feesRepositoryProvider)
-        .collectPayment(assignmentId, {
-          'amount': double.tryParse(_amountController.text.trim()),
-          'paymentDate': _paymentDateController.text.trim(),
-          'paymentMode': _paymentMode,
-          'referenceNumber': _blankToNull(_referenceController.text),
-          'payerName': _payerController.text.trim(),
-          'collectedBy': _blankToNull(_collectedByController.text),
-          'remarks': _blankToNull(_remarksController.text),
-          'assessLateFee': _assessLateFee,
-        });
+    final payload = {
+      'amount': double.tryParse(_amountController.text.trim()),
+      'paymentDate': _paymentDateController.text.trim(),
+      'paymentMode': _paymentMode,
+      'referenceNumber': _blankToNull(_referenceController.text),
+      'payerName': _payerController.text.trim(),
+      'collectedBy': _blankToNull(_collectedByController.text),
+      'remarks': _blankToNull(_remarksController.text),
+      'assessLateFee': _assessLateFee,
+      'assignmentId': assignmentId,
+    };
+    final repository = ref.read(feesRepositoryProvider);
+    final result = widget.studentId == null
+        ? await repository.collectPayment(assignmentId, payload)
+        : await repository.collectStudentPayment(widget.studentId!, payload);
     if (!mounted) {
       return;
     }
@@ -640,7 +643,8 @@ class _SelectedAssignmentPanel extends StatelessWidget {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           _Detail(label: 'Admission', value: assignment!.admissionNumber),
-          _Detail(label: 'Class', value: _classLabel(assignment!)),
+          _Detail(label: 'Source', value: _sourceLabel(assignment!)),
+          _Detail(label: 'Scope', value: _scopeLabel(assignment!)),
           _Detail(label: 'Paid', value: _money(assignment!.paidAmount)),
           _Detail(label: 'Balance', value: _money(assignment!.balanceAmount)),
           FeeStatusChip(status: assignment!.status),
@@ -882,7 +886,40 @@ class _MoneyFormatter extends TextInputFormatter {
   }
 }
 
-String _classLabel(StudentFeeAssignmentModel assignment) {
+String _assignmentOptionLabel(StudentFeeAssignmentModel assignment) {
+  return [
+    assignment.studentName,
+    _sourceLabel(assignment),
+    assignment.feeStructureName,
+    _scopeLabel(assignment),
+  ].where((value) => value.trim().isNotEmpty).join(' - ');
+}
+
+String _sourceLabel(StudentFeeAssignmentModel assignment) {
+  return switch (assignment.sourceType) {
+    'HOSTEL' => 'Hostel Fees',
+    'TRANSPORT' => 'Transport Fees',
+    'MANUAL' => 'Manual Fees',
+    _ => 'Class Fees',
+  };
+}
+
+String _scopeLabel(StudentFeeAssignmentModel assignment) {
+  if (assignment.sourceType == 'HOSTEL') {
+    return [
+      assignment.hostelName,
+      if ((assignment.hostelRoomNumber ?? '').isNotEmpty)
+        'Room ${assignment.hostelRoomNumber}'
+      else
+        assignment.roomType,
+    ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' - ');
+  }
+  if (assignment.sourceType == 'TRANSPORT') {
+    return [
+      assignment.transportRouteName,
+      assignment.transportPickupPointName,
+    ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' - ');
+  }
   final section = assignment.sectionName;
   return section == null || section.isEmpty
       ? assignment.className

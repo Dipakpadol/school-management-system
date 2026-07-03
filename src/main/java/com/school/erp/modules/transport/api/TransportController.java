@@ -4,10 +4,15 @@ import java.util.List;
 import java.util.UUID;
 
 import com.school.erp.common.api.ApiResponse;
+import com.school.erp.common.api.PageRequestDto;
+import com.school.erp.common.api.PageResponse;
 import com.school.erp.common.web.CorrelationIdFilter;
 import com.school.erp.modules.academic.api.dto.AcademicYearResponse;
+import com.school.erp.modules.fees.domain.FeeStructureStatus;
 import com.school.erp.modules.transport.api.dto.TransportDriverRequest;
 import com.school.erp.modules.transport.api.dto.TransportDriverResponse;
+import com.school.erp.modules.transport.api.dto.TransportFeeStructureRequest;
+import com.school.erp.modules.transport.api.dto.TransportFeeStructureResponse;
 import com.school.erp.modules.transport.api.dto.TransportPickupPointRequest;
 import com.school.erp.modules.transport.api.dto.TransportPickupPointResponse;
 import com.school.erp.modules.transport.api.dto.TransportRouteRequest;
@@ -24,6 +29,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 import org.slf4j.MDC;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -228,6 +234,59 @@ public class TransportController {
 			@PathVariable UUID pickupPointId,
 			HttpServletRequest request) {
 		return ok(transportService.deletePickupPoint(pickupPointId), "Pickup point deleted successfully", request);
+	}
+
+	@PostMapping("/fees/structures")
+	@PreAuthorize("hasAnyAuthority('TRANSPORT_MANAGE','FEES_MANAGE')")
+	@Operation(summary = "Create transport fee structure")
+	public ResponseEntity<ApiResponse<TransportFeeStructureResponse>> createFeeStructure(
+			@Valid @RequestBody TransportFeeStructureRequest body,
+			HttpServletRequest request) {
+		return created(transportService.createFeeStructure(body), "Transport fee structure created successfully", request);
+	}
+
+	@PutMapping("/fees/structures/{structureId}")
+	@PreAuthorize("hasAnyAuthority('TRANSPORT_MANAGE','FEES_MANAGE')")
+	@Operation(summary = "Update transport fee structure")
+	public ResponseEntity<ApiResponse<TransportFeeStructureResponse>> updateFeeStructure(
+			@PathVariable UUID structureId,
+			@Valid @RequestBody TransportFeeStructureRequest body,
+			HttpServletRequest request) {
+		return ok(transportService.updateFeeStructure(structureId, body), "Transport fee structure updated successfully", request);
+	}
+
+	@GetMapping("/fees/structures")
+	@PreAuthorize("hasAnyAuthority('TRANSPORT_READ','FEES_READ')")
+	@Operation(summary = "List transport fee structures")
+	public ResponseEntity<ApiResponse<PageResponse<TransportFeeStructureResponse>>> listFeeStructures(
+			@RequestParam(required = false) UUID academicYearId,
+			@RequestParam(required = false) UUID routeId,
+			@RequestParam(required = false) UUID pickupPointId,
+			@RequestParam(required = false) FeeStructureStatus status,
+			@Valid @ParameterObject PageRequestDto pageRequest,
+			HttpServletRequest request) {
+		return ok(
+				transportService.listFeeStructures(academicYearId, routeId, pickupPointId, status, pageRequest),
+				"Transport fee structures fetched successfully",
+				request);
+	}
+
+	@GetMapping("/fees/structures/{structureId}")
+	@PreAuthorize("hasAnyAuthority('TRANSPORT_READ','FEES_READ')")
+	@Operation(summary = "Get transport fee structure")
+	public ResponseEntity<ApiResponse<TransportFeeStructureResponse>> getFeeStructure(
+			@PathVariable UUID structureId,
+			HttpServletRequest request) {
+		return ok(transportService.getFeeStructure(structureId), "Transport fee structure fetched successfully", request);
+	}
+
+	@DeleteMapping("/fees/structures/{structureId}")
+	@PreAuthorize("hasAnyAuthority('TRANSPORT_MANAGE','FEES_MANAGE')")
+	@Operation(summary = "Soft delete transport fee structure")
+	public ResponseEntity<ApiResponse<TransportFeeStructureResponse>> deleteFeeStructure(
+			@PathVariable UUID structureId,
+			HttpServletRequest request) {
+		return ok(transportService.deleteFeeStructure(structureId), "Transport fee structure deleted successfully", request);
 	}
 
 	@GetMapping("/vehicles/{vehicleId}/details")

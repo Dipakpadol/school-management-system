@@ -4,5 +4,6 @@ public enum FeeScope {
 
 	CLASS,
 	HOSTEL,
-	TRANSPORT
+	TRANSPORT,
+	MANUAL
 }

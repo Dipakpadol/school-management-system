@@ -63,6 +63,8 @@ class _TeacherManagementPageState extends ConsumerState<TeacherManagementPage> {
                   ref,
                   academicYearId: effectiveYearId,
                 ),
+                onTeacherAttendance: () =>
+                    context.go(AppRoutes.teacherAttendance),
               ),
               const Divider(height: 1),
               Expanded(
@@ -89,12 +91,14 @@ class _Header extends StatelessWidget {
     required this.selectedAcademicYearId,
     required this.onAcademicYearChanged,
     required this.onAddTeacher,
+    required this.onTeacherAttendance,
   });
 
   final List<AcademicYearModel> years;
   final String? selectedAcademicYearId;
   final ValueChanged<String?> onAcademicYearChanged;
   final VoidCallback onAddTeacher;
+  final VoidCallback onTeacherAttendance;
 
   @override
   Widget build(BuildContext context) {
@@ -124,6 +128,11 @@ class _Header extends StatelessWidget {
               onPressed: onAddTeacher,
               icon: const Icon(Icons.person_add_alt_1_outlined),
               label: const Text('Add teacher'),
+            ),
+            OutlinedButton.icon(
+              onPressed: onTeacherAttendance,
+              icon: const Icon(Icons.fact_check_outlined),
+              label: const Text('Teacher Attendance'),
             ),
           ],
         ),
@@ -547,7 +556,7 @@ class _TeacherProfileContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 7,
+      length: 6,
       child: Column(
         children: [
           const TabBar(
@@ -555,7 +564,6 @@ class _TeacherProfileContent extends StatelessWidget {
             tabs: [
               Tab(text: 'Personal Details'),
               Tab(text: 'Academic Assignments'),
-              Tab(text: 'Classes & Subjects'),
               Tab(text: 'Attendance'),
               Tab(text: 'Documents'),
               Tab(text: 'Payroll'),
@@ -573,8 +581,10 @@ class _TeacherProfileContent extends StatelessWidget {
                   assignments: profile.academicAssignments,
                   onAdd: onAddAssignment,
                 ),
-                _ClassesSubjectsTab(profile: profile),
-                _MessageTab(message: profile.attendanceSummary),
+                _TeacherAttendanceTab(
+                  teacher: profile.personalDetails,
+                  academicYearId: academicYearId,
+                ),
                 _DocumentsTab(
                   teacher: profile.personalDetails,
                   academicYearId: academicYearId,
@@ -663,87 +673,210 @@ class _AssignmentsTab extends ConsumerWidget {
         if (assignments.isEmpty)
           const _InlineEmpty(message: 'No academic assignments.')
         else
-          for (final assignment in assignments)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.assignment_ind_outlined),
-              title: Text(_assignmentTitle(assignment)),
-              subtitle: Text(
-                [
-                  assignment.academicYear,
-                  assignment.assignmentType.replaceAll('_', ' '),
-                  assignment.status,
-                ].join(' - '),
-              ),
-              trailing: Wrap(
-                spacing: 2,
-                children: [
-                  IconButton(
-                    tooltip: 'Edit assignment',
-                    onPressed: () => _showAssignmentDialog(
-                      context,
-                      ref,
-                      teacher: teacher,
-                      academicYearId: academicYearId,
-                      assignment: assignment,
-                    ),
-                    icon: const Icon(Icons.edit_outlined),
-                  ),
-                  IconButton(
-                    tooltip: 'Delete assignment',
-                    onPressed: () => _deleteAssignment(
-                      context,
-                      ref,
-                      teacher,
-                      academicYearId,
-                      assignment,
-                    ),
-                    icon: const Icon(Icons.delete_outline),
-                  ),
-                ],
-              ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+              borderRadius: BorderRadius.circular(8),
             ),
+            child: AppDataTable<TeacherAssignmentModel>(
+              items: assignments,
+              columns: [
+                AppTableColumn(
+                  label: 'Academic year',
+                  cellBuilder: (_, item) => Text(item.academicYear),
+                ),
+                AppTableColumn(
+                  label: 'Assignment type',
+                  cellBuilder: (_, item) =>
+                      Text(item.assignmentType.replaceAll('_', ' ')),
+                ),
+                AppTableColumn(
+                  label: 'Class',
+                  cellBuilder: (_, item) => Text(_dash(item.className)),
+                ),
+                AppTableColumn(
+                  label: 'Section',
+                  cellBuilder: (_, item) => Text(_dash(item.sectionName)),
+                ),
+                AppTableColumn(
+                  label: 'Subject',
+                  cellBuilder: (_, item) => Text(_dash(item.subjectName)),
+                ),
+                AppTableColumn(
+                  label: 'Role',
+                  cellBuilder: (_, item) =>
+                      Text(item.assignmentType.replaceAll('_', ' ')),
+                ),
+                AppTableColumn(
+                  label: 'Status',
+                  cellBuilder: (_, item) => _StatusBadge(label: item.status),
+                ),
+                AppTableColumn(
+                  label: 'Actions',
+                  cellBuilder: (context, assignment) => Wrap(
+                    spacing: 2,
+                    children: [
+                      IconButton(
+                        tooltip: 'Edit assignment',
+                        onPressed: () => _showAssignmentDialog(
+                          context,
+                          ref,
+                          teacher: teacher,
+                          academicYearId: academicYearId,
+                          assignment: assignment,
+                        ),
+                        icon: const Icon(Icons.edit_outlined),
+                      ),
+                      IconButton(
+                        tooltip: 'Delete assignment',
+                        onPressed: () => _deleteAssignment(
+                          context,
+                          ref,
+                          teacher,
+                          academicYearId,
+                          assignment,
+                        ),
+                        icon: const Icon(Icons.delete_outline),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
 }
 
-class _ClassesSubjectsTab extends StatelessWidget {
-  const _ClassesSubjectsTab({required this.profile});
+class _TeacherAttendanceTab extends ConsumerWidget {
+  const _TeacherAttendanceTab({
+    required this.teacher,
+    required this.academicYearId,
+  });
 
-  final TeacherProfileModel profile;
+  final TeacherModel teacher;
+  final String academicYearId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final history = ref.watch(
+      teacherAttendanceHistoryProvider(
+        TeacherAttendanceHistoryKey(
+          teacherId: teacher.id,
+          academicYearId: academicYearId,
+        ),
+      ),
+    );
+    return history.when(
+      data: (item) => ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _AttendanceMetric(label: 'Working days', value: item.totalWorkingDays.toString()),
+              _AttendanceMetric(label: 'Present', value: item.present.toString()),
+              _AttendanceMetric(label: 'Absent', value: item.absent.toString()),
+              _AttendanceMetric(label: 'Late', value: item.late.toString()),
+              _AttendanceMetric(label: 'Half day', value: item.halfDay.toString()),
+              _AttendanceMetric(label: 'Leave', value: item.leave.toString()),
+              _AttendanceMetric(
+                label: 'Attendance',
+                value: '${item.attendancePercentage.toStringAsFixed(2)}%',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (item.records.isEmpty)
+            const _InlineEmpty(message: 'No attendance history.')
+          else
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: AppDataTable<TeacherAttendanceHistoryRecordModel>(
+                items: item.records,
+                columns: [
+                  AppTableColumn(
+                    label: 'Date',
+                    cellBuilder: (_, row) =>
+                        Text(_nullableDateLabel(row.attendanceDate)),
+                  ),
+                  AppTableColumn(
+                    label: 'Status',
+                    cellBuilder: (_, row) => _StatusBadge(label: row.status),
+                  ),
+                  AppTableColumn(
+                    label: 'Remarks',
+                    cellBuilder: (_, row) => Text(_dash(row.remarks)),
+                  ),
+                  AppTableColumn(
+                    label: 'Marked by',
+                    cellBuilder: (_, row) => Text(_dash(row.markedBy)),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+      error: (error, _) => AppErrorState(
+        message: _message(error),
+        onRetry: () => ref.invalidate(
+          teacherAttendanceHistoryProvider(
+            TeacherAttendanceHistoryKey(
+              teacherId: teacher.id,
+              academicYearId: academicYearId,
+            ),
+          ),
+        ),
+      ),
+      loading: () => const AppLoadingState(label: 'Loading attendance history'),
+    );
+  }
+}
+
+class _AttendanceMetric extends StatelessWidget {
+  const _AttendanceMetric({required this.label, required this.value});
+
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Text(
-          'Class Teacher',
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+    return SizedBox(
+      width: 140,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          borderRadius: BorderRadius.circular(8),
         ),
-        const SizedBox(height: 8),
-        if (profile.classTeacherMappings.isEmpty)
-          const _InlineEmpty(message: 'No class teacher mapping.')
-        else
-          for (final item in profile.classTeacherMappings)
-            _MappingTile(mapping: item),
-        const SizedBox(height: 20),
-        Text(
-          'Subject Teacher',
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 8),
-        if (profile.subjectTeacherMappings.isEmpty)
-          const _InlineEmpty(message: 'No subject teacher mapping.')
-        else
-          for (final item in profile.subjectTeacherMappings)
-            _MappingTile(mapping: item),
-      ],
+      ),
     );
   }
 }
@@ -833,29 +966,6 @@ class _MessageTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Text(message, textAlign: TextAlign.center),
-    );
-  }
-}
-
-class _MappingTile extends StatelessWidget {
-  const _MappingTile({required this.mapping});
-
-  final TeacherAcademicMappingModel mapping;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: const Icon(Icons.school_outlined),
-      title: Text(
-        [
-          mapping.className,
-          mapping.sectionName,
-          if (mapping.subjectName != null) mapping.subjectName!,
-        ].join(' - '),
-      ),
-      subtitle: Text(mapping.academicYear),
-      trailing: _StatusBadge(label: mapping.active ? 'ACTIVE' : 'INACTIVE'),
     );
   }
 }
@@ -1461,15 +1571,6 @@ Future<bool> _confirm(BuildContext context, String message) async {
     ),
   );
   return result ?? false;
-}
-
-String _assignmentTitle(TeacherAssignmentModel assignment) {
-  final parts = [
-    assignment.className,
-    assignment.sectionName,
-    assignment.subjectName,
-  ].whereType<String>().where((value) => value.trim().isNotEmpty).toList();
-  return parts.isEmpty ? assignment.assignmentType : parts.join(' - ');
 }
 
 String? _required(String? value) {

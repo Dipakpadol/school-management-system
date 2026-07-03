@@ -220,6 +220,205 @@ class TeacherProfileModel {
   final String notificationSummary;
 }
 
+class TeacherAttendanceTeacherModel {
+  const TeacherAttendanceTeacherModel({
+    required this.id,
+    required this.employeeNumber,
+    required this.displayName,
+    required this.status,
+    this.firstName = '',
+    this.middleName,
+    this.lastName,
+    this.email,
+    this.mobileNumber,
+  });
+
+  factory TeacherAttendanceTeacherModel.fromJson(Map<String, dynamic> json) {
+    return TeacherAttendanceTeacherModel(
+      id: json['id'] as String? ?? '',
+      employeeNumber:
+          json['employeeNumber'] as String? ??
+          json['employeeCode'] as String? ??
+          '',
+      firstName: json['firstName'] as String? ?? '',
+      middleName: json['middleName'] as String?,
+      lastName: json['lastName'] as String?,
+      displayName: json['displayName'] as String? ?? '',
+      email: json['email'] as String?,
+      mobileNumber:
+          json['mobileNumber'] as String? ?? json['phoneNumber'] as String?,
+      status: json['status'] as String? ?? 'ACTIVE',
+    );
+  }
+
+  final String id;
+  final String employeeNumber;
+  final String firstName;
+  final String? middleName;
+  final String? lastName;
+  final String displayName;
+  final String? email;
+  final String? mobileNumber;
+  final String status;
+}
+
+class TeacherAttendanceRecordModel {
+  const TeacherAttendanceRecordModel({
+    required this.id,
+    required this.academicYearId,
+    required this.attendanceDate,
+    required this.teacher,
+    required this.status,
+    this.remarks,
+  });
+
+  factory TeacherAttendanceRecordModel.fromJson(Map<String, dynamic> json) {
+    return TeacherAttendanceRecordModel(
+      id: json['id'] as String? ?? '',
+      academicYearId: json['academicYearId'] as String? ?? '',
+      attendanceDate: _dateOrNull(json['attendanceDate']) ?? DateTime.now(),
+      teacher: TeacherAttendanceTeacherModel.fromJson(
+        json['teacher'] as Map<String, dynamic>? ?? const {},
+      ),
+      status: json['status'] as String? ?? 'PRESENT',
+      remarks: json['remarks'] as String?,
+    );
+  }
+
+  final String id;
+  final String academicYearId;
+  final DateTime attendanceDate;
+  final TeacherAttendanceTeacherModel teacher;
+  final String status;
+  final String? remarks;
+}
+
+class TeacherDailyAttendanceModel {
+  const TeacherDailyAttendanceModel({
+    required this.academicYearId,
+    required this.attendanceDate,
+    required this.totalRecords,
+    required this.present,
+    required this.absent,
+    required this.late,
+    required this.halfDay,
+    required this.leave,
+    required this.records,
+  });
+
+  factory TeacherDailyAttendanceModel.fromJson(Map<String, dynamic> json) {
+    return TeacherDailyAttendanceModel(
+      academicYearId: json['academicYearId'] as String? ?? '',
+      attendanceDate: _dateOrNull(json['attendanceDate']) ?? DateTime.now(),
+      totalRecords: _intValue(json['totalRecords']),
+      present: _intValue(json['present']),
+      absent: _intValue(json['absent']),
+      late: _intValue(json['late']),
+      halfDay: _intValue(json['halfDay']),
+      leave: _intValue(json['leave']),
+      records: _list(json['records'], TeacherAttendanceRecordModel.fromJson),
+    );
+  }
+
+  final String academicYearId;
+  final DateTime attendanceDate;
+  final int totalRecords;
+  final int present;
+  final int absent;
+  final int late;
+  final int halfDay;
+  final int leave;
+  final List<TeacherAttendanceRecordModel> records;
+}
+
+class TeacherAttendanceHistoryRecordModel {
+  const TeacherAttendanceHistoryRecordModel({
+    required this.attendanceDate,
+    required this.status,
+    this.remarks,
+    this.markedBy,
+    this.markedAt,
+    this.updatedBy,
+    this.updatedAt,
+  });
+
+  factory TeacherAttendanceHistoryRecordModel.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return TeacherAttendanceHistoryRecordModel(
+      attendanceDate: _dateOrNull(json['attendanceDate']) ?? DateTime.now(),
+      status: json['status'] as String? ?? 'PRESENT',
+      remarks: json['remarks'] as String?,
+      markedBy: json['markedBy'] as String?,
+      markedAt: _dateOrNull(json['markedAt']),
+      updatedBy: json['updatedBy'] as String?,
+      updatedAt: _dateOrNull(json['updatedAt']),
+    );
+  }
+
+  final DateTime attendanceDate;
+  final String status;
+  final String? remarks;
+  final String? markedBy;
+  final DateTime? markedAt;
+  final String? updatedBy;
+  final DateTime? updatedAt;
+}
+
+class TeacherAttendanceHistoryModel {
+  const TeacherAttendanceHistoryModel({
+    required this.teacherId,
+    required this.teacherName,
+    required this.totalWorkingDays,
+    required this.present,
+    required this.absent,
+    required this.late,
+    required this.halfDay,
+    required this.leave,
+    required this.attendancePercentage,
+    required this.records,
+    this.employeeNumber,
+    this.academicYearId,
+    this.academicYear,
+  });
+
+  factory TeacherAttendanceHistoryModel.fromJson(Map<String, dynamic> json) {
+    final recordsPayload = json['records'];
+    final content = recordsPayload is Map<String, dynamic>
+        ? recordsPayload['content']
+        : recordsPayload;
+    return TeacherAttendanceHistoryModel(
+      teacherId: json['teacherId'] as String? ?? '',
+      teacherName: json['teacherName'] as String? ?? '',
+      employeeNumber: json['employeeNumber'] as String?,
+      academicYearId: json['academicYearId'] as String?,
+      academicYear: json['academicYear'] as String?,
+      totalWorkingDays: _intValue(json['totalWorkingDays']),
+      present: _intValue(json['present']),
+      absent: _intValue(json['absent']),
+      late: _intValue(json['late']),
+      halfDay: _intValue(json['halfDay']),
+      leave: _intValue(json['leave']),
+      attendancePercentage: _doubleValue(json['attendancePercentage']),
+      records: _list(content, TeacherAttendanceHistoryRecordModel.fromJson),
+    );
+  }
+
+  final String teacherId;
+  final String teacherName;
+  final String? employeeNumber;
+  final String? academicYearId;
+  final String? academicYear;
+  final int totalWorkingDays;
+  final int present;
+  final int absent;
+  final int late;
+  final int halfDay;
+  final int leave;
+  final double attendancePercentage;
+  final List<TeacherAttendanceHistoryRecordModel> records;
+}
+
 class SubjectModel {
   const SubjectModel({
     required this.id,
@@ -255,4 +454,21 @@ DateTime? _dateOrNull(Object? value) {
     return null;
   }
   return DateTime.tryParse(value);
+}
+
+int _intValue(Object? value) {
+  if (value is int) {
+    return value;
+  }
+  if (value is num) {
+    return value.toInt();
+  }
+  return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+double _doubleValue(Object? value) {
+  if (value is num) {
+    return value.toDouble();
+  }
+  return double.tryParse(value?.toString() ?? '') ?? 0;
 }

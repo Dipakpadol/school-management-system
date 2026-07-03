@@ -79,6 +79,30 @@ public class TransportFeeStructure extends BaseEntity {
 			boolean installmentAllowed,
 			int numberOfInstallments,
 			FeeStructureStatus status) {
+		update(
+				academicYear,
+				route,
+				pickupPoint,
+				feeCategory,
+				backingFeeStructure,
+				amount,
+				dueDate,
+				installmentAllowed,
+				numberOfInstallments,
+				status);
+	}
+
+	public void update(
+			AcademicYear academicYear,
+			TransportRoute route,
+			TransportPickupPoint pickupPoint,
+			FeeCategory feeCategory,
+			FeeStructure backingFeeStructure,
+			BigDecimal amount,
+			LocalDate dueDate,
+			boolean installmentAllowed,
+			int numberOfInstallments,
+			FeeStructureStatus status) {
 		this.academicYear = academicYear;
 		this.route = route;
 		this.pickupPoint = pickupPoint;
@@ -89,6 +113,10 @@ public class TransportFeeStructure extends BaseEntity {
 		this.installmentAllowed = installmentAllowed;
 		this.numberOfInstallments = Math.max(numberOfInstallments, 1);
 		this.status = status == null ? FeeStructureStatus.DRAFT : status;
+	}
+
+	public boolean isActive() {
+		return status == FeeStructureStatus.ACTIVE;
 	}
 
 	private BigDecimal money(BigDecimal value) {

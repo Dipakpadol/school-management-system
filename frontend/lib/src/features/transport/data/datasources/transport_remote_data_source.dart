@@ -130,6 +130,54 @@ class TransportRemoteDataSource {
     return _unwrapList(response.data, TransportPickupPointModel.fromJson);
   }
 
+  Future<List<TransportFeeStructureModel>> feeStructures({
+    String? academicYearId,
+    String? routeId,
+    String? pickupPointId,
+    String? status,
+  }) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.transportFeeStructures,
+      queryParameters: {
+        if (academicYearId != null && academicYearId.isNotEmpty)
+          'academicYearId': academicYearId,
+        if (routeId != null && routeId.isNotEmpty) 'routeId': routeId,
+        if (pickupPointId != null && pickupPointId.isNotEmpty)
+          'pickupPointId': pickupPointId,
+        if (status != null && status.isNotEmpty) 'status': status,
+      },
+    );
+    return _unwrapList(response.data, TransportFeeStructureModel.fromJson);
+  }
+
+  Future<TransportFeeStructureModel> createFeeStructure(
+    Map<String, dynamic> payload,
+  ) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.transportFeeStructures,
+      data: payload,
+    );
+    return TransportFeeStructureModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<TransportFeeStructureModel> updateFeeStructure(
+    String id,
+    Map<String, dynamic> payload,
+  ) async {
+    final response = await _apiClient.put<Map<String, dynamic>>(
+      ApiPaths.transportFeeStructure(id),
+      data: payload,
+    );
+    return TransportFeeStructureModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<TransportFeeStructureModel> deleteFeeStructure(String id) async {
+    final response = await _apiClient.delete<Map<String, dynamic>>(
+      ApiPaths.transportFeeStructure(id),
+    );
+    return TransportFeeStructureModel.fromJson(_unwrapData(response.data));
+  }
+
   Future<TransportPickupPointModel> createPickupPoint(
     String routeId,
     Map<String, dynamic> payload,

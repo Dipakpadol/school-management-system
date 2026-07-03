@@ -44,6 +44,24 @@ abstract interface class TransportRepository {
 
   Future<Result<List<TransportPickupPointModel>>> pickupPoints(String routeId);
 
+  Future<Result<List<TransportFeeStructureModel>>> feeStructures({
+    String? academicYearId,
+    String? routeId,
+    String? pickupPointId,
+    String? status,
+  });
+
+  Future<Result<TransportFeeStructureModel>> createFeeStructure(
+    Map<String, dynamic> payload,
+  );
+
+  Future<Result<TransportFeeStructureModel>> updateFeeStructure(
+    String id,
+    Map<String, dynamic> payload,
+  );
+
+  Future<Result<TransportFeeStructureModel>> deleteFeeStructure(String id);
+
   Future<Result<TransportPickupPointModel>> createPickupPoint(
     String routeId,
     Map<String, dynamic> payload,

@@ -75,13 +75,13 @@ public class AuthService {
 		String email = normalizeEmail(request.email());
 		String mobileNumber = trimToNull(request.mobileNumber());
 		validatePublicSignupUniqueness(email, mobileNumber);
-        RoleName signupRole = request.role();
+		RoleName signupRole = request.role();
 
-    if (PUBLIC_SIGNUP_BLOCKED_ROLES.contains(signupRole)) {
-        throw new BusinessException(
-                ErrorCode.BUSINESS_RULE_VIOLATION,
-                "Selected role is not allowed for public sign-up.");
-    }
+		if (PUBLIC_SIGNUP_BLOCKED_ROLES.contains(signupRole)) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Selected role is not allowed for public sign-up.");
+		}
 		Role role = roleRepository.findByNameAndDeletedFalse(signupRole)
 				.orElseThrow(() -> new ResourceNotFoundException("Role", signupRole));
 

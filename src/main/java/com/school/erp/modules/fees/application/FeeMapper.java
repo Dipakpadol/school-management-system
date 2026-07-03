@@ -95,6 +95,8 @@ public class FeeMapper {
 				assignment.getAcademicYearEntity() == null ? null : assignment.getAcademicYearEntity().getId(),
 				assignment.getClassEntity() == null ? null : assignment.getClassEntity().getId(),
 				assignment.getFeeScope(),
+				assignment.getSourceType(),
+				assignment.getSourceReferenceId(),
 				assignment.getHostel() == null ? null : assignment.getHostel().getId(),
 				assignment.getHostel() == null ? null : assignment.getHostel().getName(),
 				assignment.getHostelRoom() == null ? null : assignment.getHostelRoom().getId(),

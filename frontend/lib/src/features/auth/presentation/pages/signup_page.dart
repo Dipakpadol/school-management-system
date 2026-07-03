@@ -237,7 +237,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
       'lastName': _lastName.text.trim(),
       'email': _email.text.trim(),
       'mobileNumber': _mobile.text.trim(),
-      'roles': [_selectedRole ?? 'STUDENT'],
+      'role': _selectedRole ?? 'STUDENT',
       'password': _password.text,
       'confirmPassword': _confirmPassword.text,
     });

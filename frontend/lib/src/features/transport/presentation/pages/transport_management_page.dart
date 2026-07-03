@@ -10,6 +10,8 @@ import '../../../../core/widgets/app_data_table.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../fees/data/models/fee_models.dart';
+import '../../../fees/data/repositories/fees_repository_impl.dart';
 import '../../../students/data/models/student_models.dart';
 import '../../../students/presentation/controllers/students_providers.dart';
 import '../../data/models/transport_models.dart';
@@ -66,7 +68,7 @@ class _TransportManagementPageState
     }
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Column(
         children: [
           Material(
@@ -79,6 +81,7 @@ class _TransportManagementPageState
                     tabs: [
                       Tab(icon: Icon(Icons.directions_bus_outlined), text: 'Buses'),
                       Tab(icon: Icon(Icons.alt_route_outlined), text: 'Routes'),
+                      Tab(icon: Icon(Icons.payments_outlined), text: 'Fees'),
                       Tab(icon: Icon(Icons.badge_outlined), text: 'Drivers'),
                     ],
                   ),
@@ -91,6 +94,13 @@ class _TransportManagementPageState
                     if (effectiveYearId != null) {
                       ref.invalidate(transportVehiclesProvider(effectiveYearId));
                       ref.invalidate(transportRoutesProvider(effectiveYearId));
+                      ref.invalidate(
+                        transportFeeStructuresProvider(
+                          TransportFeeStructuresKey(
+                            academicYearId: effectiveYearId,
+                          ),
+                        ),
+                      );
                     }
                   },
                   icon: const Icon(Icons.refresh_outlined),
@@ -127,6 +137,16 @@ class _TransportManagementPageState
                   onEdit: (route) => _showRouteDialog(effectiveYearId, route),
                   onDelete: _deleteRoute,
                   onPickupPoints: _showPickupPointsDialog,
+                ),
+                _TransportFeesTab(
+                  years: years,
+                  selectedYearId: effectiveYearId,
+                  onYearChanged: (id) =>
+                      setState(() => _selectedAcademicYearId = id),
+                  onAdd: () => _showTransportFeeDialog(effectiveYearId),
+                  onEdit: (fee) =>
+                      _showTransportFeeDialog(effectiveYearId, fee),
+                  onDelete: _deleteTransportFee,
                 ),
                 _DriversTab(
                   onAdd: () => _showDriverDialog(),
@@ -317,6 +337,101 @@ class _TransportManagementPageState
     await showDialog<void>(
       context: context,
       builder: (context) => _PickupPointsDialog(route: route),
+    );
+  }
+
+  Future<void> _showTransportFeeDialog(
+    String? academicYearId, [
+    TransportFeeStructureModel? fee,
+  ]) async {
+    if (academicYearId == null) {
+      _snack('Select an academic year first.');
+      return;
+    }
+    final transportRepository = ref.read(transportRepositoryProvider);
+    final routesResult = await transportRepository.routes(academicYearId);
+    final categoriesResult = await ref
+        .read(feesRepositoryProvider)
+        .categories();
+    if (!mounted) {
+      return;
+    }
+
+    List<TransportRouteModel> routes = const [];
+    List<FeeCategoryModel> categories = const [];
+    String? errorMessage;
+    routesResult.when(
+      success: (items) => routes = items,
+      failure: (failure) => errorMessage = failure.message,
+    );
+    categoriesResult.when(
+      success: (items) => categories = items,
+      failure: (failure) => errorMessage ??= failure.message,
+    );
+    if (errorMessage != null) {
+      _snack(errorMessage!);
+      return;
+    }
+    if (routes.isEmpty) {
+      _snack('Create a route before adding transport fees.');
+      return;
+    }
+    if (categories.isEmpty) {
+      _snack('Create a fee category before adding transport fees.');
+      return;
+    }
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => _TransportFeeDialog(
+        academicYearId: academicYearId,
+        routes: routes,
+        categories: categories,
+        fee: fee,
+      ),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+    final saved = fee == null
+        ? await transportRepository.createFeeStructure(result)
+        : await transportRepository.updateFeeStructure(fee.id, result);
+    if (!mounted) {
+      return;
+    }
+    saved.when(
+      success: (_) {
+        ref.invalidate(
+          transportFeeStructuresProvider(
+            TransportFeeStructuresKey(academicYearId: academicYearId),
+          ),
+        );
+        _snack(fee == null ? 'Transport fee created.' : 'Transport fee saved.');
+      },
+      failure: (failure) => _snack(failure.message),
+    );
+  }
+
+  Future<void> _deleteTransportFee(TransportFeeStructureModel fee) async {
+    if (!await _confirm('Delete ${fee.feeStructureName}?') || !mounted) {
+      return;
+    }
+    final result = await ref
+        .read(transportRepositoryProvider)
+        .deleteFeeStructure(fee.id);
+    if (!mounted) {
+      return;
+    }
+    result.when(
+      success: (_) {
+        ref.invalidate(
+          transportFeeStructuresProvider(
+            TransportFeeStructuresKey(academicYearId: fee.academicYearId),
+          ),
+        );
+        _snack('Transport fee deleted.');
+      },
+      failure: (failure) => _snack(failure.message),
     );
   }
 
@@ -737,6 +852,139 @@ class _RoutesTab extends ConsumerWidget {
                           ref.invalidate(transportRoutesProvider(selectedYearId!)),
                     ),
                     loading: () => const AppLoadingState(label: 'Loading routes'),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TransportFeesTab extends ConsumerWidget {
+  const _TransportFeesTab({
+    required this.years,
+    required this.selectedYearId,
+    required this.onYearChanged,
+    required this.onAdd,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final List<AcademicYearModel> years;
+  final String? selectedYearId;
+  final ValueChanged<String?> onYearChanged;
+  final VoidCallback onAdd;
+  final ValueChanged<TransportFeeStructureModel> onEdit;
+  final ValueChanged<TransportFeeStructureModel> onDelete;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final key = selectedYearId == null
+        ? null
+        : TransportFeeStructuresKey(academicYearId: selectedYearId);
+    final fees = key == null
+        ? null
+        : ref.watch(transportFeeStructuresProvider(key));
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          _YearToolbar(
+            years: years,
+            selectedYearId: selectedYearId,
+            onChanged: onYearChanged,
+            action: AppButton(
+              label: 'Add fee',
+              icon: Icons.add_outlined,
+              onPressed: selectedYearId == null ? null : onAdd,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: fees == null
+                ? const _InlineEmpty(
+                    icon: Icons.calendar_month_outlined,
+                    message: 'Select an academic year.',
+                  )
+                : fees.when(
+                    data: (items) {
+                      if (items.isEmpty) {
+                        return const _InlineEmpty(
+                          icon: Icons.payments_outlined,
+                          message: 'No transport fee structures found.',
+                        );
+                      }
+                      return AppDataTable<TransportFeeStructureModel>(
+                        items: items,
+                        columns: [
+                          AppTableColumn(
+                            label: 'Route',
+                            cellBuilder: (_, item) =>
+                                Text('${item.routeCode} - ${item.routeName}'),
+                          ),
+                          AppTableColumn(
+                            label: 'Pickup',
+                            cellBuilder: (_, item) =>
+                                Text(item.pickupPointName ?? 'All points'),
+                          ),
+                          AppTableColumn(
+                            label: 'Category',
+                            cellBuilder: (_, item) =>
+                                Text(item.feeCategoryName),
+                          ),
+                          AppTableColumn(
+                            label: 'Amount',
+                            numeric: true,
+                            cellBuilder: (_, item) => Text(_money(item.amount)),
+                          ),
+                          AppTableColumn(
+                            label: 'Due',
+                            cellBuilder: (_, item) =>
+                                Text(_nullableDateLabel(item.dueDate)),
+                          ),
+                          AppTableColumn(
+                            label: 'Installments',
+                            numeric: true,
+                            cellBuilder: (_, item) => Text(
+                              item.installmentAllowed
+                                  ? '${item.numberOfInstallments}'
+                                  : '-',
+                            ),
+                          ),
+                          AppTableColumn(
+                            label: 'Status',
+                            cellBuilder: (_, item) =>
+                                _StatusBadge(label: item.status),
+                          ),
+                          AppTableColumn(
+                            label: 'Actions',
+                            cellBuilder: (_, item) => Wrap(
+                              spacing: 2,
+                              children: [
+                                IconButton(
+                                  tooltip: 'Edit',
+                                  onPressed: () => onEdit(item),
+                                  icon: const Icon(Icons.edit_outlined),
+                                ),
+                                IconButton(
+                                  tooltip: 'Delete',
+                                  onPressed: () => onDelete(item),
+                                  icon: const Icon(Icons.delete_outline),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                    error: (error, _) => AppErrorState(
+                      message: _message(error),
+                      onRetry: () =>
+                          ref.invalidate(transportFeeStructuresProvider(key!)),
+                    ),
+                    loading: () =>
+                        const AppLoadingState(label: 'Loading transport fees'),
                   ),
           ),
         ],
@@ -1203,6 +1451,221 @@ class _PickupPointsDialog extends ConsumerWidget {
         _snack(context, 'Pickup point deleted.');
       },
       failure: (failure) => _snack(context, failure.message),
+    );
+  }
+}
+
+class _TransportFeeDialog extends ConsumerStatefulWidget {
+  const _TransportFeeDialog({
+    required this.academicYearId,
+    required this.routes,
+    required this.categories,
+    this.fee,
+  });
+
+  final String academicYearId;
+  final List<TransportRouteModel> routes;
+  final List<FeeCategoryModel> categories;
+  final TransportFeeStructureModel? fee;
+
+  @override
+  ConsumerState<_TransportFeeDialog> createState() =>
+      _TransportFeeDialogState();
+}
+
+class _TransportFeeDialogState extends ConsumerState<_TransportFeeDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final _amount = TextEditingController(
+    text: widget.fee?.amount.toStringAsFixed(2) ?? '',
+  );
+  late final _dueDate = TextEditingController(
+    text: _nullableDateLabel(
+      widget.fee?.dueDate ?? DateTime.now().add(const Duration(days: 30)),
+    ),
+  );
+  late final _installments = TextEditingController(
+    text: (widget.fee?.numberOfInstallments ?? 1).toString(),
+  );
+  late final _name = TextEditingController(
+    text: widget.fee?.feeStructureName ?? '',
+  );
+  late final _description = TextEditingController();
+  late var _routeId =
+      widget.fee?.routeId ??
+      (widget.routes.isEmpty ? null : widget.routes.first.id);
+  late var _pickupPointId = widget.fee?.pickupPointId;
+  late var _categoryId =
+      widget.fee?.feeCategoryId ??
+      (widget.categories.isEmpty ? null : widget.categories.first.id);
+  late var _installmentAllowed = widget.fee?.installmentAllowed ?? false;
+  late var _status = widget.fee?.status ?? 'DRAFT';
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    _dueDate.dispose();
+    _installments.dispose();
+    _name.dispose();
+    _description.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pickupPoints = _routeId == null
+        ? null
+        : ref.watch(transportPickupPointsProvider(_routeId!));
+
+    return AlertDialog(
+      title: Text(
+        widget.fee == null ? 'Add transport fee' : 'Edit transport fee',
+      ),
+      content: Form(
+        key: _formKey,
+        child: SizedBox(
+          width: 560,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: _routeId,
+                  decoration: const InputDecoration(labelText: 'Route'),
+                  items: [
+                    for (final route in widget.routes)
+                      DropdownMenuItem(
+                        value: route.id,
+                        child: Text('${route.routeCode} - ${route.routeName}'),
+                      ),
+                  ],
+                  validator: _required,
+                  onChanged: (value) => setState(() {
+                    _routeId = value;
+                    _pickupPointId = null;
+                  }),
+                ),
+                const SizedBox(height: 12),
+                pickupPoints == null
+                    ? const SizedBox.shrink()
+                    : pickupPoints.when(
+                        data: (items) {
+                          if (_pickupPointId != null &&
+                              items.every(
+                                (point) => point.id != _pickupPointId,
+                              )) {
+                            _pickupPointId = null;
+                          }
+                          return DropdownButtonFormField<String>(
+                            initialValue: _pickupPointId,
+                            decoration: const InputDecoration(
+                              labelText: 'Pickup point',
+                            ),
+                            items: [
+                              const DropdownMenuItem(
+                                value: null,
+                                child: Text('All pickup points'),
+                              ),
+                              for (final point in items)
+                                DropdownMenuItem(
+                                  value: point.id,
+                                  child: Text(point.pointName),
+                                ),
+                            ],
+                            onChanged: (value) =>
+                                setState(() => _pickupPointId = value),
+                          );
+                        },
+                        error: (error, _) => AppErrorState(
+                          message: _message(error),
+                          onRetry: () => ref.invalidate(
+                            transportPickupPointsProvider(_routeId!),
+                          ),
+                        ),
+                        loading: () => const AppLoadingState(
+                          label: 'Loading pickup points',
+                        ),
+                      ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _categoryId,
+                  decoration: const InputDecoration(labelText: 'Fee category'),
+                  items: [
+                    for (final category in widget.categories)
+                      DropdownMenuItem(
+                        value: category.id,
+                        child: Text(category.name),
+                      ),
+                  ],
+                  validator: _required,
+                  onChanged: (value) => setState(() => _categoryId = value),
+                ),
+                const SizedBox(height: 12),
+                _field(
+                  _amount,
+                  'Amount',
+                  validator: _positiveMoney,
+                  keyboardType: TextInputType.number,
+                ),
+                _field(_dueDate, 'Due date', validator: _dateValidator),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Installment allowed'),
+                  value: _installmentAllowed,
+                  onChanged: (value) =>
+                      setState(() => _installmentAllowed = value),
+                ),
+                if (_installmentAllowed)
+                  _field(
+                    _installments,
+                    'Number of installments',
+                    validator: _positiveInt,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  ),
+                _field(_name, 'Display name'),
+                _field(_description, 'Description', maxLines: 2),
+                DropdownButtonFormField<String>(
+                  initialValue: _status,
+                  decoration: const InputDecoration(labelText: 'Status'),
+                  items: const [
+                    DropdownMenuItem(value: 'DRAFT', child: Text('Draft')),
+                    DropdownMenuItem(value: 'ACTIVE', child: Text('Active')),
+                    DropdownMenuItem(
+                      value: 'INACTIVE',
+                      child: Text('Inactive'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _status = value);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: _dialogActions(context, () {
+        if (!(_formKey.currentState?.validate() ?? false)) {
+          return;
+        }
+        Navigator.of(context).pop({
+          'academicYearId': widget.academicYearId,
+          'routeId': _routeId,
+          'pickupPointId': _pickupPointId,
+          'feeCategoryId': _categoryId,
+          'amount': double.tryParse(_amount.text.trim()) ?? 0,
+          'dueDate': _dueDate.text.trim(),
+          'installmentAllowed': _installmentAllowed,
+          'numberOfInstallments': _installmentAllowed
+              ? int.tryParse(_installments.text.trim()) ?? 1
+              : 1,
+          'status': _status,
+          'name': _blankToNull(_name.text),
+          'description': _blankToNull(_description.text),
+        });
+      }),
     );
   }
 }
@@ -1897,6 +2360,14 @@ String? _positiveInt(String? value) {
   return null;
 }
 
+String? _positiveMoney(String? value) {
+  final number = double.tryParse(value?.trim() ?? '');
+  if (number == null || number <= 0) {
+    return 'Enter an amount above 0';
+  }
+  return null;
+}
+
 String? _date(String? value) => _dateValidator(value);
 
 String? _dateValidator(String? value) {
@@ -1923,6 +2394,8 @@ String _message(Object error) {
 String _dateLabel(DateTime value) => value.toIso8601String().split('T').first;
 
 String _nullableDateLabel(DateTime? value) => value == null ? '-' : _dateLabel(value);
+
+String _money(double value) => 'INR ${value.toStringAsFixed(2)}';
 
 void _snack(BuildContext context, String message) {
   ScaffoldMessenger.of(context)

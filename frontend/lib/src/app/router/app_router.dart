@@ -26,6 +26,7 @@ import '../../features/students/presentation/pages/student_section_detail_page.d
 import '../../features/students/presentation/pages/student_sections_page.dart';
 import '../../features/students/presentation/pages/students_page.dart';
 import '../../features/teachers/presentation/pages/teacher_management_page.dart';
+import '../../features/teachers/presentation/pages/teacher_attendance_page.dart';
 import '../../features/transport/presentation/pages/transport_management_page.dart';
 import '../../features/users/presentation/pages/users_page.dart';
 import 'app_routes.dart';
@@ -154,6 +155,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.teachers,
         name: AppRouteName.teachers,
         builder: (context, state) => const TeacherManagementPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.teacherAttendance,
+        name: AppRouteName.teacherAttendance,
+        builder: (context, state) => const TeacherAttendancePage(),
       ),
       GoRoute(
         path: AppRoutes.users,

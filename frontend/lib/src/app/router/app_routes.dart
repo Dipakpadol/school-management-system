@@ -11,6 +11,7 @@ abstract final class AppRoutes {
   static const hostel = '/hostels';
   static const transport = '/transport';
   static const teachers = '/teachers';
+  static const teacherAttendance = '/teachers/attendance';
   static const users = '/users';
   static const auditLogs = '/audit-logs';
   static const attendance = '/attendance';
@@ -121,6 +122,7 @@ abstract final class AppRouteName {
   static const hostel = 'hostel';
   static const transport = 'transport';
   static const teachers = 'teachers';
+  static const teacherAttendance = 'teacher-attendance';
   static const users = 'users';
   static const auditLogs = 'audit-logs';
   static const attendance = 'attendance';

@@ -56,6 +56,9 @@ public final class FeeAssignmentSpecifications {
 						criteriaBuilder.lower(root.get("sectionName")),
 						request.sectionName().trim().toLowerCase()));
 			}
+			if (request.sourceType() != null) {
+				predicates.add(criteriaBuilder.equal(root.get("sourceType"), request.sourceType()));
+			}
 			if (request.status() != null) {
 				predicates.add(criteriaBuilder.equal(root.get("status"), request.status()));
 			}

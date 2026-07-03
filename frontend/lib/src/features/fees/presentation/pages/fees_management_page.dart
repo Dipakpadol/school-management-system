@@ -74,6 +74,16 @@ class _FeesHeader extends ConsumerWidget {
                   label: const Text('Assign class fee'),
                 ),
                 OutlinedButton.icon(
+                  onPressed: () => context.go(AppRoutes.hostel),
+                  icon: const Icon(Icons.apartment_outlined),
+                  label: const Text('Hostel fees'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => context.go(AppRoutes.transport),
+                  icon: const Icon(Icons.directions_bus_outlined),
+                  label: const Text('Transport fees'),
+                ),
+                OutlinedButton.icon(
                   onPressed: () => context.go(AppRoutes.feePayments),
                   icon: const Icon(Icons.point_of_sale_outlined),
                   label: const Text('Collect payment'),
@@ -515,7 +525,7 @@ class _AssignmentList extends ConsumerWidget {
 
     return assignments.when(
       data: (items) => _ListSurface(
-        title: 'Class/student fee assignments',
+        title: 'Student fee assignments',
         action: Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -551,7 +561,10 @@ class _AssignmentList extends ConsumerWidget {
                     icon: Icons.assignment_ind_outlined,
                     title: assignment.studentName,
                     subtitle:
-                        '${assignment.admissionNumber} - ${assignment.feeStructureName}',
+                        '${assignment.admissionNumber} - '
+                        '${_sourceLabel(assignment.sourceType)} - '
+                        '${_assignmentContext(assignment)} - '
+                        '${assignment.feeStructureName}',
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -564,7 +577,15 @@ class _AssignmentList extends ConsumerWidget {
                               emphasized: true,
                             ),
                             const SizedBox(height: 6),
-                            FeeStatusChip(status: assignment.status),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              alignment: WrapAlignment.end,
+                              children: [
+                                FeeStatusChip(status: assignment.sourceType),
+                                FeeStatusChip(status: assignment.status),
+                              ],
+                            ),
                           ],
                         ),
                         const SizedBox(width: 6),
@@ -994,6 +1015,37 @@ String? _required(String? value) {
     return 'Required';
   }
   return null;
+}
+
+String _sourceLabel(String sourceType) {
+  return switch (sourceType) {
+    'HOSTEL' => 'Hostel Fees',
+    'TRANSPORT' => 'Transport Fees',
+    'MANUAL' => 'Manual Fees',
+    _ => 'Class Fees',
+  };
+}
+
+String _assignmentContext(StudentFeeAssignmentModel assignment) {
+  final text = switch (assignment.sourceType) {
+    'HOSTEL' => [
+      if ((assignment.hostelName ?? '').isNotEmpty) assignment.hostelName,
+      if ((assignment.hostelRoomNumber ?? '').isNotEmpty)
+        'Room ${assignment.hostelRoomNumber}',
+      if ((assignment.roomType ?? '').isNotEmpty) assignment.roomType,
+    ].whereType<String>().join(' - '),
+    'TRANSPORT' => [
+      if ((assignment.transportRouteName ?? '').isNotEmpty)
+        assignment.transportRouteName,
+      if ((assignment.transportPickupPointName ?? '').isNotEmpty)
+        assignment.transportPickupPointName,
+    ].whereType<String>().join(' - '),
+    _ => [
+      if (assignment.className.isNotEmpty) assignment.className,
+      if ((assignment.sectionName ?? '').isNotEmpty) assignment.sectionName,
+    ].whereType<String>().join(' - '),
+  };
+  return text.isEmpty ? '-' : text;
 }
 
 String _message(Object error) {

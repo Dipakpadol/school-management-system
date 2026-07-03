@@ -370,6 +370,13 @@ Future<void> _showUserDialog(
   final roles = ref
       .read(rolesProvider)
       .maybeWhen(data: (roles) => roles, orElse: () => const <RoleModel>[]);
+  final availableRoles = roles
+      .where(
+        (role) =>
+            !_isDomainManagedRole(role.name) ||
+            (user?.roles.any((item) => item.name == role.name) ?? false),
+      )
+      .toList();
   final firstName = TextEditingController(text: user?.firstName ?? '');
   final middleName = TextEditingController(text: user?.middleName ?? '');
   final lastName = TextEditingController(text: user?.lastName ?? '');
@@ -378,7 +385,7 @@ Future<void> _showUserDialog(
   final phone = TextEditingController(text: user?.phoneNumber ?? '');
   final password = TextEditingController(text: 'Demo@12345678');
   final formKey = GlobalKey<FormState>();
-  final fallbackRole = roles.isEmpty ? 'ADMIN' : roles.first.name;
+  final fallbackRole = availableRoles.isEmpty ? 'ADMIN' : availableRoles.first.name;
   String role = user != null && user.roles.isNotEmpty
       ? user.roles.first.name
       : fallbackRole;
@@ -433,15 +440,16 @@ Future<void> _showUserDialog(
                     initialValue: role,
                     decoration: const InputDecoration(labelText: 'Role'),
                     items: [
-                      if (roles.isEmpty)
+                      if (availableRoles.isEmpty)
                         const DropdownMenuItem(
                           value: 'ADMIN',
                           child: Text('Admin'),
                         )
                       else
-                        for (final item in roles)
+                        for (final item in availableRoles)
                           DropdownMenuItem(
                             value: item.name,
+                            enabled: !_isDomainManagedRole(item.name),
                             child: Text(item.displayName),
                           ),
                     ],
@@ -661,6 +669,10 @@ String? _required(String? value) {
 
 String? _blankToNull(String value) {
   return value.trim().isEmpty ? null : value.trim();
+}
+
+bool _isDomainManagedRole(String roleName) {
+  return roleName == 'STUDENT' || roleName == 'TEACHER';
 }
 
 Future<bool> _confirm(BuildContext context, String message) async {

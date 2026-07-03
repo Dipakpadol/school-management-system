@@ -16,5 +16,9 @@ public record StudentFeeSummaryResponse(
 		BigDecimal lateFeeAmount,
 		BigDecimal paidAmount,
 		BigDecimal balanceAmount,
-		List<StudentFeeAssignmentResponse> assignments) {
+		List<StudentFeeAssignmentResponse> assignments,
+		List<StudentFeeGroupResponse> groups,
+		List<StudentFeeAssignmentResponse> classFees,
+		List<StudentFeeAssignmentResponse> hostelFees,
+		List<StudentFeeAssignmentResponse> transportFees) {
 }

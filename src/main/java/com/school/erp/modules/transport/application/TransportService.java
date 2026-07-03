@@ -1,11 +1,15 @@
 package com.school.erp.modules.transport.application;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.school.erp.common.api.PageRequestDto;
+import com.school.erp.common.api.PageResponse;
 import com.school.erp.common.audit.application.AuditLogEvent;
 import com.school.erp.common.audit.application.AuditLogService;
 import com.school.erp.common.exception.BusinessException;
@@ -17,8 +21,12 @@ import com.school.erp.modules.academic.domain.AcademicYear;
 import com.school.erp.modules.fees.api.dto.StudentFeeAssignmentResponse;
 import com.school.erp.modules.fees.application.FeeService;
 import com.school.erp.modules.fees.domain.FeeAssignmentStatus;
+import com.school.erp.modules.fees.domain.FeeCategory;
 import com.school.erp.modules.fees.domain.FeeScope;
+import com.school.erp.modules.fees.domain.FeeStructure;
 import com.school.erp.modules.fees.domain.FeeStructureStatus;
+import com.school.erp.modules.fees.infrastructure.FeeCategoryRepository;
+import com.school.erp.modules.fees.infrastructure.FeeStructureRepository;
 import com.school.erp.modules.fees.infrastructure.StudentFeeAssignmentRepository;
 import com.school.erp.modules.students.domain.Student;
 import com.school.erp.modules.students.infrastructure.StudentRepository;
@@ -26,6 +34,8 @@ import com.school.erp.modules.transport.api.dto.StudentTransportAssignmentRespon
 import com.school.erp.modules.transport.api.dto.TransportAssignmentRequest;
 import com.school.erp.modules.transport.api.dto.TransportDriverRequest;
 import com.school.erp.modules.transport.api.dto.TransportDriverResponse;
+import com.school.erp.modules.transport.api.dto.TransportFeeStructureRequest;
+import com.school.erp.modules.transport.api.dto.TransportFeeStructureResponse;
 import com.school.erp.modules.transport.api.dto.TransportPickupPointRequest;
 import com.school.erp.modules.transport.api.dto.TransportPickupPointResponse;
 import com.school.erp.modules.transport.api.dto.TransportRemoveRequest;
@@ -69,6 +79,8 @@ public class TransportService {
 	private final TransportPickupPointRepository pickupPointRepository;
 	private final StudentTransportAssignmentRepository assignmentRepository;
 	private final TransportFeeStructureRepository transportFeeStructureRepository;
+	private final FeeCategoryRepository feeCategoryRepository;
+	private final FeeStructureRepository feeStructureRepository;
 	private final StudentFeeAssignmentRepository studentFeeAssignmentRepository;
 	private final StudentRepository studentRepository;
 	private final AcademicHierarchyService academicHierarchyService;
@@ -341,6 +353,85 @@ public class TransportService {
 		return transportMapper.toPickupPointResponse(point);
 	}
 
+	@Transactional
+	public TransportFeeStructureResponse createFeeStructure(TransportFeeStructureRequest request) {
+		ResolvedTransportFeeStructure resolved = resolveFeeStructureRequest(request);
+		validateFeeStructureBusinessRules(null, resolved, request);
+		FeeStructure backing = createOrUpdateBackingFeeStructure(null, resolved, request);
+		TransportFeeStructure structure = new TransportFeeStructure(
+				resolved.academicYear(),
+				resolved.route(),
+				resolved.pickupPoint(),
+				resolved.category(),
+				backing,
+				money(request.amount()),
+				request.dueDate(),
+				request.installmentAllowed(),
+				installmentCount(request),
+				statusOrDraft(request.status()));
+		TransportFeeStructureResponse response = transportMapper.toFeeStructureResponse(transportFeeStructureRepository.save(structure));
+		audit("TransportFeeStructure", response.id(), "TRANSPORT_FEE_STRUCTURE_CREATED", null, response);
+		return response;
+	}
+
+	@Transactional
+	public TransportFeeStructureResponse updateFeeStructure(UUID structureId, TransportFeeStructureRequest request) {
+		TransportFeeStructure structure = loadTransportFeeStructure(structureId);
+		TransportFeeStructureResponse oldValue = transportMapper.toFeeStructureResponse(structure);
+		ensureFeeStructureNotAssigned(structure.getBackingFeeStructure().getId());
+		ResolvedTransportFeeStructure resolved = resolveFeeStructureRequest(request);
+		validateFeeStructureBusinessRules(structureId, resolved, request);
+		FeeStructure backing = createOrUpdateBackingFeeStructure(structure.getBackingFeeStructure(), resolved, request);
+		structure.update(
+				resolved.academicYear(),
+				resolved.route(),
+				resolved.pickupPoint(),
+				resolved.category(),
+				backing,
+				money(request.amount()),
+				request.dueDate(),
+				request.installmentAllowed(),
+				installmentCount(request),
+				statusOrDraft(request.status()));
+		TransportFeeStructureResponse response = transportMapper.toFeeStructureResponse(structure);
+		audit("TransportFeeStructure", structureId, "TRANSPORT_FEE_STRUCTURE_UPDATED", oldValue, response);
+		return response;
+	}
+
+	@Transactional(readOnly = true)
+	public TransportFeeStructureResponse getFeeStructure(UUID structureId) {
+		return transportMapper.toFeeStructureResponse(loadTransportFeeStructure(structureId));
+	}
+
+	@Transactional(readOnly = true)
+	public PageResponse<TransportFeeStructureResponse> listFeeStructures(
+			UUID academicYearId,
+			UUID routeId,
+			UUID pickupPointId,
+			FeeStructureStatus status,
+			PageRequestDto pageRequest) {
+		PageRequestDto effectivePageRequest = pageRequest == null ? new PageRequestDto(0, 20, null, null) : pageRequest;
+		return PageResponse.from(
+				transportFeeStructureRepository.search(
+						academicYearId,
+						routeId,
+						pickupPointId,
+						status,
+						effectivePageRequest.toPageable("createdAt")),
+				transportMapper::toFeeStructureResponse);
+	}
+
+	@Transactional
+	public TransportFeeStructureResponse deleteFeeStructure(UUID structureId) {
+		TransportFeeStructure structure = loadTransportFeeStructure(structureId);
+		TransportFeeStructureResponse oldValue = transportMapper.toFeeStructureResponse(structure);
+		ensureFeeStructureNotAssigned(structure.getBackingFeeStructure().getId());
+		structure.softDelete(currentActor());
+		structure.getBackingFeeStructure().softDelete(currentActor());
+		audit("TransportFeeStructure", structureId, "DELETE", oldValue, Map.of("deleted", true, "structureId", structureId));
+		return transportMapper.toFeeStructureResponse(structure);
+	}
+
 	@Transactional(readOnly = true)
 	public TransportVehicleDetailsResponse vehicleDetails(UUID vehicleId, UUID academicYearId) {
 		AcademicYear academicYear = academicHierarchyService.loadAcademicYear(academicYearId);
@@ -532,6 +623,112 @@ public class TransportService {
 				assignment.getAssignmentDate());
 	}
 
+	private ResolvedTransportFeeStructure resolveFeeStructureRequest(TransportFeeStructureRequest request) {
+		AcademicYear academicYear = academicHierarchyService.loadAcademicYear(request.academicYearId());
+		TransportRoute route = loadRoute(request.routeId());
+		if (!route.getAcademicYear().getId().equals(academicYear.getId())) {
+			throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Route does not belong to the selected academic year.");
+		}
+		TransportPickupPoint pickupPoint = request.pickupPointId() == null ? null : loadPickupPoint(request.pickupPointId());
+		if (pickupPoint != null && !pickupPoint.getRoute().getId().equals(route.getId())) {
+			throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Pickup point does not belong to the selected route.");
+		}
+		FeeCategory category = feeCategoryRepository.findByIdAndDeletedFalse(request.feeCategoryId())
+				.orElseThrow(() -> new ResourceNotFoundException("Fee category", request.feeCategoryId()));
+		if (!category.isActive()) {
+			throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Fee category is inactive.");
+		}
+		return new ResolvedTransportFeeStructure(academicYear, route, pickupPoint, category);
+	}
+
+	private void validateFeeStructureBusinessRules(
+			UUID existingId,
+			ResolvedTransportFeeStructure resolved,
+			TransportFeeStructureRequest request) {
+		if (money(request.amount()).signum() <= 0) {
+			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Transport fee amount must be greater than zero.");
+		}
+		if (transportFeeStructureRepository.existsDuplicateScope(
+				resolved.academicYear().getId(),
+				resolved.route().getId(),
+				resolved.pickupPoint() == null ? null : resolved.pickupPoint().getId(),
+				resolved.category().getId(),
+				existingId)) {
+			throw new BusinessException(
+					ErrorCode.CONFLICT,
+					"A transport fee structure already exists for this academic year, route, pickup scope, and fee category.");
+		}
+	}
+
+	private FeeStructure createOrUpdateBackingFeeStructure(
+			FeeStructure existing,
+			ResolvedTransportFeeStructure resolved,
+			TransportFeeStructureRequest request) {
+		FeeStructure structure = existing == null
+				? new FeeStructure(
+						resolved.academicYear().getName(),
+						"TRANSPORT-" + resolved.route().getRouteCode(),
+						scopeLabel(resolved),
+						firstText(request.name(), defaultFeeStructureName(resolved)),
+						request.description())
+				: existing;
+		if (existing != null) {
+			String actor = currentActor();
+			structure.updateDetails(
+					resolved.academicYear().getName(),
+					"TRANSPORT-" + resolved.route().getRouteCode(),
+					scopeLabel(resolved),
+					firstText(request.name(), defaultFeeStructureName(resolved)),
+					request.description());
+			structure.clearItems(actor);
+			structure.clearInstallments(actor);
+		}
+		structure.updateTransportMapping(
+				resolved.academicYear(),
+				resolved.route(),
+				resolved.pickupPoint());
+		structure.addItem(resolved.category(), request.amount(), true, 1);
+		addInstallments(structure, request);
+		applyStatus(structure, statusOrDraft(request.status()));
+		return feeStructureRepository.save(structure);
+	}
+
+	private void addInstallments(FeeStructure structure, TransportFeeStructureRequest request) {
+		int count = installmentCount(request);
+		BigDecimal total = money(request.amount());
+		BigDecimal base = total.divide(BigDecimal.valueOf(count), 2, RoundingMode.DOWN);
+		BigDecimal allocated = BigDecimal.ZERO;
+		for (int index = 1; index <= count; index++) {
+			BigDecimal amount = index == count ? total.subtract(allocated) : base;
+			allocated = allocated.add(amount);
+			structure.addInstallment(
+					index,
+					count == 1 ? "Transport Fee" : "Transport Fee Installment " + index,
+					request.dueDate().plusMonths(index - 1L),
+					amount);
+		}
+	}
+
+	private void applyStatus(FeeStructure structure, FeeStructureStatus status) {
+		if (status == FeeStructureStatus.ACTIVE) {
+			structure.activate();
+		}
+		else if (status == FeeStructureStatus.INACTIVE) {
+			structure.deactivate();
+		}
+		else {
+			structure.draft();
+		}
+	}
+
+	private void ensureFeeStructureNotAssigned(UUID feeStructureId) {
+		if (studentFeeAssignmentRepository.existsByFeeStructureIdAndDeletedFalse(feeStructureId)) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Assigned transport fee structures cannot be updated or deleted.");
+		}
+	}
+
 	private ResolvedTransportAssignment resolveAssignmentRequest(
 			AcademicYear fallbackAcademicYear,
 			TransportAssignmentRequest request) {
@@ -691,6 +888,11 @@ public class TransportService {
 				.orElseThrow(() -> new ResourceNotFoundException("Transport pickup point", pickupPointId));
 	}
 
+	private TransportFeeStructure loadTransportFeeStructure(UUID structureId) {
+		return transportFeeStructureRepository.findDetailedByIdAndDeletedFalse(structureId)
+				.orElseThrow(() -> new ResourceNotFoundException("Transport fee structure", structureId));
+	}
+
 	private StudentTransportAssignment loadAssignment(UUID assignmentId) {
 		return assignmentRepository.findDetailedByIdAndDeletedFalse(assignmentId)
 				.orElseThrow(() -> new ResourceNotFoundException("Student transport assignment", assignmentId));
@@ -711,6 +913,33 @@ public class TransportService {
 
 	private TransportStatus statusOrActive(TransportStatus status) {
 		return status == null ? TransportStatus.ACTIVE : status;
+	}
+
+	private FeeStructureStatus statusOrDraft(FeeStructureStatus status) {
+		return status == null ? FeeStructureStatus.DRAFT : status;
+	}
+
+	private int installmentCount(TransportFeeStructureRequest request) {
+		return request.installmentAllowed() ? Math.max(request.numberOfInstallments(), 1) : 1;
+	}
+
+	private BigDecimal money(BigDecimal amount) {
+		return amount == null ? BigDecimal.ZERO : amount.setScale(2, RoundingMode.HALF_UP);
+	}
+
+	private String scopeLabel(ResolvedTransportFeeStructure resolved) {
+		return resolved.pickupPoint() == null ? resolved.route().getRouteName() : resolved.pickupPoint().getPointName();
+	}
+
+	private String defaultFeeStructureName(ResolvedTransportFeeStructure resolved) {
+		String scope = resolved.pickupPoint() == null
+				? "All Pickup Points"
+				: resolved.pickupPoint().getPointName();
+		return resolved.route().getRouteName() + " - " + scope + " Transport Fee";
+	}
+
+	private String firstText(String primary, String fallback) {
+		return StringUtils.hasText(primary) ? primary.trim() : fallback;
 	}
 
 	private void validateActiveInactiveStatus(TransportStatus status, String label) {
@@ -749,5 +978,12 @@ public class TransportService {
 			TransportVehicle vehicle,
 			TransportRoute route,
 			TransportPickupPoint pickupPoint) {
+	}
+
+	private record ResolvedTransportFeeStructure(
+			AcademicYear academicYear,
+			TransportRoute route,
+			TransportPickupPoint pickupPoint,
+			FeeCategory category) {
 	}
 }

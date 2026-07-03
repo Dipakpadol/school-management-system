@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 import com.school.erp.common.domain.BaseEntity;
 import com.school.erp.modules.academic.domain.AcademicYear;
@@ -69,6 +70,13 @@ public class StudentFeeAssignment extends BaseEntity {
 	@Enumerated(EnumType.STRING)
 	@Column(name = "fee_scope", nullable = false, length = 30)
 	private FeeScope feeScope = FeeScope.CLASS;
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "source_type", nullable = false, length = 30)
+	private FeeScope sourceType = FeeScope.CLASS;
+
+	@Column(name = "source_reference_id")
+	private UUID sourceReferenceId;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "hostel_id")
@@ -137,6 +145,8 @@ public class StudentFeeAssignment extends BaseEntity {
 		this.roomType = feeStructure.getRoomType();
 		this.transportRoute = feeStructure.getTransportRoute();
 		this.transportPickupPoint = feeStructure.getTransportPickupPoint();
+		this.sourceType = this.feeScope;
+		this.sourceReferenceId = resolveSourceReferenceId();
 		this.assignedDate = assignedDate;
 		this.notes = notes;
 		this.grossAmount = feeStructure.getTotalAmount();
@@ -277,5 +287,16 @@ public class StudentFeeAssignment extends BaseEntity {
 
 	static BigDecimal money(BigDecimal value) {
 		return value == null ? BigDecimal.ZERO : value.setScale(2, RoundingMode.HALF_UP);
+	}
+
+	private UUID resolveSourceReferenceId() {
+		return switch (feeScope) {
+			case CLASS -> classEntity == null ? null : classEntity.getId();
+			case HOSTEL -> hostelRoom != null ? hostelRoom.getId() : hostel == null ? null : hostel.getId();
+			case TRANSPORT -> transportPickupPoint != null
+					? transportPickupPoint.getId()
+					: transportRoute == null ? null : transportRoute.getId();
+			case MANUAL -> feeStructure == null ? null : feeStructure.getId();
+		};
 	}
 }

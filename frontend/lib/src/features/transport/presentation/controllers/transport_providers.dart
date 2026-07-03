@@ -35,6 +35,23 @@ final transportPickupPointsProvider =
       );
     });
 
+final transportFeeStructuresProvider =
+    FutureProvider.family<
+      List<TransportFeeStructureModel>,
+      TransportFeeStructuresKey
+    >((ref, key) {
+      return _resolve(
+        ref
+            .watch(transportRepositoryProvider)
+            .feeStructures(
+              academicYearId: key.academicYearId,
+              routeId: key.routeId,
+              pickupPointId: key.pickupPointId,
+              status: key.status,
+            ),
+      );
+    });
+
 final transportVehicleDetailsProvider =
     FutureProvider.family<
       TransportVehicleDetailsModel,
@@ -58,6 +75,37 @@ final studentCurrentTransportAssignmentProvider =
             .currentStudentAssignment(key.studentId, key.academicYearId),
       );
     });
+
+class TransportFeeStructuresKey {
+  const TransportFeeStructuresKey({
+    this.academicYearId,
+    this.routeId,
+    this.pickupPointId,
+    this.status,
+  });
+
+  final String? academicYearId;
+  final String? routeId;
+  final String? pickupPointId;
+  final String? status;
+
+  @override
+  bool operator ==(Object other) {
+    return other is TransportFeeStructuresKey &&
+        other.academicYearId == academicYearId &&
+        other.routeId == routeId &&
+        other.pickupPointId == pickupPointId &&
+        other.status == status;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    academicYearId,
+    routeId,
+    pickupPointId,
+    status,
+  );
+}
 
 Future<T> _resolve<T>(Future<Result<T>> resultFuture) async {
   final result = await resultFuture;

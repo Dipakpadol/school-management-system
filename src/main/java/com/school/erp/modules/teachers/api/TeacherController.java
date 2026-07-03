@@ -1,11 +1,16 @@
 package com.school.erp.modules.teachers.api;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
 import com.school.erp.common.api.ApiResponse;
+import com.school.erp.common.api.PageRequestDto;
 import com.school.erp.common.web.CorrelationIdFilter;
 import com.school.erp.modules.academic.api.dto.AcademicYearResponse;
+import com.school.erp.modules.attendance.api.dto.TeacherAttendanceHistoryResponse;
+import com.school.erp.modules.attendance.application.TeacherAttendanceService;
+import com.school.erp.modules.attendance.domain.AttendanceStatus;
 import com.school.erp.modules.teachers.api.dto.TeacherAssignmentRequest;
 import com.school.erp.modules.teachers.api.dto.TeacherAssignmentResponse;
 import com.school.erp.modules.teachers.api.dto.TeacherDocumentRequest;
@@ -20,6 +25,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
+import org.springdoc.core.annotations.ParameterObject;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +51,7 @@ import lombok.RequiredArgsConstructor;
 public class TeacherController {
 
 	private final TeacherService teacherService;
+	private final TeacherAttendanceService teacherAttendanceService;
 
 	@GetMapping("/academic-years")
 	@PreAuthorize("hasAuthority('TEACHERS_READ')")
@@ -107,6 +114,31 @@ public class TeacherController {
 			@RequestParam(required = false) UUID academicYearId,
 			HttpServletRequest request) {
 		return ok(teacherService.profile(teacherId, academicYearId), "Teacher profile fetched successfully", request);
+	}
+
+	@GetMapping("/{teacherId}/attendance-history")
+	@PreAuthorize("hasAnyAuthority('TEACHERS_READ','ATTENDANCE_READ')")
+	@Operation(summary = "Get teacher attendance history")
+	public ResponseEntity<ApiResponse<TeacherAttendanceHistoryResponse>> attendanceHistory(
+			@PathVariable UUID teacherId,
+			@RequestParam(required = false) UUID academicYearId,
+			@RequestParam(required = false) LocalDate fromDate,
+			@RequestParam(required = false) LocalDate toDate,
+			@RequestParam(required = false) AttendanceStatus status,
+			@Valid @ParameterObject PageRequestDto pageRequest,
+			@RequestParam(required = false) String sort,
+			HttpServletRequest request) {
+		return ok(
+				teacherAttendanceService.getTeacherAttendanceHistory(
+						teacherId,
+						academicYearId,
+						fromDate,
+						toDate,
+						status,
+						pageRequest,
+						sort),
+				"Teacher attendance history fetched successfully",
+				request);
 	}
 
 	@GetMapping("/{teacherId}/assignments")

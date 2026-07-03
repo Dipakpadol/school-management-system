@@ -22,6 +22,8 @@ public record StudentFeeAssignmentResponse(
 		UUID academicYearId,
 		UUID classId,
 		FeeScope feeScope,
+		FeeScope sourceType,
+		UUID sourceReferenceId,
 		UUID hostelId,
 		String hostelName,
 		UUID hostelRoomId,

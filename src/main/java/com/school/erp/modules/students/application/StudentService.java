@@ -248,6 +248,10 @@ public class StudentService {
 				request.effectiveFrom(),
 				null,
 				true);
+		feeService.assignActiveClassFeesToStudent(
+				studentId,
+				resolved.classEntity().getId(),
+				request.effectiveFrom());
 		StudentResponse response = studentMapper.toProfileResponse(student);
 		auditStudent(studentId, "CLASS_ASSIGNMENT_UPDATED", oldValue, response);
 		return response;
