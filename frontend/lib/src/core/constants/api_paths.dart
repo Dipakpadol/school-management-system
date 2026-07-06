@@ -25,6 +25,8 @@ abstract final class ApiPaths {
 
   static const users = '/v1/users';
   static const roles = '/v1/users/roles';
+  static const roleManagement = '/v1/roles';
+  static const permissions = '/v1/permissions';
   static const usersExportExcel = '/v1/users/export/excel';
   static const usersExportCsv = '/v1/users/export/csv';
   static const usersTemplate = '/v1/users/template';
@@ -128,8 +130,7 @@ abstract final class ApiPaths {
   static String teacherAttendanceHistory(String id) =>
       '/v1/teachers/$id/attendance-history';
 
-  static String teacherAssignments(String id) =>
-      '/v1/teachers/$id/assignments';
+  static String teacherAssignments(String id) => '/v1/teachers/$id/assignments';
 
   static String teacherAssignment(String id, String assignmentId) =>
       '/v1/teachers/$id/assignments/$assignmentId';
@@ -315,7 +316,12 @@ abstract final class ApiPaths {
 
   static String userResetPassword(String id) => '/v1/users/$id/reset-password';
 
-  static String rolePermissions(String id) => '/v1/users/roles/$id/permissions';
+  static String role(String id) => '/v1/roles/$id';
+
+  static String rolePermissions(String id) => '/v1/roles/$id/permissions';
+
+  static String legacyRolePermissions(String id) =>
+      '/v1/users/roles/$id/permissions';
 
   static String auditLog(String id) => '/v1/audit-logs/$id';
 

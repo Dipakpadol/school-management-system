@@ -6,6 +6,7 @@ const _allModuleIds = {
   'students',
   'fees',
   'users',
+  'roles',
   'audit-logs',
   'academic',
   'hostel',
@@ -22,6 +23,7 @@ const _modulePermissions = <String, Set<String>>{
   'students': {'STUDENTS_READ'},
   'fees': {'FEES_READ', 'FEES_MANAGE'},
   'users': {'USERS_READ'},
+  'roles': {'USERS_READ', 'SETTINGS_READ'},
   'audit-logs': {'AUDIT_LOGS_READ'},
   'academic': {'ACADEMIC_READ', 'ACADEMIC_MANAGE'},
   'hostel': {'HOSTEL_READ', 'HOSTEL_MANAGE'},
@@ -50,9 +52,17 @@ const _roleModuleFallback = <String, Set<String>>{
     'notifications',
     'transport',
     'teachers',
+    'roles',
     'settings',
   },
-  'TEACHER': {'students', 'academic', 'attendance', 'exams', 'reports', 'teachers'},
+  'TEACHER': {
+    'students',
+    'academic',
+    'attendance',
+    'exams',
+    'reports',
+    'teachers',
+  },
   'ACCOUNTANT': {'students', 'fees', 'reports'},
   'RECEPTIONIST': {'students', 'fees', 'notifications', 'transport'},
   'WARDEN': {'students', 'hostel', 'attendance', 'reports'},
@@ -125,6 +135,9 @@ String? moduleIdForPath(String path) {
   }
   if (path == '/users' || path.startsWith('/users/')) {
     return 'users';
+  }
+  if (path == '/roles' || path.startsWith('/roles/')) {
+    return 'roles';
   }
   if (path == '/audit-logs' || path.startsWith('/audit-logs/')) {
     return 'audit-logs';

@@ -3,15 +3,21 @@ class RoleModel {
     required this.id,
     required this.name,
     required this.displayName,
+    required this.status,
+    required this.systemRole,
+    required this.permissions,
     this.description,
   });
 
   factory RoleModel.fromJson(Map<String, dynamic> json) {
     return RoleModel(
       id: json['id'] as String,
-      name: json['name'] as String? ?? '',
+      name: json['roleName'] as String? ?? json['name'] as String? ?? '',
       displayName: json['displayName'] as String? ?? '',
       description: json['description'] as String?,
+      status: json['status'] as String? ?? 'ACTIVE',
+      systemRole: json['systemRole'] as bool? ?? false,
+      permissions: _list(json['permissions'], RolePermissionModel.fromJson),
     );
   }
 
@@ -19,6 +25,35 @@ class RoleModel {
   final String name;
   final String displayName;
   final String? description;
+  final String status;
+  final bool systemRole;
+  final List<RolePermissionModel> permissions;
+}
+
+class RolePermissionModel {
+  const RolePermissionModel({
+    required this.id,
+    required this.code,
+    required this.name,
+    required this.assigned,
+    this.description,
+  });
+
+  factory RolePermissionModel.fromJson(Map<String, dynamic> json) {
+    return RolePermissionModel(
+      id: json['id'] as String? ?? '',
+      code: json['code'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      description: json['description'] as String?,
+      assigned: json['assigned'] as bool? ?? true,
+    );
+  }
+
+  final String id;
+  final String code;
+  final String name;
+  final String? description;
+  final bool assigned;
 }
 
 class UserModel {

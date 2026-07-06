@@ -41,14 +41,17 @@ public class DashboardService {
 	private static final Logger log = LoggerFactory.getLogger(DashboardService.class);
 	private static final BigDecimal ZERO = BigDecimal.ZERO;
 	private static final ZoneId SCHOOL_ZONE = ZoneId.of("Asia/Kolkata");
-	private static final List<RoleName> STAFF_ROLES = List.of(
+	private static final List<String> STAFF_ROLES = List.of(
 			RoleName.SUPER_ADMIN,
 			RoleName.ADMIN,
 			RoleName.PRINCIPAL,
 			RoleName.TEACHER,
 			RoleName.ACCOUNTANT,
 			RoleName.RECEPTIONIST,
-			RoleName.WARDEN);
+			RoleName.WARDEN)
+			.stream()
+			.map(RoleName::name)
+			.toList();
 
 	private final StudentRepository studentRepository;
 	private final ParentGuardianRepository parentGuardianRepository;
@@ -65,12 +68,12 @@ public class DashboardService {
 		long inactiveUsers = Math.max(0, totalUsers - activeUsers);
 		long totalTeachers = safeLong(
 				"teacher users",
-				() -> userAccountRepository.countByRoleNamesAndDeletedFalse(List.of(RoleName.TEACHER)));
+				() -> userAccountRepository.countByRoleNamesAndDeletedFalse(List.of(RoleName.TEACHER.name())));
 		long totalStaff = safeLong("staff users", () -> userAccountRepository.countByRoleNamesAndDeletedFalse(STAFF_ROLES));
 		long guardianCount = safeLong("parent guardians", parentGuardianRepository::countByDeletedFalse);
 		long parentUserCount = safeLong(
 				"parent users",
-				() -> userAccountRepository.countByRoleNamesAndDeletedFalse(List.of(RoleName.PARENT)));
+				() -> userAccountRepository.countByRoleNamesAndDeletedFalse(List.of(RoleName.PARENT.name())));
 
 		FeeReportTotals feeTotals = safeValue("fee totals", studentFeeAssignmentRepository::summarizeAll, null);
 		TodayAttendanceResponse todayAttendance = todayAttendance(null, null, null);

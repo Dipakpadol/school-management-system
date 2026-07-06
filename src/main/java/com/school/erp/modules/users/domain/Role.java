@@ -1,6 +1,7 @@
 package com.school.erp.modules.users.domain;
 
 import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.Set;
 
 import com.school.erp.common.domain.BaseEntity;
@@ -29,8 +30,11 @@ import lombok.NoArgsConstructor;
 public class Role extends BaseEntity {
 
 	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 30)
+	private RoleStatus status = RoleStatus.ACTIVE;
+
 	@Column(nullable = false, unique = true, length = 60)
-	private RoleName name;
+	private String name;
 
 	@Column(name = "display_name", nullable = false, length = 120)
 	private String displayName;
@@ -49,17 +53,52 @@ public class Role extends BaseEntity {
 	private Set<Permission> permissions = new LinkedHashSet<>();
 
 	public Role(RoleName name, String displayName, String description) {
-		this.name = name;
+		this(name.name(), displayName, description, true);
+	}
+
+	public Role(String name, String displayName, String description) {
+		this(name, displayName, description, false);
+	}
+
+	private Role(String name, String displayName, String description, boolean systemRole) {
+		this.name = normalizeRoleName(name);
 		this.displayName = displayName;
 		this.description = description;
+		this.systemRole = systemRole;
+	}
+
+	public void updateDetails(String displayName, String description, RoleStatus status) {
+		this.displayName = displayName;
+		this.description = description;
+		this.status = status == null ? RoleStatus.ACTIVE : status;
+	}
+
+	public void rename(String name) {
+		this.name = normalizeRoleName(name);
+	}
+
+	public void activate() {
+		status = RoleStatus.ACTIVE;
+	}
+
+	public void deactivate() {
+		status = RoleStatus.INACTIVE;
 	}
 
 	public void addPermission(Permission permission) {
-		permissions.add(permission);
+		if (permission != null) {
+			permissions.add(permission);
+		}
 	}
 
 	public void replacePermissions(Set<Permission> permissions) {
 		this.permissions.clear();
 		this.permissions.addAll(permissions);
+	}
+
+	public static String normalizeRoleName(String value) {
+		return value == null
+				? null
+				: value.trim().replaceAll("\\s+", "_").toUpperCase(Locale.ROOT);
 	}
 }

@@ -13,6 +13,7 @@ abstract final class AppRoutes {
   static const teachers = '/teachers';
   static const teacherAttendance = '/teachers/attendance';
   static const users = '/users';
+  static const roles = '/roles';
   static const auditLogs = '/audit-logs';
   static const attendance = '/attendance';
   static const attendanceDaily = '/attendance/daily';
@@ -42,6 +43,7 @@ abstract final class AppRoutes {
       'transport' => transport,
       'teachers' => teachers,
       'users' => users,
+      'roles' => roles,
       'audit-logs' => auditLogs,
       'attendance' => attendance,
       'exams' => exams,
@@ -124,6 +126,7 @@ abstract final class AppRouteName {
   static const teachers = 'teachers';
   static const teacherAttendance = 'teacher-attendance';
   static const users = 'users';
+  static const roles = 'roles';
   static const auditLogs = 'audit-logs';
   static const attendance = 'attendance';
   static const attendanceDaily = 'attendance-daily';

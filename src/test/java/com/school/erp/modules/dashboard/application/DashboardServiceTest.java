@@ -24,7 +24,6 @@ import com.school.erp.modules.students.domain.Student;
 import com.school.erp.modules.students.infrastructure.StudentClassAssignmentRepository;
 import com.school.erp.modules.students.infrastructure.ParentGuardianRepository;
 import com.school.erp.modules.students.infrastructure.StudentRepository;
-import com.school.erp.modules.users.domain.RoleName;
 import com.school.erp.modules.users.domain.UserStatus;
 import com.school.erp.modules.users.infrastructure.UserAccountRepository;
 
@@ -84,16 +83,16 @@ class DashboardServiceTest {
 		when(parentGuardianRepository.countByDeletedFalse()).thenReturn(2L);
 		when(userAccountRepository.countByDeletedFalse()).thenReturn(7L);
 		when(userAccountRepository.countByStatusAndDeletedFalse(UserStatus.ACTIVE)).thenReturn(6L);
-		when(userAccountRepository.countByRoleNamesAndDeletedFalse(List.of(RoleName.TEACHER))).thenReturn(1L);
-		when(userAccountRepository.countByRoleNamesAndDeletedFalse(List.of(RoleName.PARENT))).thenReturn(1L);
+		when(userAccountRepository.countByRoleNamesAndDeletedFalse(List.of("TEACHER"))).thenReturn(1L);
+		when(userAccountRepository.countByRoleNamesAndDeletedFalse(List.of("PARENT"))).thenReturn(1L);
 		when(userAccountRepository.countByRoleNamesAndDeletedFalse(List.of(
-				RoleName.SUPER_ADMIN,
-				RoleName.ADMIN,
-				RoleName.PRINCIPAL,
-				RoleName.TEACHER,
-				RoleName.ACCOUNTANT,
-				RoleName.RECEPTIONIST,
-				RoleName.WARDEN))).thenReturn(5L);
+				"SUPER_ADMIN",
+				"ADMIN",
+				"PRINCIPAL",
+				"TEACHER",
+				"ACCOUNTANT",
+				"RECEPTIONIST",
+				"WARDEN"))).thenReturn(5L);
 		when(assignmentRepository.summarizeAll()).thenReturn(feeReportTotals);
 		when(feeReportTotals.getPaidAmount()).thenReturn(new BigDecimal("18000.00"));
 		when(feeReportTotals.getBalanceAmount()).thenReturn(new BigDecimal("60000.00"));

@@ -47,7 +47,7 @@ public class SchoolUserPrincipal implements UserDetails {
 	public static SchoolUserPrincipal from(UserAccount user) {
 		Set<GrantedAuthority> authorities = new LinkedHashSet<>();
 		for (Role role : user.getRoles()) {
-			authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getName().name()));
+			authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getName()));
 			for (Permission permission : role.getPermissions()) {
 				authorities.add(new SimpleGrantedAuthority(permission.getCode()));
 			}

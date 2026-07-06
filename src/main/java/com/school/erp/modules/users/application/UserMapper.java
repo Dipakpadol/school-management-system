@@ -29,7 +29,7 @@ public class UserMapper {
 				user.getStatus(),
 				user.getSource(),
 				user.getRoles().stream()
-						.sorted(Comparator.comparing(role -> role.getName().name()))
+						.sorted(Comparator.comparing(Role::getName))
 						.map(this::toRoleResponse)
 						.toList(),
 				user.getLastLoginAt(),
@@ -38,7 +38,18 @@ public class UserMapper {
 	}
 
 	public RoleResponse toRoleResponse(Role role) {
-		return new RoleResponse(role.getId(), role.getName(), role.getDisplayName(), role.getDescription());
+		return new RoleResponse(
+				role.getId(),
+				role.getName(),
+				role.getName(),
+				role.getDisplayName(),
+				role.getDescription(),
+				role.getStatus(),
+				role.isSystemRole(),
+				role.getPermissions().stream()
+						.sorted(Comparator.comparing(Permission::getCode))
+						.map(permission -> toPermissionResponse(permission, true))
+						.toList());
 	}
 
 	public PermissionResponse toPermissionResponse(Permission permission, boolean assigned) {
@@ -58,6 +69,8 @@ public class UserMapper {
 				role.getName(),
 				role.getDisplayName(),
 				role.getDescription(),
+				role.getStatus(),
+				role.isSystemRole(),
 				permissions);
 	}
 }

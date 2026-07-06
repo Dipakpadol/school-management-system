@@ -103,11 +103,11 @@ public class UserAccount extends BaseEntity {
 	}
 
 	public void removeRole(RoleName roleName) {
-		roles.removeIf(role -> role.getName() == roleName);
+		roles.removeIf(role -> role.getName().equals(roleName.name()));
 	}
 
 	public boolean hasRole(RoleName roleName) {
-		return roles.stream().anyMatch(role -> role.getName() == roleName);
+		return roles.stream().anyMatch(role -> role.getName().equals(roleName.name()));
 	}
 
 	public void replaceRoles(Set<Role> roles) {

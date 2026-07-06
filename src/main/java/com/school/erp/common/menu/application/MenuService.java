@@ -27,10 +27,7 @@ public class MenuService {
 				    mi.icon_key,
 				    mi.display_order
 				FROM menu_items mi
-				JOIN role_menu_items rmi ON rmi.menu_item_id = mi.id
-				JOIN user_roles ur ON ur.role_id = rmi.role_id
-				WHERE ur.user_id = :userId
-				  AND mi.active = TRUE
+				WHERE mi.active = TRUE
 				  AND mi.deleted = FALSE
 				  AND (
 				      mi.required_permission IS NULL

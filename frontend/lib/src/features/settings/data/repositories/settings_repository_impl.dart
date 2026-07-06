@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/failure.dart';
 import '../../../../core/result/result.dart';
+import '../../../users/data/models/user_models.dart';
 import '../../domain/repositories/settings_repository.dart';
 import '../datasources/settings_remote_data_source.dart';
 import '../models/role_permission_models.dart';
@@ -15,6 +16,34 @@ class SettingsRepositoryImpl implements SettingsRepository {
   const SettingsRepositoryImpl(this._remoteDataSource);
 
   final SettingsRemoteDataSource _remoteDataSource;
+
+  @override
+  Future<Result<List<RoleModel>>> roles({String? query, String? status}) {
+    return _guard(() => _remoteDataSource.roles(query: query, status: status));
+  }
+
+  @override
+  Future<Result<RoleModel>> createRole(Map<String, dynamic> payload) {
+    return _guard(() => _remoteDataSource.createRole(payload));
+  }
+
+  @override
+  Future<Result<RoleModel>> updateRole(
+    String roleId,
+    Map<String, dynamic> payload,
+  ) {
+    return _guard(() => _remoteDataSource.updateRole(roleId, payload));
+  }
+
+  @override
+  Future<Result<void>> deleteRole(String roleId) {
+    return _guard(() => _remoteDataSource.deleteRole(roleId));
+  }
+
+  @override
+  Future<Result<List<PermissionOptionModel>>> permissions() {
+    return _guard(_remoteDataSource.permissions);
+  }
 
   @override
   Future<Result<RolePermissionMatrixModel>> rolePermissions(String roleId) {

@@ -30,6 +30,8 @@ class RolePermissionMatrixModel {
     required this.roleName,
     required this.displayName,
     required this.permissions,
+    required this.status,
+    required this.systemRole,
     this.description,
   });
 
@@ -39,6 +41,8 @@ class RolePermissionMatrixModel {
       roleName: json['roleName'] as String? ?? '',
       displayName: json['displayName'] as String? ?? '',
       description: json['description'] as String?,
+      status: json['status'] as String? ?? 'ACTIVE',
+      systemRole: json['systemRole'] as bool? ?? false,
       permissions: _permissions(json['permissions']),
     );
   }
@@ -47,6 +51,8 @@ class RolePermissionMatrixModel {
   final String roleName;
   final String displayName;
   final String? description;
+  final String status;
+  final bool systemRole;
   final List<PermissionOptionModel> permissions;
 }
 

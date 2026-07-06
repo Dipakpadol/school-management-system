@@ -103,7 +103,10 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                   child: TabBar(
                     isScrollable: true,
                     tabs: [
-                      Tab(icon: Icon(Icons.meeting_room_outlined), text: 'Rooms'),
+                      Tab(
+                        icon: Icon(Icons.meeting_room_outlined),
+                        text: 'Rooms',
+                      ),
                       Tab(
                         icon: Icon(Icons.account_balance_wallet_outlined),
                         text: 'Hostel Fees Management',
@@ -161,7 +164,8 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
         final yearPanel = _YearPanel(
           years: years,
           selectedYearId: effectiveYearId,
-          onSelected: (year) => setState(() => _selectedAcademicYearId = year.id),
+          onSelected: (year) =>
+              setState(() => _selectedAcademicYearId = year.id),
         );
         final roomsPanel = _RoomsPanel(
           academicYearId: effectiveYearId,
@@ -261,11 +265,11 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                 onPressed: effectiveYearId == null || effectiveHostelId == null
                     ? null
                     : () => _showFeeStructureDialog(
-                          years: years,
-                          hostels: hostels,
-                          initialAcademicYearId: effectiveYearId,
-                          initialHostelId: effectiveHostelId,
-                        ),
+                        years: years,
+                        hostels: hostels,
+                        initialAcademicYearId: effectiveYearId,
+                        initialHostelId: effectiveHostelId,
+                      ),
               ),
             ],
           ),
@@ -310,7 +314,8 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                     ),
                     AppTableColumn(
                       label: 'Status',
-                      cellBuilder: (_, item) => _StatusBadge(label: item.status),
+                      cellBuilder: (_, item) =>
+                          _StatusBadge(label: item.status),
                     ),
                     AppTableColumn(
                       label: 'Actions',
@@ -393,7 +398,8 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                   ),
                   error: (error, _) => AppErrorState(
                     message: _message(error),
-                    onRetry: () => ref.invalidate(hostelRoomDetailsProvider(key)),
+                    onRetry: () =>
+                        ref.invalidate(hostelRoomDetailsProvider(key)),
                   ),
                   loading: () =>
                       const AppLoadingState(label: 'Loading room details'),
@@ -486,9 +492,8 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                                   ),
                               ],
                               validator: _required,
-                              onChanged: (value) => setDialogState(
-                                () => selectedBedId = value,
-                              ),
+                              onChanged: (value) =>
+                                  setDialogState(() => selectedBedId = value),
                             ),
                           ],
                           const SizedBox(height: 12),
@@ -524,23 +529,26 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                         final result = await ref
                             .read(hostelRepositoryProvider)
                             .assignStudentToRoom(room.roomId, {
-                          'studentId': selectedStudentId,
-                          'academicYearId': key.academicYearId,
-                          'bedId': selectedBedId,
-                          'allocationDate': allocationDate.text.trim(),
-                          'hostelFeeApplicable': feeApplicable,
-                        });
+                              'studentId': selectedStudentId,
+                              'academicYearId': key.academicYearId,
+                              'bedId': selectedBedId,
+                              'allocationDate': allocationDate.text.trim(),
+                              'hostelFeeApplicable': feeApplicable,
+                            });
                         if (!context.mounted) {
                           return;
                         }
                         result.when(
                           success: (_) {
                             ref.invalidate(hostelRoomDetailsProvider(key));
-                            ref.invalidate(hostelRoomsProvider(key.academicYearId));
+                            ref.invalidate(
+                              hostelRoomsProvider(key.academicYearId),
+                            );
                             _snack(context, 'Student assigned to hostel room.');
                             Navigator.of(context).pop();
                           },
-                          failure: (failure) => _snack(context, failure.message),
+                          failure: (failure) =>
+                              _snack(context, failure.message),
                         );
                       },
                       icon: const Icon(Icons.check_outlined),
@@ -594,8 +602,8 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                       final freeBeds = selectedRoom == null
                           ? const <HostelBedModel>[]
                           : selectedRoom.beds
-                              .where((bed) => bed.active && !bed.occupied)
-                              .toList();
+                                .where((bed) => bed.active && !bed.occupied)
+                                .toList();
                       return Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -634,9 +642,8 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                                   ),
                               ],
                               validator: _required,
-                              onChanged: (value) => setDialogState(
-                                () => selectedBedId = value,
-                              ),
+                              onChanged: (value) =>
+                                  setDialogState(() => selectedBedId = value),
                             ),
                           ],
                           const SizedBox(height: 12),
@@ -681,11 +688,11 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                     final result = await ref
                         .read(hostelRepositoryProvider)
                         .changeRoom(student.allocationId, {
-                      'roomId': selectedRoomId,
-                      'bedId': selectedBedId,
-                      'allocationDate': allocationDate.text.trim(),
-                      'hostelFeeApplicable': feeApplicable,
-                    });
+                          'roomId': selectedRoomId,
+                          'bedId': selectedBedId,
+                          'allocationDate': allocationDate.text.trim(),
+                          'hostelFeeApplicable': feeApplicable,
+                        });
                     if (!context.mounted) {
                       return;
                     }
@@ -740,11 +747,10 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                 if (!(formKey.currentState?.validate() ?? false)) {
                   return;
                 }
-                final result = await ref
-                    .read(hostelRepositoryProvider)
-                    .vacate(student.allocationId, {
-                  'vacateDate': vacateDate.text.trim(),
-                });
+                final result = await ref.read(hostelRepositoryProvider).vacate(
+                  student.allocationId,
+                  {'vacateDate': vacateDate.text.trim()},
+                );
                 if (!context.mounted) {
                   return;
                 }
@@ -758,7 +764,7 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                   failure: (failure) => _snack(context, failure.message),
                 );
               },
-              icon: const Icon(Icons.logout_outlined),
+              icon: const Icon(Icons.meeting_room_outlined),
               label: const Text('Vacate'),
             ),
           ],
@@ -805,7 +811,9 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
             final categories = ref.watch(feeCategoriesProvider);
             final rooms = ref.watch(hostelRoomsProvider(selectedYearId));
             return AlertDialog(
-              title: Text(structure == null ? 'Add hostel fee' : 'Edit hostel fee'),
+              title: Text(
+                structure == null ? 'Add hostel fee' : 'Edit hostel fee',
+              ),
               content: Form(
                 key: formKey,
                 child: SizedBox(
@@ -837,7 +845,9 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                         _DialogField(
                           child: DropdownButtonFormField<String>(
                             initialValue: selectedHostelId,
-                            decoration: const InputDecoration(labelText: 'Hostel'),
+                            decoration: const InputDecoration(
+                              labelText: 'Hostel',
+                            ),
                             items: [
                               for (final hostel in hostels)
                                 DropdownMenuItem(
@@ -878,8 +888,8 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                                 onChanged: (value) => setDialogState(
                                   () => selectedRoomId =
                                       value == null || value.isEmpty
-                                          ? null
-                                          : value,
+                                      ? null
+                                      : value,
                                 ),
                               );
                             },
@@ -921,7 +931,9 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                         _DialogField(
                           child: TextFormField(
                             controller: amount,
-                            decoration: const InputDecoration(labelText: 'Amount'),
+                            decoration: const InputDecoration(
+                              labelText: 'Amount',
+                            ),
                             keyboardType: TextInputType.number,
                             validator: _amount,
                           ),
@@ -929,14 +941,18 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                         _DialogField(
                           child: TextFormField(
                             controller: dueDate,
-                            decoration: const InputDecoration(labelText: 'Due date'),
+                            decoration: const InputDecoration(
+                              labelText: 'Due date',
+                            ),
                             validator: _date,
                           ),
                         ),
                         _DialogField(
                           child: DropdownButtonFormField<String>(
                             initialValue: status,
-                            decoration: const InputDecoration(labelText: 'Status'),
+                            decoration: const InputDecoration(
+                              labelText: 'Status',
+                            ),
                             items: const [
                               DropdownMenuItem(
                                 value: 'ACTIVE',
@@ -979,7 +995,9 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                         _DialogField(
                           child: TextFormField(
                             controller: name,
-                            decoration: const InputDecoration(labelText: 'Name'),
+                            decoration: const InputDecoration(
+                              labelText: 'Name',
+                            ),
                           ),
                         ),
                         SizedBox(
@@ -1016,7 +1034,9 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                       'amount': double.parse(amount.text.trim()),
                       'dueDate': dueDate.text.trim(),
                       'installmentAllowed': installmentAllowed,
-                      'numberOfInstallments': int.parse(installments.text.trim()),
+                      'numberOfInstallments': int.parse(
+                        installments.text.trim(),
+                      ),
                       'status': status,
                       'name': _blankToNull(name.text),
                       'description': _blankToNull(description.text),
@@ -1024,11 +1044,11 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                     final repository = ref.read(hostelRepositoryProvider);
                     final Result<HostelFeeStructureModel> result =
                         structure == null
-                            ? await repository.createFeeStructure(payload)
-                            : await repository.updateFeeStructure(
-                                structure.id,
-                                payload,
-                              );
+                        ? await repository.createFeeStructure(payload)
+                        : await repository.updateFeeStructure(
+                            structure.id,
+                            payload,
+                          );
                     if (!context.mounted) {
                       return;
                     }
@@ -1128,7 +1148,9 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                       students.when(
                         data: (items) => DropdownButtonFormField<String>(
                           initialValue: selectedStudentId,
-                          decoration: const InputDecoration(labelText: 'Student'),
+                          decoration: const InputDecoration(
+                            labelText: 'Student',
+                          ),
                           items: [
                             for (final student in items)
                               DropdownMenuItem(
@@ -1175,10 +1197,10 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                     final result = await ref
                         .read(hostelRepositoryProvider)
                         .assignHostelFee({
-                      'studentId': selectedStudentId,
-                      'hostelFeeStructureId': structure.id,
-                      'assignedDate': assignedDate.text.trim(),
-                    });
+                          'studentId': selectedStudentId,
+                          'hostelFeeStructureId': structure.id,
+                          'assignedDate': assignedDate.text.trim(),
+                        });
                     if (!context.mounted) {
                       return;
                     }
@@ -1289,14 +1311,16 @@ class _RoomsPanel extends ConsumerWidget {
                         child: Text(hostel.name),
                       ),
                   ],
-                  onChanged: (value) =>
-                      onHostelChanged(value == null || value.isEmpty ? null : value),
+                  onChanged: (value) => onHostelChanged(
+                    value == null || value.isEmpty ? null : value,
+                  ),
                 ),
               ),
               const Spacer(),
               IconButton(
                 tooltip: 'Refresh rooms',
-                onPressed: () => ref.invalidate(hostelRoomsProvider(academicYearId!)),
+                onPressed: () =>
+                    ref.invalidate(hostelRoomsProvider(academicYearId!)),
                 icon: const Icon(Icons.refresh_outlined),
               ),
             ],
@@ -1308,8 +1332,8 @@ class _RoomsPanel extends ConsumerWidget {
                 final filtered = selectedHostelId == null
                     ? items
                     : items
-                        .where((room) => room.hostelId == selectedHostelId)
-                        .toList();
+                          .where((room) => room.hostelId == selectedHostelId)
+                          .toList();
                 if (filtered.isEmpty) {
                   return const _InlineEmpty(
                     icon: Icons.meeting_room_outlined,
@@ -1357,7 +1381,8 @@ class _RoomsPanel extends ConsumerWidget {
               },
               error: (error, _) => AppErrorState(
                 message: _message(error),
-                onRetry: () => ref.invalidate(hostelRoomsProvider(academicYearId!)),
+                onRetry: () =>
+                    ref.invalidate(hostelRoomsProvider(academicYearId!)),
               ),
               loading: () => const AppLoadingState(label: 'Loading rooms'),
             ),
@@ -1441,7 +1466,8 @@ class _RoomDetailsContent extends StatelessWidget {
                 ),
                 AppTableColumn(
                   label: 'Status',
-                  cellBuilder: (_, student) => _StatusBadge(label: student.status),
+                  cellBuilder: (_, student) =>
+                      _StatusBadge(label: student.status),
                 ),
                 AppTableColumn(
                   label: 'Actions',
@@ -1460,7 +1486,7 @@ class _RoomDetailsContent extends StatelessWidget {
                         onPressed: student.status == 'ACTIVE'
                             ? () => onVacate(student)
                             : null,
-                        icon: const Icon(Icons.logout_outlined),
+                        icon: const Icon(Icons.meeting_room_outlined),
                       ),
                       IconButton(
                         tooltip: 'View profile',

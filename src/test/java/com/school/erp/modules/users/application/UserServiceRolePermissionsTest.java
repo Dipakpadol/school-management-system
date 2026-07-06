@@ -75,7 +75,7 @@ class UserServiceRolePermissionsTest {
 
 		var response = userService.getRolePermissions(admin.getId());
 
-		assertThat(response.roleName()).isEqualTo(RoleName.ADMIN);
+		assertThat(response.roleName()).isEqualTo(RoleName.ADMIN.name());
 		assertThat(response.permissions()).extracting("code").containsExactly("USERS_READ", "USERS_UPDATE");
 		assertThat(response.permissions())
 				.filteredOn(permission -> permission.code().equals("USERS_READ"))
@@ -93,7 +93,7 @@ class UserServiceRolePermissionsTest {
 	void updateRolePermissionsReplacesJoinTablePermissionsAndAuditsChange() {
 		Permission readUsers = permission("USERS_READ", "Read users");
 		Permission updateUsers = permission("USERS_UPDATE", "Update users");
-		Role admin = role(RoleName.ADMIN);
+		Role admin = customRole("CUSTOM_ADMIN");
 		admin.addPermission(readUsers);
 
 		when(roleRepository.findByIdAndDeletedFalse(admin.getId())).thenReturn(Optional.of(admin));
@@ -118,7 +118,7 @@ class UserServiceRolePermissionsTest {
 	@Test
 	void updateRolePermissionsRejectsUnknownPermissionIds() {
 		UUID missingPermissionId = UUID.randomUUID();
-		Role admin = role(RoleName.ADMIN);
+		Role admin = customRole("CUSTOM_ADMIN");
 
 		when(roleRepository.findByIdAndDeletedFalse(admin.getId())).thenReturn(Optional.of(admin));
 		when(permissionRepository.findAllById(any())).thenReturn(List.of());
@@ -131,6 +131,12 @@ class UserServiceRolePermissionsTest {
 
 	private Role role(RoleName roleName) {
 		Role role = new Role(roleName, roleName.name(), roleName.name());
+		ReflectionTestUtils.setField(role, "id", UUID.randomUUID());
+		return role;
+	}
+
+	private Role customRole(String roleName) {
+		Role role = new Role(roleName, roleName, roleName);
 		ReflectionTestUtils.setField(role, "id", UUID.randomUUID());
 		return role;
 	}

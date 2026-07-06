@@ -1,12 +1,17 @@
 package com.school.erp.modules.users.api.dto;
 
+import java.util.List;
 import java.util.UUID;
 
-import com.school.erp.modules.users.domain.RoleName;
+import com.school.erp.modules.users.domain.RoleStatus;
 
 public record RoleResponse(
 		UUID id,
-		RoleName name,
+		String name,
+		String roleName,
 		String displayName,
-		String description) {
+		String description,
+		RoleStatus status,
+		boolean systemRole,
+		List<PermissionResponse> permissions) {
 }

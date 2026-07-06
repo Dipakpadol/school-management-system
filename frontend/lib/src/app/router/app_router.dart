@@ -21,6 +21,7 @@ import '../../features/hostel/presentation/pages/hostel_management_page.dart';
 import '../../features/notifications/presentation/pages/notification_management_page.dart';
 import '../../features/reports/presentation/pages/reports_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
+import '../../features/settings/presentation/pages/role_permission_page.dart';
 import '../../features/students/presentation/pages/student_profile_page.dart';
 import '../../features/students/presentation/pages/student_section_detail_page.dart';
 import '../../features/students/presentation/pages/student_sections_page.dart';
@@ -165,6 +166,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.users,
         name: AppRouteName.users,
         builder: (context, state) => const UsersPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.roles,
+        name: AppRouteName.roles,
+        builder: (context, state) => const RolePermissionPage(),
       ),
       GoRoute(
         path: AppRoutes.auditLogs,

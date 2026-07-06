@@ -5,7 +5,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.school.erp.common.domain.BaseRepository;
-import com.school.erp.modules.users.domain.RoleName;
 import com.school.erp.modules.users.domain.UserAccount;
 import com.school.erp.modules.users.domain.UserStatus;
 
@@ -39,5 +38,5 @@ public interface UserAccountRepository extends BaseRepository<UserAccount, UUID>
 			where user.deleted = false
 			  and role.name in :roleNames
 			""")
-	long countByRoleNamesAndDeletedFalse(@Param("roleNames") Collection<RoleName> roleNames);
+	long countByRoleNamesAndDeletedFalse(@Param("roleNames") Collection<String> roleNames);
 }

@@ -24,6 +24,7 @@ import com.school.erp.common.importexport.ImportErrorReportStore;
 import com.school.erp.common.importexport.ImportResultDto;
 import com.school.erp.common.importexport.ImportRow;
 import com.school.erp.common.importexport.TemplateGeneratorService;
+import com.school.erp.modules.users.api.dto.RoleResponse;
 import com.school.erp.modules.users.api.dto.UserCreateRequest;
 import com.school.erp.modules.users.api.dto.UserResponse;
 import com.school.erp.modules.users.domain.RoleName;
@@ -232,7 +233,7 @@ public class UserImportExportService {
 		row.put("lastName", user.lastName());
 		row.put("phoneNumber", user.phoneNumber());
 		row.put("password", "");
-		row.put("roles", user.roles().stream().map(role -> role.name().name()).collect(Collectors.joining("|")));
+		row.put("roles", user.roles().stream().map(RoleResponse::name).collect(Collectors.joining("|")));
 		row.put("status", user.status());
 		return row;
 	}

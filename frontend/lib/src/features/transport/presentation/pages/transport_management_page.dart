@@ -79,7 +79,10 @@ class _TransportManagementPageState
                   child: TabBar(
                     isScrollable: true,
                     tabs: [
-                      Tab(icon: Icon(Icons.directions_bus_outlined), text: 'Buses'),
+                      Tab(
+                        icon: Icon(Icons.directions_bus_outlined),
+                        text: 'Buses',
+                      ),
                       Tab(icon: Icon(Icons.alt_route_outlined), text: 'Routes'),
                       Tab(icon: Icon(Icons.payments_outlined), text: 'Fees'),
                       Tab(icon: Icon(Icons.badge_outlined), text: 'Drivers'),
@@ -92,7 +95,9 @@ class _TransportManagementPageState
                     ref.invalidate(transportAcademicYearsProvider);
                     ref.invalidate(transportDriversProvider);
                     if (effectiveYearId != null) {
-                      ref.invalidate(transportVehiclesProvider(effectiveYearId));
+                      ref.invalidate(
+                        transportVehiclesProvider(effectiveYearId),
+                      );
                       ref.invalidate(transportRoutesProvider(effectiveYearId));
                       ref.invalidate(
                         transportFeeStructuresProvider(
@@ -189,9 +194,9 @@ class _TransportManagementPageState
     if (!await _confirm('Delete ${driver.displayName}?') || !mounted) {
       return;
     }
-    final result = await ref.read(transportRepositoryProvider).deleteDriver(
-          driver.id,
-        );
+    final result = await ref
+        .read(transportRepositoryProvider)
+        .deleteDriver(driver.id);
     if (!mounted) {
       return;
     }
@@ -252,9 +257,9 @@ class _TransportManagementPageState
     if (!await _confirm('Delete ${vehicle.vehicleNumber}?') || !mounted) {
       return;
     }
-    final result = await ref.read(transportRepositoryProvider).deleteVehicle(
-          vehicle.id,
-        );
+    final result = await ref
+        .read(transportRepositoryProvider)
+        .deleteVehicle(vehicle.id);
     if (!mounted) {
       return;
     }
@@ -318,9 +323,9 @@ class _TransportManagementPageState
     if (!await _confirm('Delete ${route.routeName}?') || !mounted) {
       return;
     }
-    final result = await ref.read(transportRepositoryProvider).deleteRoute(
-          route.id,
-        );
+    final result = await ref
+        .read(transportRepositoryProvider)
+        .deleteRoute(route.id);
     if (!mounted) {
       return;
     }
@@ -463,7 +468,9 @@ class _TransportManagementPageState
                         _removeStudentTransport(assignment, key),
                     onProfile: (assignment) {
                       Navigator.of(dialogContext).pop();
-                      context.go(AppRoutes.studentProfile(assignment.studentId));
+                      context.go(
+                        AppRoutes.studentProfile(assignment.studentId),
+                      );
                     },
                   ),
                   error: (error, _) => AppErrorState(
@@ -471,9 +478,8 @@ class _TransportManagementPageState
                     onRetry: () =>
                         ref.invalidate(transportVehicleDetailsProvider(key)),
                   ),
-                  loading: () => const AppLoadingState(
-                    label: 'Loading vehicle details',
-                  ),
+                  loading: () =>
+                      const AppLoadingState(label: 'Loading vehicle details'),
                 ),
               ),
               actions: [
@@ -525,10 +531,8 @@ class _TransportManagementPageState
   ) async {
     final result = await showDialog<_StudentTransportFormValue>(
       context: context,
-      builder: (context) => _StudentTransportDialog(
-        details: details,
-        assignment: assignment,
-      ),
+      builder: (context) =>
+          _StudentTransportDialog(details: details, assignment: assignment),
     );
     if (result == null || !mounted) {
       return;
@@ -563,8 +567,8 @@ class _TransportManagementPageState
     final result = await ref
         .read(transportRepositoryProvider)
         .removeStudentTransport(assignment.studentId, assignment.assignmentId, {
-      'endDate': _dateLabel(DateTime.now()),
-    });
+          'endDate': _dateLabel(DateTime.now()),
+        });
     if (!mounted) {
       return;
     }
@@ -729,8 +733,9 @@ class _BusesTab extends ConsumerWidget {
                     },
                     error: (error, _) => AppErrorState(
                       message: _message(error),
-                      onRetry: () =>
-                          ref.invalidate(transportVehiclesProvider(selectedYearId!)),
+                      onRetry: () => ref.invalidate(
+                        transportVehiclesProvider(selectedYearId!),
+                      ),
                     ),
                     loading: () =>
                         const AppLoadingState(label: 'Loading vehicles'),
@@ -763,8 +768,9 @@ class _RoutesTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final routes =
-        selectedYearId == null ? null : ref.watch(transportRoutesProvider(selectedYearId!));
+    final routes = selectedYearId == null
+        ? null
+        : ref.watch(transportRoutesProvider(selectedYearId!));
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -848,10 +854,12 @@ class _RoutesTab extends ConsumerWidget {
                     },
                     error: (error, _) => AppErrorState(
                       message: _message(error),
-                      onRetry: () =>
-                          ref.invalidate(transportRoutesProvider(selectedYearId!)),
+                      onRetry: () => ref.invalidate(
+                        transportRoutesProvider(selectedYearId!),
+                      ),
                     ),
-                    loading: () => const AppLoadingState(label: 'Loading routes'),
+                    loading: () =>
+                        const AppLoadingState(label: 'Loading routes'),
                   ),
           ),
         ],
@@ -1016,10 +1024,9 @@ class _DriversTab extends ConsumerWidget {
               Expanded(
                 child: Text(
                   'Drivers',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               AppButton(
@@ -1061,7 +1068,8 @@ class _DriversTab extends ConsumerWidget {
                     ),
                     AppTableColumn(
                       label: 'Status',
-                      cellBuilder: (_, item) => _StatusBadge(label: item.status),
+                      cellBuilder: (_, item) =>
+                          _StatusBadge(label: item.status),
                     ),
                     AppTableColumn(
                       label: 'Actions',
@@ -1159,10 +1167,19 @@ class _VehicleDetailsContent extends StatelessWidget {
             runSpacing: 12,
             children: [
               _Metric(label: 'Vehicle', value: details.vehicle.vehicleName),
-              _Metric(label: 'Driver', value: details.driver?.displayName ?? '-'),
+              _Metric(
+                label: 'Driver',
+                value: details.driver?.displayName ?? '-',
+              ),
               _Metric(label: 'Capacity', value: '${details.vehicle.capacity}'),
-              _Metric(label: 'Occupied', value: '${details.vehicle.occupiedCount}'),
-              _Metric(label: 'Available', value: '${details.vehicle.availableSeats}'),
+              _Metric(
+                label: 'Occupied',
+                value: '${details.vehicle.occupiedCount}',
+              ),
+              _Metric(
+                label: 'Available',
+                value: '${details.vehicle.availableSeats}',
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -1175,9 +1192,9 @@ class _VehicleDetailsContent extends StatelessWidget {
           if (details.routes.isNotEmpty) ...[
             Text(
               'Routes',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -1196,9 +1213,9 @@ class _VehicleDetailsContent extends StatelessWidget {
           if (details.pickupPoints.isNotEmpty) ...[
             Text(
               'Pickup points',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -1265,7 +1282,7 @@ class _VehicleDetailsContent extends StatelessWidget {
                       IconButton(
                         tooltip: 'Remove transport',
                         onPressed: () => onRemove(item),
-                        icon: const Icon(Icons.logout_outlined),
+                        icon: const Icon(Icons.link_off_outlined),
                       ),
                       IconButton(
                         tooltip: 'View student profile',
@@ -1349,11 +1366,8 @@ class _PickupPointsDialog extends ConsumerWidget {
                           children: [
                             IconButton(
                               tooltip: 'Edit',
-                              onPressed: () => _showPointDialog(
-                                context,
-                                ref,
-                                item,
-                              ),
+                              onPressed: () =>
+                                  _showPointDialog(context, ref, item),
                               icon: const Icon(Icons.edit_outlined),
                             ),
                             IconButton(
@@ -1371,7 +1385,8 @@ class _PickupPointsDialog extends ConsumerWidget {
           ),
           error: (error, _) => AppErrorState(
             message: _message(error),
-            onRetry: () => ref.invalidate(transportPickupPointsProvider(route.id)),
+            onRetry: () =>
+                ref.invalidate(transportPickupPointsProvider(route.id)),
           ),
           loading: () => const AppLoadingState(label: 'Loading pickup points'),
         ),
@@ -1407,7 +1422,10 @@ class _PickupPointsDialog extends ConsumerWidget {
     saved.when(
       success: (_) {
         ref.invalidate(transportPickupPointsProvider(route.id));
-        _snack(context, point == null ? 'Pickup point added.' : 'Pickup point saved.');
+        _snack(
+          context,
+          point == null ? 'Pickup point added.' : 'Pickup point saved.',
+        );
       },
       failure: (failure) => _snack(context, failure.message),
     );
@@ -1699,7 +1717,9 @@ class _DriverDialogState extends State<_DriverDialog> {
   late final _expiry = TextEditingController(
     text: _nullableDateLabel(widget.driver?.licenseExpiryDate),
   );
-  late final _address = TextEditingController(text: widget.driver?.address ?? '');
+  late final _address = TextEditingController(
+    text: widget.driver?.address ?? '',
+  );
   late var _status = widget.driver?.status ?? 'ACTIVE';
 
   @override
@@ -1734,7 +1754,10 @@ class _DriverDialogState extends State<_DriverDialog> {
                 _field(_expiry, 'License expiry', validator: _date),
                 _field(_address, 'Address', maxLines: 2),
                 const SizedBox(height: 12),
-                _StatusDropdown(value: _status, onChanged: (v) => setState(() => _status = v)),
+                _StatusDropdown(
+                  value: _status,
+                  onChanged: (v) => setState(() => _status = v),
+                ),
               ],
             ),
           ),
@@ -1827,7 +1850,10 @@ class _VehicleDialogState extends State<_VehicleDialog> {
                   initialValue: _driverId,
                   decoration: const InputDecoration(labelText: 'Driver'),
                   items: [
-                    const DropdownMenuItem(value: null, child: Text('No driver')),
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('No driver'),
+                    ),
                     for (final driver in widget.drivers)
                       DropdownMenuItem(
                         value: driver.id,
@@ -1837,7 +1863,10 @@ class _VehicleDialogState extends State<_VehicleDialog> {
                   onChanged: (value) => setState(() => _driverId = value),
                 ),
                 const SizedBox(height: 12),
-                _StatusDropdown(value: _status, onChanged: (v) => setState(() => _status = v)),
+                _StatusDropdown(
+                  value: _status,
+                  onChanged: (v) => setState(() => _status = v),
+                ),
               ],
             ),
           ),
@@ -1878,12 +1907,8 @@ class _RouteDialog extends StatefulWidget {
 
 class _RouteDialogState extends State<_RouteDialog> {
   final _formKey = GlobalKey<FormState>();
-  late final _name = TextEditingController(
-    text: widget.route?.routeName ?? '',
-  );
-  late final _code = TextEditingController(
-    text: widget.route?.routeCode ?? '',
-  );
+  late final _name = TextEditingController(text: widget.route?.routeName ?? '');
+  late final _code = TextEditingController(text: widget.route?.routeCode ?? '');
   late final _start = TextEditingController(
     text: widget.route?.startLocation ?? '',
   );
@@ -1923,7 +1948,10 @@ class _RouteDialogState extends State<_RouteDialog> {
                   initialValue: _vehicleId,
                   decoration: const InputDecoration(labelText: 'Vehicle'),
                   items: [
-                    const DropdownMenuItem(value: null, child: Text('No vehicle')),
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('No vehicle'),
+                    ),
                     for (final vehicle in widget.vehicles)
                       DropdownMenuItem(
                         value: vehicle.id,
@@ -1933,7 +1961,10 @@ class _RouteDialogState extends State<_RouteDialog> {
                   onChanged: (value) => setState(() => _vehicleId = value),
                 ),
                 const SizedBox(height: 12),
-                _StatusDropdown(value: _status, onChanged: (v) => setState(() => _status = v)),
+                _StatusDropdown(
+                  value: _status,
+                  onChanged: (v) => setState(() => _status = v),
+                ),
               ],
             ),
           ),
@@ -1969,7 +2000,9 @@ class _PickupPointDialog extends StatefulWidget {
 class _PickupPointDialogState extends State<_PickupPointDialog> {
   final _formKey = GlobalKey<FormState>();
   late final _name = TextEditingController(text: widget.point?.pointName ?? '');
-  late final _pickup = TextEditingController(text: widget.point?.pickupTime ?? '');
+  late final _pickup = TextEditingController(
+    text: widget.point?.pickupTime ?? '',
+  );
   late final _drop = TextEditingController(text: widget.point?.dropTime ?? '');
   late final _fee = TextEditingController(
     text: widget.point?.monthlyFee?.toStringAsFixed(2) ?? '',
@@ -1992,7 +2025,9 @@ class _PickupPointDialogState extends State<_PickupPointDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.point == null ? 'Add pickup point' : 'Edit pickup point'),
+      title: Text(
+        widget.point == null ? 'Add pickup point' : 'Edit pickup point',
+      ),
       content: Form(
         key: _formKey,
         child: SizedBox(
@@ -2012,7 +2047,10 @@ class _PickupPointDialogState extends State<_PickupPointDialog> {
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               ),
               const SizedBox(height: 12),
-              _StatusDropdown(value: _status, onChanged: (v) => setState(() => _status = v)),
+              _StatusDropdown(
+                value: _status,
+                onChanged: (v) => setState(() => _status = v),
+              ),
             ],
           ),
         ),
@@ -2075,7 +2113,9 @@ class _StudentTransportDialogState
       _pickupPointId = null;
     }
     return AlertDialog(
-      title: Text(widget.assignment == null ? 'Assign student' : 'Change transport'),
+      title: Text(
+        widget.assignment == null ? 'Assign student' : 'Change transport',
+      ),
       content: Form(
         key: _formKey,
         child: SizedBox(
@@ -2107,7 +2147,8 @@ class _StudentTransportDialogState
                     message: _message(error),
                     onRetry: () => ref.invalidate(studentsProvider),
                   ),
-                  loading: () => const AppLoadingState(label: 'Loading students'),
+                  loading: () =>
+                      const AppLoadingState(label: 'Loading students'),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
@@ -2393,7 +2434,8 @@ String _message(Object error) {
 
 String _dateLabel(DateTime value) => value.toIso8601String().split('T').first;
 
-String _nullableDateLabel(DateTime? value) => value == null ? '-' : _dateLabel(value);
+String _nullableDateLabel(DateTime? value) =>
+    value == null ? '-' : _dateLabel(value);
 
 String _money(double value) => 'INR ${value.toStringAsFixed(2)}';
 

@@ -39,7 +39,7 @@ public final class UserAccountSpecifications {
 			}
 			if (request.role() != null) {
 				Join<UserAccount, Role> roleJoin = root.join("roles", JoinType.INNER);
-				predicates.add(criteriaBuilder.equal(roleJoin.get("name"), request.role()));
+				predicates.add(criteriaBuilder.equal(roleJoin.get("name"), request.role().name()));
 			}
 
 			return criteriaBuilder.and(predicates.toArray(Predicate[]::new));

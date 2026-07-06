@@ -449,7 +449,8 @@ class _FeesTab extends ConsumerWidget {
             ),
             error: (error, _) => AppErrorState(
               message: _message(error),
-              onRetry: () => ref.invalidate(studentFeeSummaryProvider(student.id)),
+              onRetry: () =>
+                  ref.invalidate(studentFeeSummaryProvider(student.id)),
             ),
             loading: () => const AppLoadingState(label: 'Loading fees'),
           ),
@@ -545,10 +546,7 @@ class _FeeGroupSection extends StatelessWidget {
               trailing: _SmallBadge(label: fee.status),
             ),
           ExpandedGrid(
-            items: {
-              'Paid': _money(paid),
-              'Pending': _money(pending),
-            },
+            items: {'Paid': _money(paid), 'Pending': _money(pending)},
           ),
         ],
       ],
@@ -848,7 +846,7 @@ class _HostelAllocationTile extends StatelessWidget {
             IconButton(
               tooltip: 'Vacate',
               onPressed: onVacate,
-              icon: const Icon(Icons.logout_outlined),
+              icon: const Icon(Icons.meeting_room_outlined),
             ),
         ],
       ),
@@ -991,7 +989,7 @@ class _TransportAssignmentTile extends StatelessWidget {
             IconButton(
               tooltip: 'Remove transport',
               onPressed: onRemove,
-              icon: const Icon(Icons.logout_outlined),
+              icon: const Icon(Icons.link_off_outlined),
             ),
         ],
       ),
@@ -1244,11 +1242,9 @@ Future<void> _removeStudentTransportAssignment(
               }
               final result = await ref
                   .read(transportRepositoryProvider)
-                  .removeStudentTransport(
-                    student.id,
-                    assignment.id,
-                    {'endDate': endDate.text.trim()},
-                  );
+                  .removeStudentTransport(student.id, assignment.id, {
+                    'endDate': endDate.text.trim(),
+                  });
               if (!dialogContext.mounted) {
                 return;
               }
@@ -1265,7 +1261,7 @@ Future<void> _removeStudentTransportAssignment(
                 failure: (failure) => _snack(dialogContext, failure.message),
               );
             },
-            icon: const Icon(Icons.logout_outlined),
+            icon: const Icon(Icons.link_off_outlined),
             label: const Text('Remove'),
           ),
         ],
@@ -1594,7 +1590,7 @@ Future<void> _vacateStudentHostelAllocation(
                 failure: (failure) => _snack(context, failure.message),
               );
             },
-            icon: const Icon(Icons.logout_outlined),
+            icon: const Icon(Icons.meeting_room_outlined),
             label: const Text('Vacate'),
           ),
         ],
@@ -1602,42 +1598,6 @@ Future<void> _vacateStudentHostelAllocation(
     },
   );
   vacateDate.dispose();
-}
-
-class _ActionTab extends StatelessWidget {
-  const _ActionTab({
-    required this.title,
-    required this.message,
-    required this.icon,
-  });
-
-  final String title;
-  final String message;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return _TabSurface(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _SectionHeader(title: title),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Icon(
-                icon,
-                size: 30,
-                color: Theme.of(context).colorScheme.outline,
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: Text(message)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _TabSurface extends StatelessWidget {

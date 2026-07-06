@@ -52,7 +52,7 @@ public class JwtService {
 	public List<String> roles(UserAccount user) {
 		Set<String> roles = new TreeSet<>();
 		for (Role role : user.getRoles()) {
-			roles.add(role.getName().name());
+			roles.add(role.getName());
 		}
 		return List.copyOf(roles);
 	}

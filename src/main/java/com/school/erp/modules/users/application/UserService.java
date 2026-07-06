@@ -50,7 +50,7 @@ public class UserService {
 	private static final String MODULE_NAME = "USERS";
 	private static final String ENTITY_NAME = "UserAccount";
 	private static final String ROLE_ENTITY_NAME = "Role";
-	private static final Set<RoleName> DOMAIN_MANAGED_ROLES = Set.of(RoleName.STUDENT, RoleName.TEACHER);
+	private static final Set<String> DOMAIN_MANAGED_ROLES = Set.of(RoleName.STUDENT.name(), RoleName.TEACHER.name());
 
 	private final UserAccountRepository userAccountRepository;
 	private final RoleRepository roleRepository;
@@ -120,7 +120,7 @@ public class UserService {
 	public java.util.List<RoleResponse> listRoles() {
 		return roleRepository.findAllByDeletedFalse(org.springframework.data.domain.Pageable.unpaged()).stream()
 				.map(userMapper::toRoleResponse)
-				.sorted(java.util.Comparator.comparing(role -> role.name().name()))
+				.sorted(java.util.Comparator.comparing(RoleResponse::name))
 				.toList();
 	}
 
@@ -259,7 +259,7 @@ public class UserService {
 	}
 
 	private Role resolveRole(RoleName roleName) {
-		return roleRepository.findByNameAndDeletedFalse(roleName)
+		return roleRepository.findByNameIgnoreCaseAndDeletedFalse(roleName.name())
 				.orElseThrow(() -> new ResourceNotFoundException("Role", roleName));
 	}
 
@@ -298,7 +298,7 @@ public class UserService {
 	}
 
 	private void validateNoDomainManagedRoles(Set<RoleName> roles) {
-		if (roles == null || roles.stream().noneMatch(DOMAIN_MANAGED_ROLES::contains)) {
+		if (roles == null || roles.stream().map(RoleName::name).noneMatch(DOMAIN_MANAGED_ROLES::contains)) {
 			return;
 		}
 		throw new BusinessException(
@@ -310,20 +310,20 @@ public class UserService {
 		if (requestedRoles == null || requestedRoles.stream().noneMatch(DOMAIN_MANAGED_ROLES::contains)) {
 			return;
 		}
-		Set<RoleName> existingRoles = user.getRoles().stream()
+		Set<String> existingRoles = user.getRoles().stream()
 				.map(Role::getName)
 				.collect(java.util.stream.Collectors.toSet());
 		boolean introducesDomainRole = requestedRoles.stream()
-				.filter(DOMAIN_MANAGED_ROLES::contains)
-				.anyMatch(roleName -> !existingRoles.contains(roleName));
+				.filter(role -> DOMAIN_MANAGED_ROLES.contains(role.name()))
+				.anyMatch(roleName -> !existingRoles.contains(roleName.name()));
 		if (introducesDomainRole) {
 			validateNoDomainManagedRoles(requestedRoles);
 		}
 	}
 
 	private void validateSuperAdminPermissionMutation(Role role) {
-		if (role.getName() == RoleName.SUPER_ADMIN && !currentUserHasRole("ROLE_SUPER_ADMIN")) {
-			throw new BusinessException(ErrorCode.FORBIDDEN, "Only SUPER_ADMIN can update SUPER_ADMIN permissions.");
+		if (role.isSystemRole() && !currentUserHasRole("ROLE_SUPER_ADMIN")) {
+			throw new BusinessException(ErrorCode.FORBIDDEN, "Only SUPER_ADMIN can update system role permissions.");
 		}
 	}
 
