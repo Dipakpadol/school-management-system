@@ -24,10 +24,40 @@ public interface HostelAllocationRepository extends BaseRepository<HostelAllocat
 			UUID bedId,
 			HostelAllocationStatus status);
 
+	boolean existsByHostelIdAndStatusAndDeletedFalse(UUID hostelId, HostelAllocationStatus status);
+
+	boolean existsByRoomIdAndStatusAndDeletedFalse(UUID roomId, HostelAllocationStatus status);
+
+	boolean existsByBedIdAndStatusAndDeletedFalse(UUID bedId, HostelAllocationStatus status);
+
 	long countByAcademicYearIdAndRoomIdAndStatusAndDeletedFalse(
 			UUID academicYearId,
 			UUID roomId,
 			HostelAllocationStatus status);
+
+	@Query("""
+			select count(allocation.id)
+			from HostelAllocation allocation
+			where allocation.room.id = :roomId
+			  and allocation.status = :status
+			  and allocation.deleted = false
+			group by allocation.academicYear.id
+			""")
+	List<Long> activeOccupancyCountsByRoom(
+			@Param("roomId") UUID roomId,
+			@Param("status") HostelAllocationStatus status);
+
+	@Query("""
+			select count(allocation.id) > 0
+			from HostelAllocation allocation
+			where allocation.room.id = :roomId
+			  and allocation.bed is not null
+			  and allocation.status = :status
+			  and allocation.deleted = false
+			""")
+	boolean existsActiveBedAllocation(
+			@Param("roomId") UUID roomId,
+			@Param("status") HostelAllocationStatus status);
 
 	@EntityGraph(attributePaths = {
 			"student",

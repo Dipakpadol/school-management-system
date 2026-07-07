@@ -6,6 +6,8 @@ import java.util.UUID;
 import com.school.erp.common.api.ApiResponse;
 import com.school.erp.common.web.CorrelationIdFilter;
 import com.school.erp.modules.users.api.dto.PermissionResponse;
+import com.school.erp.modules.users.api.dto.PermissionRequest;
+import com.school.erp.modules.users.api.dto.PermissionSearchRequest;
 import com.school.erp.modules.users.api.dto.RolePermissionMatrixResponse;
 import com.school.erp.modules.users.api.dto.RoleRequest;
 import com.school.erp.modules.users.api.dto.RoleResponse;
@@ -94,8 +96,48 @@ public class RoleController {
 	@GetMapping("/v1/permissions")
 	@PreAuthorize("hasAuthority('USERS_READ') or hasAuthority('SETTINGS_READ')")
 	@Operation(summary = "List permissions")
-	public ResponseEntity<ApiResponse<List<PermissionResponse>>> permissions(HttpServletRequest httpRequest) {
-		return ok(roleService.permissions(), "Permissions fetched successfully", httpRequest);
+	public ResponseEntity<ApiResponse<List<PermissionResponse>>> permissions(
+			@Valid @ParameterObject PermissionSearchRequest request,
+			HttpServletRequest httpRequest) {
+		return ok(roleService.permissions(request), "Permissions fetched successfully", httpRequest);
+	}
+
+	@PostMapping("/v1/permissions")
+	@PreAuthorize("hasAuthority('USERS_UPDATE') or hasAuthority('SETTINGS_UPDATE')")
+	@Operation(summary = "Create permission")
+	public ResponseEntity<ApiResponse<PermissionResponse>> createPermission(
+			@Valid @RequestBody PermissionRequest request,
+			HttpServletRequest httpRequest) {
+		return created(roleService.createPermission(request), "Permission created successfully", httpRequest);
+	}
+
+	@PutMapping("/v1/permissions/{permissionId}")
+	@PreAuthorize("hasAuthority('USERS_UPDATE') or hasAuthority('SETTINGS_UPDATE')")
+	@Operation(summary = "Update permission")
+	public ResponseEntity<ApiResponse<PermissionResponse>> updatePermission(
+			@PathVariable UUID permissionId,
+			@Valid @RequestBody PermissionRequest request,
+			HttpServletRequest httpRequest) {
+		return ok(roleService.updatePermission(permissionId, request), "Permission updated successfully", httpRequest);
+	}
+
+	@GetMapping("/v1/permissions/{permissionId}")
+	@PreAuthorize("hasAuthority('USERS_READ') or hasAuthority('SETTINGS_READ')")
+	@Operation(summary = "Get permission")
+	public ResponseEntity<ApiResponse<PermissionResponse>> getPermission(
+			@PathVariable UUID permissionId,
+			HttpServletRequest httpRequest) {
+		return ok(roleService.getPermission(permissionId), "Permission fetched successfully", httpRequest);
+	}
+
+	@DeleteMapping("/v1/permissions/{permissionId}")
+	@PreAuthorize("hasAuthority('USERS_UPDATE') or hasAuthority('SETTINGS_UPDATE')")
+	@Operation(summary = "Soft delete permission")
+	public ResponseEntity<ApiResponse<Void>> deletePermission(
+			@PathVariable UUID permissionId,
+			HttpServletRequest httpRequest) {
+		roleService.deletePermission(permissionId);
+		return ok(null, "Permission deleted successfully", httpRequest);
 	}
 
 	@PostMapping("/v1/roles/{roleId}/permissions")

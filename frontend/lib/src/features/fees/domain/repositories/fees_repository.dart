@@ -31,7 +31,10 @@ abstract interface class FeesRepository {
 
   Future<Result<FeeStructureModel>> deleteStructure(String id);
 
-  Future<Result<List<StudentFeeAssignmentModel>>> assignments();
+  Future<Result<List<StudentFeeAssignmentModel>>> assignments({
+    String? academicYearId,
+    String? classId,
+  });
 
   Future<Result<StudentFeeAssignmentModel>> assignment(String id);
 
@@ -62,7 +65,13 @@ abstract interface class FeesRepository {
 
   Future<Result<FeeReceiptModel>> receipt(String receiptNumber);
 
-  Future<Result<List<FeeDefaulterModel>>> defaulters();
+  Future<Result<List<FeeDefaulterModel>>> defaulters({
+    String? academicYearId,
+    String? classId,
+    String? sectionId,
+    String? asOf,
+    String? query,
+  });
 
   Future<Result<StudentFeeAssignmentModel>> reversePayment(String paymentId);
 
@@ -82,7 +91,12 @@ abstract interface class FeesRepository {
 
   Future<Result<void>> downloadPaymentReceiptPdf(String paymentId);
 
-  Future<Result<void>> exportDefaulters(String format);
+  Future<Result<void>> exportDefaulters(
+    String format, {
+    String? academicYearId,
+    String? classId,
+    String? asOf,
+  });
 
   Future<Result<void>> exportCollection(String format);
 

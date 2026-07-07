@@ -510,14 +510,35 @@ public class FeeController {
 		return ok(feeService.findDefaulters(searchRequest, pageRequest), "Fee defaulters fetched successfully", httpRequest);
 	}
 
+	@GetMapping("/defaulters")
+	@PreAuthorize("hasAuthority('FEES_READ')")
+	@Operation(summary = "Get fee defaulters")
+	public ResponseEntity<ApiResponse<PageResponse<FeeDefaulterResponse>>> findDefaultersAlias(
+			@Valid @ParameterObject DefaulterSearchRequest searchRequest,
+			@Valid @ParameterObject PageRequestDto pageRequest,
+			HttpServletRequest httpRequest) {
+		return findDefaulters(searchRequest, pageRequest, httpRequest);
+	}
+
 	@GetMapping("/reports/defaulters/export/{format}")
 	@PreAuthorize("hasAuthority('FEES_READ')")
 	@Operation(summary = "Export fee defaulters")
-	public ResponseEntity<byte[]> exportDefaulters(@PathVariable String format) {
+	public ResponseEntity<byte[]> exportDefaulters(
+			@PathVariable String format,
+			@Valid @ParameterObject DefaulterSearchRequest searchRequest) {
 		return file(
-				feeImportExportService.defaulterReport(format),
+				feeImportExportService.defaulterReport(format, searchRequest),
 				"fee-defaulters." + extension(format),
 				contentType(format));
+	}
+
+	@GetMapping("/defaulters/export/{format}")
+	@PreAuthorize("hasAuthority('FEES_READ')")
+	@Operation(summary = "Export fee defaulters")
+	public ResponseEntity<byte[]> exportDefaultersAlias(
+			@PathVariable String format,
+			@Valid @ParameterObject DefaulterSearchRequest searchRequest) {
+		return exportDefaulters(format, searchRequest);
 	}
 
 	@GetMapping("/reports/summary")

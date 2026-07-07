@@ -6,6 +6,8 @@ public record PermissionResponse(
 		UUID id,
 		String code,
 		String name,
+		String moduleName,
 		String description,
+		String status,
 		boolean assigned) {
 }

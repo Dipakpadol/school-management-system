@@ -57,7 +57,9 @@ public class UserMapper {
 				permission.getId(),
 				permission.getCode(),
 				permission.getName(),
+				permission.getModuleName(),
 				permission.getDescription(),
+				permission.getStatus().name(),
 				assigned);
 	}
 

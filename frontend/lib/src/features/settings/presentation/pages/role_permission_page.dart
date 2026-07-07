@@ -45,31 +45,61 @@ class _RolePermissionPageState extends ConsumerState<RolePermissionPage> {
           context.go(AppRoutes.login);
         }
       },
-      child: Column(
-        children: [
-          _RoleHeader(
-            searchController: _searchController,
-            permissions: permissions,
-            onAdd: (items) => _showRoleForm(context, ref, permissions: items),
-            onSearch: () {
-              ref
-                  .read(roleManagementSearchQueryProvider.notifier)
-                  .set(_searchController.text.trim());
-            },
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: roles.when(
-              data: (items) =>
-                  _RoleList(roles: items, permissions: permissions),
-              error: (error, _) => AppErrorState(
-                message: _message(error),
-                onRetry: () => ref.invalidate(roleManagementRolesProvider),
+      child: DefaultTabController(
+        length: 2,
+        child: Column(
+          children: [
+            const Material(
+              color: Colors.white,
+              child: TabBar(
+                isScrollable: true,
+                tabs: [
+                  Tab(icon: Icon(Icons.verified_user_outlined), text: 'Roles'),
+                  Tab(icon: Icon(Icons.key_outlined), text: 'Permissions'),
+                ],
               ),
-              loading: () => const AppLoadingState(label: 'Loading roles'),
             ),
-          ),
-        ],
+            const Divider(height: 1),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  Column(
+                    children: [
+                      _RoleHeader(
+                        searchController: _searchController,
+                        permissions: permissions,
+                        onAdd: (items) =>
+                            _showRoleForm(context, ref, permissions: items),
+                        onSearch: () {
+                          ref
+                              .read(roleManagementSearchQueryProvider.notifier)
+                              .set(_searchController.text.trim());
+                        },
+                      ),
+                      const Divider(height: 1),
+                      Expanded(
+                        child: roles.when(
+                          data: (items) => _RoleList(
+                            roles: items,
+                            permissions: permissions,
+                          ),
+                          error: (error, _) => AppErrorState(
+                            message: _message(error),
+                            onRetry: () =>
+                                ref.invalidate(roleManagementRolesProvider),
+                          ),
+                          loading: () =>
+                              const AppLoadingState(label: 'Loading roles'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const _PermissionsPanel(),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -749,6 +779,393 @@ class _SoftChip extends StatelessWidget {
       ),
     );
   }
+}
+
+class _PermissionsPanel extends ConsumerStatefulWidget {
+  const _PermissionsPanel();
+
+  @override
+  ConsumerState<_PermissionsPanel> createState() => _PermissionsPanelState();
+}
+
+class _PermissionsPanelState extends ConsumerState<_PermissionsPanel> {
+  final _searchController = TextEditingController();
+  final _moduleController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _moduleController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final permissions = ref.watch(permissionManagementProvider);
+    final status = ref.watch(permissionStatusFilterProvider);
+
+    return Column(
+      children: [
+        Material(
+          color: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                SizedBox(
+                  width: 300,
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: const InputDecoration(
+                      labelText: 'Search permissions',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    onSubmitted: (_) => _applyFilters(),
+                  ),
+                ),
+                SizedBox(
+                  width: 220,
+                  child: TextField(
+                    controller: _moduleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Module',
+                      prefixIcon: Icon(Icons.apps_outlined),
+                    ),
+                    onSubmitted: (_) => _applyFilters(),
+                  ),
+                ),
+                SizedBox(
+                  width: 190,
+                  child: DropdownButtonFormField<String?>(
+                    initialValue: status,
+                    decoration: const InputDecoration(labelText: 'Status'),
+                    items: const [
+                      DropdownMenuItem(value: null, child: Text('All statuses')),
+                      DropdownMenuItem(value: 'ACTIVE', child: Text('Active')),
+                      DropdownMenuItem(
+                        value: 'INACTIVE',
+                        child: Text('Inactive'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      ref
+                          .read(permissionStatusFilterProvider.notifier)
+                          .set(value);
+                    },
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _applyFilters,
+                  icon: const Icon(Icons.tune_outlined),
+                  label: const Text('Apply'),
+                ),
+                AppButton(
+                  label: 'Add permission',
+                  icon: Icons.add_outlined,
+                  onPressed: () => _showPermissionForm(context, ref),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => ref.invalidate(permissionManagementProvider),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Refresh'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: permissions.when(
+            data: (items) => _PermissionManagementList(permissions: items),
+            error: (error, _) => AppErrorState(
+              message: _message(error),
+              onRetry: () => ref.invalidate(permissionManagementProvider),
+            ),
+            loading: () => const AppLoadingState(label: 'Loading permissions'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _applyFilters() {
+    ref
+        .read(permissionSearchQueryProvider.notifier)
+        .set(_searchController.text.trim());
+    ref
+        .read(permissionModuleFilterProvider.notifier)
+        .set(_blankToNull(_moduleController.text));
+  }
+}
+
+class _PermissionManagementList extends ConsumerWidget {
+  const _PermissionManagementList({required this.permissions});
+
+  final List<PermissionOptionModel> permissions;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (permissions.isEmpty) {
+      return const Center(child: Text('No permissions found.'));
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 1180 ? 2 : 1;
+        return GridView.builder(
+          padding: const EdgeInsets.all(24),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            mainAxisExtent: 150,
+          ),
+          itemCount: permissions.length,
+          itemBuilder: (context, index) {
+            final permission = permissions[index];
+            return Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor:
+                          Theme.of(context).colorScheme.primaryContainer,
+                      foregroundColor:
+                          Theme.of(context).colorScheme.onPrimaryContainer,
+                      child: const Icon(Icons.key_outlined),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  permission.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.w800),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              _StatusChip(status: permission.status),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            permission.code,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            permission.description?.trim().isNotEmpty ?? false
+                                ? permission.description!
+                                : 'No description',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                          ),
+                          const SizedBox(height: 8),
+                          _SoftChip(label: permission.moduleName),
+                        ],
+                      ),
+                    ),
+                    PopupMenuButton<String>(
+                      tooltip: 'Permission actions',
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(value: 'edit', child: Text('Edit')),
+                        PopupMenuItem(value: 'delete', child: Text('Delete')),
+                      ],
+                      onSelected: (action) {
+                        if (action == 'edit') {
+                          _showPermissionForm(context, ref, permission);
+                        } else {
+                          _deletePermission(context, ref, permission);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+Future<void> _showPermissionForm(
+  BuildContext context,
+  WidgetRef ref, [
+  PermissionOptionModel? permission,
+]) async {
+  final code = TextEditingController(text: permission?.code ?? '');
+  final name = TextEditingController(text: permission?.name ?? '');
+  final module = TextEditingController(text: permission?.moduleName ?? '');
+  final description = TextEditingController(text: permission?.description ?? '');
+  final formKey = GlobalKey<FormState>();
+  var status = permission?.status ?? 'ACTIVE';
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) {
+      return StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(permission == null ? 'Add permission' : 'Edit permission'),
+          content: Form(
+            key: formKey,
+            child: SizedBox(
+              width: 560,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: code,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: const InputDecoration(
+                        labelText: 'Permission code',
+                        prefixIcon: Icon(Icons.key_outlined),
+                      ),
+                      validator: _required,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: name,
+                      decoration: const InputDecoration(labelText: 'Name'),
+                      validator: _required,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: module,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: const InputDecoration(labelText: 'Module'),
+                      validator: _required,
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: status,
+                      decoration: const InputDecoration(labelText: 'Status'),
+                      items: const [
+                        DropdownMenuItem(value: 'ACTIVE', child: Text('Active')),
+                        DropdownMenuItem(
+                          value: 'INACTIVE',
+                          child: Text('Inactive'),
+                        ),
+                      ],
+                      onChanged: (value) => status = value ?? status,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: description,
+                      decoration: const InputDecoration(labelText: 'Description'),
+                      maxLines: 3,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              onPressed: () async {
+                if (!(formKey.currentState?.validate() ?? false)) {
+                  return;
+                }
+                final payload = {
+                  'permissionCode': code.text.trim(),
+                  'permissionName': name.text.trim(),
+                  'moduleName': module.text.trim(),
+                  'description': _blankToNull(description.text),
+                  'status': status,
+                };
+                final repository = ref.read(settingsRepositoryProvider);
+                final result = permission == null
+                    ? await repository.createPermission(payload)
+                    : await repository.updatePermission(permission.id, payload);
+                if (!dialogContext.mounted) {
+                  return;
+                }
+                result.when(
+                  success: (_) {
+                    ref.invalidate(permissionManagementProvider);
+                    ref.invalidate(permissionsProvider);
+                    ref.invalidate(currentMenuProvider);
+                    Navigator.of(dialogContext).pop();
+                    _snack(
+                      context,
+                      permission == null
+                          ? 'Permission created.'
+                          : 'Permission updated.',
+                    );
+                  },
+                  failure: (failure) => _snack(dialogContext, failure.message),
+                );
+              },
+              icon: const Icon(Icons.save_outlined),
+              label: const Text('Save'),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+
+  code.dispose();
+  name.dispose();
+  module.dispose();
+  description.dispose();
+}
+
+Future<void> _deletePermission(
+  BuildContext context,
+  WidgetRef ref,
+  PermissionOptionModel permission,
+) async {
+  final confirmed = await _confirm(context, 'Delete ${permission.name}?');
+  if (!confirmed || !context.mounted) {
+    return;
+  }
+  final result = await ref
+      .read(settingsRepositoryProvider)
+      .deletePermission(permission.id);
+  if (!context.mounted) {
+    return;
+  }
+  result.when(
+    success: (_) {
+      ref.invalidate(permissionManagementProvider);
+      ref.invalidate(permissionsProvider);
+      ref.invalidate(currentMenuProvider);
+      _snack(context, 'Permission deleted.');
+    },
+    failure: (failure) => _snack(context, failure.message),
+  );
 }
 
 String _message(Object error) {

@@ -103,9 +103,17 @@ class FeesRemoteDataSource {
     return FeeStructureModel.fromJson(_unwrapData(response.data));
   }
 
-  Future<PagePayload<StudentFeeAssignmentModel>> assignments() async {
+  Future<PagePayload<StudentFeeAssignmentModel>> assignments({
+    String? academicYearId,
+    String? classId,
+  }) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.feeAssignments,
+      queryParameters: {
+        if (academicYearId != null && academicYearId.isNotEmpty)
+          'academicYearId': academicYearId,
+        if (classId != null && classId.isNotEmpty) 'classId': classId,
+      },
     );
     return PagePayload.fromJson(
       _unwrapData(response.data),
@@ -215,9 +223,23 @@ class FeesRemoteDataSource {
     return StudentFeeAssignmentModel.fromJson(_unwrapData(response.data));
   }
 
-  Future<PagePayload<FeeDefaulterModel>> defaulters() async {
+  Future<PagePayload<FeeDefaulterModel>> defaulters({
+    String? academicYearId,
+    String? classId,
+    String? sectionId,
+    String? asOf,
+    String? query,
+  }) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.feeDefaulters,
+      queryParameters: {
+        if (academicYearId != null && academicYearId.isNotEmpty)
+          'academicYearId': academicYearId,
+        if (classId != null && classId.isNotEmpty) 'classId': classId,
+        if (sectionId != null && sectionId.isNotEmpty) 'sectionId': sectionId,
+        if (asOf != null && asOf.isNotEmpty) 'asOf': asOf,
+        if (query != null && query.trim().isNotEmpty) 'studentName': query.trim(),
+      },
     );
     return PagePayload.fromJson(
       _unwrapData(response.data),
@@ -249,8 +271,21 @@ class FeesRemoteDataSource {
     return _apiClient.download(ApiPaths.feePaymentReceiptPdf(paymentId));
   }
 
-  Future<List<int>> defaultersExport(String format) {
-    return _apiClient.download(ApiPaths.feeDefaultersExport(format));
+  Future<List<int>> defaultersExport(
+    String format, {
+    String? academicYearId,
+    String? classId,
+    String? asOf,
+  }) {
+    return _apiClient.download(
+      ApiPaths.feeDefaultersExport(format),
+      queryParameters: {
+        if (academicYearId != null && academicYearId.isNotEmpty)
+          'academicYearId': academicYearId,
+        if (classId != null && classId.isNotEmpty) 'classId': classId,
+        if (asOf != null && asOf.isNotEmpty) 'asOf': asOf,
+      },
+    );
   }
 
   Future<List<int>> collectionExport(String format) {

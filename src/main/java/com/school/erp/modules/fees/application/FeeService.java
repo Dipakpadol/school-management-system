@@ -879,12 +879,18 @@ public class FeeService {
 	public PageResponse<FeeDefaulterResponse> findDefaulters(DefaulterSearchRequest request, PageRequestDto pageRequest) {
 		LocalDate asOf = defaultDate(request.asOf());
 		BigDecimal minimumBalance = request.minimumBalance() == null ? BigDecimal.valueOf(0.01) : money(request.minimumBalance());
+		String sectionName = request.sectionId() == null
+				? request.sectionName()
+				: academicHierarchyService.loadSection(request.sectionId()).getName();
 		return PageResponse.from(
 				assignmentRepository.findDefaulters(
 						asOf,
+						request.academicYearId(),
+						request.classId(),
 						blankToNull(request.academicYear()),
 						blankToNull(request.className()),
-						blankToNull(request.sectionName()),
+						blankToNull(sectionName),
+						blankToNull(request.studentName()),
 						minimumBalance,
 						FeeInstallmentStatus.PAID,
 						FeeInstallmentStatus.CANCELLED,

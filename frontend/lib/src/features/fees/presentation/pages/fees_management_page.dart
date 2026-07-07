@@ -521,7 +521,8 @@ class _AssignmentList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final assignments = ref.watch(feeAssignmentsProvider);
+    const filter = FeeListFilter();
+    final assignments = ref.watch(feeAssignmentsProvider(filter));
 
     return assignments.when(
       data: (items) => _ListSurface(
@@ -644,7 +645,7 @@ class _AssignmentList extends ConsumerWidget {
       ),
       error: (error, _) => _ErrorBody(
         message: _message(error),
-        onRetry: () => ref.invalidate(feeAssignmentsProvider),
+        onRetry: () => ref.invalidate(feeAssignmentsProvider(filter)),
       ),
       loading: () => const _LoadingBody(),
     );
@@ -806,7 +807,8 @@ class _DefaulterList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final defaulters = ref.watch(feeDefaultersProvider);
+    const filter = FeeDefaulterFilter();
+    final defaulters = ref.watch(feeDefaultersProvider(filter));
 
     return defaulters.when(
       data: (items) => _ListSurface(
@@ -833,7 +835,7 @@ class _DefaulterList extends ConsumerWidget {
       ),
       error: (error, _) => _ErrorBody(
         message: _message(error),
-        onRetry: () => ref.invalidate(feeDefaultersProvider),
+        onRetry: () => ref.invalidate(feeDefaultersProvider(filter)),
       ),
       loading: () => const _LoadingBody(),
     );
@@ -1076,8 +1078,8 @@ Future<void> _handlePaymentAction(
   }
   result.when(
     success: (_) {
-      ref.invalidate(feeAssignmentsProvider);
-      ref.invalidate(feeDefaultersProvider);
+      ref.invalidate(feeAssignmentsProvider(const FeeListFilter()));
+      ref.invalidate(feeDefaultersProvider(const FeeDefaulterFilter()));
       _snack(context, 'Payment action completed.');
     },
     failure: (failure) => _snack(context, failure.message),
@@ -1133,7 +1135,7 @@ Future<void> _runPickedFeeImport(
   result.when(
     success: (_) {
       ref.invalidate(feeStructuresProvider);
-      ref.invalidate(feeAssignmentsProvider);
+      ref.invalidate(feeAssignmentsProvider(const FeeListFilter()));
       _snack(context, 'Fee import completed.');
     },
     failure: (failure) => _snack(context, failure.message),

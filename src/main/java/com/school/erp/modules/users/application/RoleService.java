@@ -13,12 +13,15 @@ import com.school.erp.common.exception.BusinessException;
 import com.school.erp.common.exception.ErrorCode;
 import com.school.erp.common.exception.ResourceNotFoundException;
 import com.school.erp.modules.users.api.dto.PermissionResponse;
+import com.school.erp.modules.users.api.dto.PermissionRequest;
+import com.school.erp.modules.users.api.dto.PermissionSearchRequest;
 import com.school.erp.modules.users.api.dto.RolePermissionMatrixResponse;
 import com.school.erp.modules.users.api.dto.RoleRequest;
 import com.school.erp.modules.users.api.dto.RoleResponse;
 import com.school.erp.modules.users.api.dto.RoleSearchRequest;
 import com.school.erp.modules.users.api.dto.UpdateRolePermissionsRequest;
 import com.school.erp.modules.users.domain.Permission;
+import com.school.erp.modules.users.domain.PermissionStatus;
 import com.school.erp.modules.users.domain.Role;
 import com.school.erp.modules.users.infrastructure.PermissionRepository;
 import com.school.erp.modules.users.infrastructure.RoleRepository;
@@ -38,6 +41,7 @@ public class RoleService {
 
 	private static final String MODULE_NAME = "USERS";
 	private static final String ROLE_ENTITY_NAME = "Role";
+	private static final String PERMISSION_ENTITY_NAME = "Permission";
 
 	private final RoleRepository roleRepository;
 	private final PermissionRepository permissionRepository;
@@ -119,10 +123,84 @@ public class RoleService {
 
 	@Transactional(readOnly = true)
 	public List<PermissionResponse> permissions() {
+		return permissions(null);
+	}
+
+	@Transactional(readOnly = true)
+	public List<PermissionResponse> permissions(PermissionSearchRequest request) {
+		String query = request == null ? null : trimToNull(request.query());
+		String moduleName = request == null ? null : trimToNull(request.moduleName());
+		PermissionStatus status = request == null ? null : request.status();
+		String normalizedQuery = query == null ? null : query.toLowerCase();
+		String normalizedModule = moduleName == null ? null : moduleName.toUpperCase();
 		return permissionRepository.findAllByDeletedFalse(Pageable.unpaged()).stream()
+				.filter(permission -> status == null || permission.getStatus() == status)
+				.filter(permission -> normalizedModule == null || permission.getModuleName().equalsIgnoreCase(normalizedModule))
+				.filter(permission -> normalizedQuery == null
+						|| permission.getCode().toLowerCase().contains(normalizedQuery)
+						|| permission.getName().toLowerCase().contains(normalizedQuery)
+						|| permission.getModuleName().toLowerCase().contains(normalizedQuery)
+						|| (permission.getDescription() != null && permission.getDescription().toLowerCase().contains(normalizedQuery)))
 				.sorted(Comparator.comparing(Permission::getCode))
 				.map(permission -> userMapper.toPermissionResponse(permission, false))
 				.toList();
+	}
+
+	@Transactional
+	public PermissionResponse createPermission(PermissionRequest request) {
+		String code = normalizePermissionCode(request.permissionCode());
+		if (permissionRepository.existsByCodeIgnoreCaseAndDeletedFalse(code)) {
+			throw new BusinessException(ErrorCode.CONFLICT, "Permission code already exists: " + code);
+		}
+		Permission permission = permissionRepository.save(new Permission(
+				code,
+				request.permissionName().trim(),
+				normalizeModuleName(request.moduleName()),
+				trimToNull(request.description()),
+				request.status()));
+		PermissionResponse response = userMapper.toPermissionResponse(permission, false);
+		auditPermission(permission.getId(), "CREATE", null, response);
+		return response;
+	}
+
+	@Transactional
+	public PermissionResponse updatePermission(UUID permissionId, PermissionRequest request) {
+		Permission permission = loadPermission(permissionId);
+		PermissionResponse oldValue = userMapper.toPermissionResponse(permission, false);
+		String code = normalizePermissionCode(request.permissionCode());
+		permissionRepository.findByCodeIgnoreCaseAndDeletedFalse(code)
+				.filter(existing -> !existing.getId().equals(permissionId))
+				.ifPresent(existing -> {
+					throw new BusinessException(ErrorCode.CONFLICT, "Permission code already exists: " + code);
+				});
+		permission.update(
+				code,
+				request.permissionName().trim(),
+				normalizeModuleName(request.moduleName()),
+				trimToNull(request.description()),
+				request.status());
+		PermissionResponse response = userMapper.toPermissionResponse(permission, false);
+		auditPermission(permissionId, "UPDATE", oldValue, response);
+		return response;
+	}
+
+	@Transactional(readOnly = true)
+	public PermissionResponse getPermission(UUID permissionId) {
+		return userMapper.toPermissionResponse(loadPermission(permissionId), false);
+	}
+
+	@Transactional
+	public void deletePermission(UUID permissionId) {
+		Permission permission = loadPermission(permissionId);
+		if (permissionRepository.countActiveRoleAssignments(permissionId) > 0) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Permission is assigned to an active role.");
+		}
+		PermissionResponse oldValue = userMapper.toPermissionResponse(permission, false);
+		permission.softDelete(currentActor());
+		permissionRepository.save(permission);
+		auditPermission(permissionId, "DELETE", oldValue, Map.of("deleted", true, "permissionId", permissionId));
 	}
 
 	@Transactional(readOnly = true)
@@ -157,6 +235,11 @@ public class RoleService {
 				.orElseThrow(() -> new ResourceNotFoundException("Role", roleId));
 	}
 
+	private Permission loadPermission(UUID permissionId) {
+		return permissionRepository.findByIdAndDeletedFalse(permissionId)
+				.orElseThrow(() -> new ResourceNotFoundException("Permission", permissionId));
+	}
+
 	private Set<Permission> resolvePermissions(Set<UUID> permissionIds) {
 		if (permissionIds == null || permissionIds.isEmpty()) {
 			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "At least one permission is required.");
@@ -171,6 +254,14 @@ public class RoleService {
 		if (!missingIds.isEmpty()) {
 			throw new ResourceNotFoundException("Permission", missingIds);
 		}
+		permissions.stream()
+				.filter(permission -> !permission.isActive())
+				.findFirst()
+				.ifPresent(permission -> {
+					throw new BusinessException(
+							ErrorCode.BUSINESS_RULE_VIOLATION,
+							"Inactive permission cannot be assigned: " + permission.getCode());
+				});
 		return permissions.stream()
 				.sorted(Comparator.comparing(Permission::getCode))
 				.collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
@@ -194,6 +285,20 @@ public class RoleService {
 		return StringUtils.hasText(value) ? value.trim() : null;
 	}
 
+	private String normalizePermissionCode(String value) {
+		if (!StringUtils.hasText(value)) {
+			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Permission code is required.");
+		}
+		return value.trim().replaceAll("\\s+", "_").toUpperCase();
+	}
+
+	private String normalizeModuleName(String value) {
+		if (!StringUtils.hasText(value)) {
+			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Module name is required.");
+		}
+		return value.trim().toUpperCase();
+	}
+
 	private boolean currentUserHasRole(String roleAuthority) {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		return authentication != null && authentication.getAuthorities().stream()
@@ -213,6 +318,16 @@ public class RoleService {
 				MODULE_NAME,
 				ROLE_ENTITY_NAME,
 				roleId == null ? null : roleId.toString(),
+				action,
+				oldValue,
+				newValue));
+	}
+
+	private void auditPermission(UUID permissionId, String action, Object oldValue, Object newValue) {
+		auditLogService.record(new AuditLogEvent(
+				MODULE_NAME,
+				PERMISSION_ENTITY_NAME,
+				permissionId == null ? null : permissionId.toString(),
 				action,
 				oldValue,
 				newValue));

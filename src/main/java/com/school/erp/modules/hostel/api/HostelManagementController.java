@@ -15,6 +15,8 @@ import com.school.erp.modules.hostel.api.dto.HostelFeeAssignmentRequest;
 import com.school.erp.modules.hostel.api.dto.HostelFeeAssignmentResponse;
 import com.school.erp.modules.hostel.api.dto.HostelFeeStructureRequest;
 import com.school.erp.modules.hostel.api.dto.HostelFeeStructureResponse;
+import com.school.erp.modules.hostel.api.dto.HostelRequest;
+import com.school.erp.modules.hostel.api.dto.HostelRoomRequest;
 import com.school.erp.modules.hostel.api.dto.HostelRoomDetailsResponse;
 import com.school.erp.modules.hostel.api.dto.HostelRoomSummaryResponse;
 import com.school.erp.modules.hostel.api.dto.HostelStudentRoomResponse;
@@ -65,8 +67,75 @@ public class HostelManagementController {
 	@GetMapping
 	@PreAuthorize("hasAuthority('HOSTEL_READ')")
 	@Operation(summary = "List hostels")
-	public ResponseEntity<ApiResponse<List<HostelSummaryResponse>>> hostels(HttpServletRequest request) {
-		return ok(hostelService.hostels(), "Hostels fetched successfully", request);
+	public ResponseEntity<ApiResponse<List<HostelSummaryResponse>>> hostels(
+			@RequestParam(defaultValue = "true") boolean activeOnly,
+			HttpServletRequest request) {
+		return ok(hostelService.hostels(activeOnly), "Hostels fetched successfully", request);
+	}
+
+	@PostMapping
+	@PreAuthorize("hasAuthority('HOSTEL_MANAGE')")
+	@Operation(summary = "Create hostel")
+	public ResponseEntity<ApiResponse<HostelSummaryResponse>> createHostel(
+			@Valid @RequestBody HostelRequest body,
+			HttpServletRequest request) {
+		return created(hostelService.createHostel(body), "Hostel created successfully", request);
+	}
+
+	@PutMapping("/{hostelId}")
+	@PreAuthorize("hasAuthority('HOSTEL_MANAGE')")
+	@Operation(summary = "Update hostel")
+	public ResponseEntity<ApiResponse<HostelSummaryResponse>> updateHostel(
+			@PathVariable UUID hostelId,
+			@Valid @RequestBody HostelRequest body,
+			HttpServletRequest request) {
+		return ok(hostelService.updateHostel(hostelId, body), "Hostel updated successfully", request);
+	}
+
+	@DeleteMapping("/{hostelId}")
+	@PreAuthorize("hasAuthority('HOSTEL_MANAGE')")
+	@Operation(summary = "Soft delete hostel")
+	public ResponseEntity<ApiResponse<HostelSummaryResponse>> deleteHostel(
+			@PathVariable UUID hostelId,
+			HttpServletRequest request) {
+		return ok(hostelService.deleteHostel(hostelId), "Hostel deleted successfully", request);
+	}
+
+	@GetMapping("/rooms")
+	@PreAuthorize("hasAuthority('HOSTEL_READ')")
+	@Operation(summary = "List hostel rooms without academic-year occupancy")
+	public ResponseEntity<ApiResponse<List<HostelRoomSummaryResponse>>> allRooms(
+			@RequestParam(defaultValue = "true") boolean activeOnly,
+			HttpServletRequest request) {
+		return ok(hostelService.allRooms(activeOnly), "Hostel rooms fetched successfully", request);
+	}
+
+	@PostMapping("/rooms")
+	@PreAuthorize("hasAuthority('HOSTEL_MANAGE')")
+	@Operation(summary = "Create hostel room")
+	public ResponseEntity<ApiResponse<HostelRoomSummaryResponse>> createRoom(
+			@Valid @RequestBody HostelRoomRequest body,
+			HttpServletRequest request) {
+		return created(hostelService.createRoom(body), "Hostel room created successfully", request);
+	}
+
+	@PutMapping("/rooms/{roomId}")
+	@PreAuthorize("hasAuthority('HOSTEL_MANAGE')")
+	@Operation(summary = "Update hostel room and capacity")
+	public ResponseEntity<ApiResponse<HostelRoomSummaryResponse>> updateRoom(
+			@PathVariable UUID roomId,
+			@Valid @RequestBody HostelRoomRequest body,
+			HttpServletRequest request) {
+		return ok(hostelService.updateRoom(roomId, body), "Hostel room updated successfully", request);
+	}
+
+	@DeleteMapping("/rooms/{roomId}")
+	@PreAuthorize("hasAuthority('HOSTEL_MANAGE')")
+	@Operation(summary = "Soft delete hostel room")
+	public ResponseEntity<ApiResponse<HostelRoomSummaryResponse>> deleteRoom(
+			@PathVariable UUID roomId,
+			HttpServletRequest request) {
+		return ok(hostelService.deleteRoom(roomId), "Hostel room deleted successfully", request);
 	}
 
 	@GetMapping("/academic-years/{academicYearId}/rooms")

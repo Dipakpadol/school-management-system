@@ -28,6 +28,7 @@ import com.school.erp.common.importexport.ImportRow;
 import com.school.erp.common.importexport.PdfExportService;
 import com.school.erp.common.importexport.TemplateGeneratorService;
 import com.school.erp.modules.fees.api.dto.FeeCategoryRequest;
+import com.school.erp.modules.fees.api.dto.DefaulterSearchRequest;
 import com.school.erp.modules.fees.api.dto.FeeDefaulterResponse;
 import com.school.erp.modules.fees.api.dto.FeeReceiptResponse;
 import com.school.erp.modules.fees.api.dto.FeeReportRequest;
@@ -224,8 +225,13 @@ public class FeeImportExportService {
 
 	@Transactional(readOnly = true)
 	public byte[] defaulterReport(String format) {
+		return defaulterReport(format, new DefaulterSearchRequest(null, null, null, null, null, null, null, null, null));
+	}
+
+	@Transactional(readOnly = true)
+	public byte[] defaulterReport(String format, DefaulterSearchRequest request) {
 		List<FeeDefaulterResponse> defaulters = feeService.findDefaulters(
-				new com.school.erp.modules.fees.api.dto.DefaulterSearchRequest(null, null, null, null, null),
+				request == null ? new DefaulterSearchRequest(null, null, null, null, null, null, null, null, null) : request,
 				new com.school.erp.common.api.PageRequestDto(0, 200, null, null)).content();
 		List<String> headers = List.of("assignmentId", "admissionNumber", "studentName", "className", "sectionName", "balanceAmount", "oldestDueDate", "overdueInstallments");
 		List<Map<String, Object>> rows = defaulters.stream().map(defaulter -> {

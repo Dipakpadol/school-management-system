@@ -36,6 +36,7 @@ import com.school.erp.modules.students.api.dto.StudentSearchRequest;
 import com.school.erp.modules.students.api.dto.StudentStatusUpdateRequest;
 import com.school.erp.modules.students.api.dto.StudentSummaryResponse;
 import com.school.erp.modules.students.application.StudentImportExportService;
+import com.school.erp.modules.students.application.StudentGeneratedDocumentService;
 import com.school.erp.modules.students.application.StudentService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -75,6 +76,7 @@ public class StudentController {
 
 	private final StudentService studentService;
 	private final StudentImportExportService studentImportExportService;
+	private final StudentGeneratedDocumentService studentGeneratedDocumentService;
 	private final AttendanceService attendanceService;
 	private final ExamService examService;
 	private final FeeService feeService;
@@ -386,6 +388,16 @@ public class StudentController {
 	@Operation(summary = "Export student profile PDF")
 	public ResponseEntity<byte[]> profilePdf(@PathVariable UUID studentId) {
 		return file(studentImportExportService.profilePdf(studentId), "student-profile-" + studentId + ".pdf", "application/pdf");
+	}
+
+	@GetMapping("/{studentId}/documents/generated/{type}")
+	@PreAuthorize("hasAuthority('STUDENTS_READ')")
+	@Operation(summary = "Generate student document PDF", description = "Generates leaving certificate, bonafide certificate, or student ID card.")
+	public ResponseEntity<byte[]> generatedDocument(
+			@PathVariable UUID studentId,
+			@PathVariable String type) {
+		var document = studentGeneratedDocumentService.generate(studentId, type);
+		return file(document.content(), document.filename(), document.contentType());
 	}
 
 	@PutMapping("/{studentId}/profile")

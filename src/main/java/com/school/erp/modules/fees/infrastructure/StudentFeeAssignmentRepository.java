@@ -126,28 +126,44 @@ public interface StudentFeeAssignmentRepository
 					  and installment.status not in (:paidStatus, :cancelledStatus)
 					  and installment.dueDate < :asOf
 					  and assignment.balanceAmount >= :minimumBalance
+					  and (:academicYearId is null or assignment.academicYearEntity.id = :academicYearId)
+					  and (:classId is null or assignment.classEntity.id = :classId)
 					  and (:academicYear is null or lower(assignment.academicYear) = lower(:academicYear))
 					  and (:className is null or lower(assignment.className) = lower(:className))
 					  and (:sectionName is null or lower(assignment.sectionName) = lower(:sectionName))
+					  and (:studentName is null or lower(student.admissionNumber) like lower(concat('%', :studentName, '%'))
+					    or lower(student.firstName) like lower(concat('%', :studentName, '%'))
+					    or lower(student.middleName) like lower(concat('%', :studentName, '%'))
+					    or lower(student.lastName) like lower(concat('%', :studentName, '%')))
 					""",
 			countQuery = """
 					select count(distinct assignment)
 					from StudentFeeAssignment assignment
 					join assignment.installments installment
+					join assignment.student student
 					where assignment.deleted = false
 					  and installment.deleted = false
 					  and installment.status not in (:paidStatus, :cancelledStatus)
 					  and installment.dueDate < :asOf
 					  and assignment.balanceAmount >= :minimumBalance
+					  and (:academicYearId is null or assignment.academicYearEntity.id = :academicYearId)
+					  and (:classId is null or assignment.classEntity.id = :classId)
 					  and (:academicYear is null or lower(assignment.academicYear) = lower(:academicYear))
 					  and (:className is null or lower(assignment.className) = lower(:className))
 					  and (:sectionName is null or lower(assignment.sectionName) = lower(:sectionName))
+					  and (:studentName is null or lower(student.admissionNumber) like lower(concat('%', :studentName, '%'))
+					    or lower(student.firstName) like lower(concat('%', :studentName, '%'))
+					    or lower(student.middleName) like lower(concat('%', :studentName, '%'))
+					    or lower(student.lastName) like lower(concat('%', :studentName, '%')))
 					""")
 	Page<StudentFeeAssignment> findDefaulters(
 			@Param("asOf") LocalDate asOf,
+			@Param("academicYearId") UUID academicYearId,
+			@Param("classId") UUID classId,
 			@Param("academicYear") String academicYear,
 			@Param("className") String className,
 			@Param("sectionName") String sectionName,
+			@Param("studentName") String studentName,
 			@Param("minimumBalance") BigDecimal minimumBalance,
 			@Param("paidStatus") FeeInstallmentStatus paidStatus,
 			@Param("cancelledStatus") FeeInstallmentStatus cancelledStatus,

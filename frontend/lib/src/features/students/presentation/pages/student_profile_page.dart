@@ -568,6 +568,36 @@ class _DocumentsTab extends ConsumerWidget {
           _SectionHeader(
             title: 'Documents',
             actions: [
+              OutlinedButton.icon(
+                onPressed: () => _downloadGeneratedDocument(
+                  context,
+                  ref,
+                  student,
+                  'LEAVING_CERTIFICATE',
+                ),
+                icon: const Icon(Icons.school_outlined),
+                label: const Text('LC'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _downloadGeneratedDocument(
+                  context,
+                  ref,
+                  student,
+                  'BONAFIDE_CERTIFICATE',
+                ),
+                icon: const Icon(Icons.verified_outlined),
+                label: const Text('Bonafide'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _downloadGeneratedDocument(
+                  context,
+                  ref,
+                  student,
+                  'STUDENT_ID_CARD',
+                ),
+                icon: const Icon(Icons.badge_outlined),
+                label: const Text('ID Card'),
+              ),
               FilledButton.icon(
                 onPressed: () => _showDocumentDialog(context, ref, student),
                 icon: const Icon(Icons.upload_file_outlined),
@@ -2557,6 +2587,24 @@ Future<void> _showDocumentDialog(
   fileUrl.dispose();
   storageKey.dispose();
   remarks.dispose();
+}
+
+Future<void> _downloadGeneratedDocument(
+  BuildContext context,
+  WidgetRef ref,
+  StudentProfileModel student,
+  String type,
+) async {
+  final result = await ref
+      .read(studentsRepositoryProvider)
+      .downloadGeneratedDocument(student.id, type);
+  if (!context.mounted) {
+    return;
+  }
+  result.when(
+    success: (_) => _snack(context, 'Document downloaded.'),
+    failure: (failure) => _snack(context, failure.message),
+  );
 }
 
 Future<void> _toggleStatus(

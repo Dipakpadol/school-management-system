@@ -7,10 +7,7 @@ import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
-import '../../../dashboard/presentation/controllers/menu_controller.dart';
-import '../../../users/data/models/user_models.dart';
-import '../../../users/presentation/controllers/users_providers.dart';
-import '../../data/models/role_permission_models.dart';
+import '../../data/models/settings_models.dart';
 import '../../data/repositories/settings_repository_impl.dart';
 import '../controllers/settings_providers.dart';
 
@@ -19,7 +16,7 @@ class SettingsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final roles = ref.watch(rolesProvider);
+    final settings = ref.watch(appSettingsProvider);
 
     return AdminShell(
       title: 'Settings',
@@ -30,11 +27,11 @@ class SettingsPage extends ConsumerWidget {
           context.go(AppRoutes.login);
         }
       },
-      child: roles.when(
-        data: (items) => _SettingsContent(roles: items),
+      child: settings.when(
+        data: (value) => _SettingsContent(settings: value),
         error: (error, _) => AppErrorState(
-          message: error.toString().replaceFirst('Exception: ', ''),
-          onRetry: () => ref.invalidate(rolesProvider),
+          message: _message(error),
+          onRetry: () => ref.invalidate(appSettingsProvider),
         ),
         loading: () => const AppLoadingState(label: 'Loading settings'),
       ),
@@ -42,458 +39,352 @@ class SettingsPage extends ConsumerWidget {
   }
 }
 
-class _SettingsContent extends ConsumerWidget {
-  const _SettingsContent({required this.roles});
+class _SettingsContent extends StatelessWidget {
+  const _SettingsContent({required this.settings});
 
-  final List<RoleModel> roles;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final selectedRoleId = ref.watch(selectedSettingsRoleIdProvider);
-    final selectedRoleExists = roles.any((role) => role.id == selectedRoleId);
-    final effectiveRoleId = selectedRoleExists
-        ? selectedRoleId
-        : (roles.isEmpty ? null : roles.first.id);
-
-    if (selectedRoleId != effectiveRoleId && effectiveRoleId != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(selectedSettingsRoleIdProvider.notifier).set(effectiveRoleId);
-      });
-    }
-
-    return Column(
-      children: [
-        _SettingsHeader(
-          roles: roles,
-          selectedRoleId: effectiveRoleId,
-          onRoleChanged: (roleId) {
-            ref.read(selectedSettingsRoleIdProvider.notifier).set(roleId);
-          },
-          onRefresh: () {
-            ref.invalidate(rolesProvider);
-            if (effectiveRoleId != null) {
-              ref.invalidate(rolePermissionMatrixProvider(effectiveRoleId));
-            }
-          },
-        ),
-        const Divider(height: 1),
-        Expanded(
-          child: effectiveRoleId == null
-              ? const Center(child: Text('No roles available.'))
-              : _RolePermissionPanel(roleId: effectiveRoleId),
-        ),
-      ],
-    );
-  }
-}
-
-class _SettingsHeader extends StatelessWidget {
-  const _SettingsHeader({
-    required this.roles,
-    required this.selectedRoleId,
-    required this.onRoleChanged,
-    required this.onRefresh,
-  });
-
-  final List<RoleModel> roles;
-  final String? selectedRoleId;
-  final ValueChanged<String?> onRoleChanged;
-  final VoidCallback onRefresh;
+  final ApplicationSettingsModel settings;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
-        child: Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            SizedBox(
-              width: 360,
-              child: DropdownButtonFormField<String>(
-                initialValue: selectedRoleId,
-                decoration: const InputDecoration(
-                  labelText: 'Role',
-                  prefixIcon: Icon(Icons.admin_panel_settings_outlined),
+    return DefaultTabController(
+      length: _groups.length,
+      child: Column(
+        children: [
+          const Material(
+            color: Colors.white,
+            child: TabBar(
+              isScrollable: true,
+              tabs: [
+                Tab(icon: Icon(Icons.school_outlined), text: 'School Profile'),
+                Tab(icon: Icon(Icons.calendar_month_outlined), text: 'Academic'),
+                Tab(icon: Icon(Icons.payments_outlined), text: 'Fees'),
+                Tab(
+                  icon: Icon(Icons.notifications_active_outlined),
+                  text: 'Notifications',
                 ),
-                items: [
-                  for (final role in roles)
-                    DropdownMenuItem(
-                      value: role.id,
-                      child: Text(role.displayName),
-                    ),
-                ],
-                onChanged: roles.isEmpty ? null : onRoleChanged,
-              ),
+                Tab(icon: Icon(Icons.settings_outlined), text: 'System'),
+              ],
             ),
-            OutlinedButton.icon(
-              onPressed: onRefresh,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Refresh'),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: TabBarView(
+              children: [
+                for (final group in _groups)
+                  _SettingsGroupEditor(
+                    group: group,
+                    initialSettings: settings,
+                  ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _RolePermissionPanel extends ConsumerWidget {
-  const _RolePermissionPanel({required this.roleId});
+class _SettingsGroupEditor extends ConsumerStatefulWidget {
+  const _SettingsGroupEditor({
+    required this.group,
+    required this.initialSettings,
+  });
 
-  final String roleId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final matrix = ref.watch(rolePermissionMatrixProvider(roleId));
-
-    return matrix.when(
-      data: (data) => _RolePermissionEditor(matrix: data),
-      error: (error, _) => AppErrorState(
-        message: error.toString().replaceFirst('Exception: ', ''),
-        onRetry: () => ref.invalidate(rolePermissionMatrixProvider(roleId)),
-      ),
-      loading: () => const AppLoadingState(label: 'Loading permissions'),
-    );
-  }
-}
-
-class _RolePermissionEditor extends ConsumerStatefulWidget {
-  const _RolePermissionEditor({required this.matrix});
-
-  final RolePermissionMatrixModel matrix;
+  final _SettingsGroup group;
+  final ApplicationSettingsModel initialSettings;
 
   @override
-  ConsumerState<_RolePermissionEditor> createState() =>
-      _RolePermissionEditorState();
+  ConsumerState<_SettingsGroupEditor> createState() =>
+      _SettingsGroupEditorState();
 }
 
-class _RolePermissionEditorState extends ConsumerState<_RolePermissionEditor> {
-  final _searchController = TextEditingController();
-  late Set<String> _selectedIds;
-  String _query = '';
+class _SettingsGroupEditorState extends ConsumerState<_SettingsGroupEditor> {
+  late ApplicationSettingsModel _draft;
+  bool _editing = false;
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    _selectedIds = _assignedIds(widget.matrix);
+    _draft = widget.initialSettings;
   }
 
   @override
-  void didUpdateWidget(covariant _RolePermissionEditor oldWidget) {
+  void didUpdateWidget(covariant _SettingsGroupEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.matrix.roleId != widget.matrix.roleId ||
-        oldWidget.matrix.permissions != widget.matrix.permissions) {
-      _selectedIds = _assignedIds(widget.matrix);
-      _query = '';
-      _searchController.clear();
+    if (!_editing && oldWidget.initialSettings != widget.initialSettings) {
+      _draft = widget.initialSettings;
     }
   }
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final permissions = _filteredPermissions(widget.matrix.permissions, _query);
-    final assignedCount = _selectedIds.length;
-
-    return Column(
+    return ListView(
+      padding: const EdgeInsets.all(24),
       children: [
-        Material(
-          color: const Color(0xFFF8FAFC),
+        Card(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
-            child: Row(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.matrix.displayName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                Row(
+                  children: [
+                    Icon(widget.group.icon),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        widget.group.title,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w800),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$assignedCount of ${widget.matrix.permissions.length} permissions selected',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.outline,
-                        ),
+                    ),
+                    if (_editing) ...[
+                      TextButton(
+                        onPressed: _saving ? null : _cancel,
+                        child: const Text('Cancel'),
                       ),
-                    ],
-                  ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: _saving ? null : _save,
+                        icon: _saving
+                            ? const SizedBox.square(
+                                dimension: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.save_outlined),
+                        label: const Text('Save'),
+                      ),
+                    ] else
+                      OutlinedButton.icon(
+                        onPressed: () => setState(() => _editing = true),
+                        icon: const Icon(Icons.edit_outlined),
+                        label: const Text('Edit'),
+                      ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: _saving ? null : _save,
-                  icon: _saving
-                      ? const SizedBox.square(
-                          dimension: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.save_outlined),
-                  label: const Text('Save'),
+                const SizedBox(height: 16),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final columns = constraints.maxWidth >= 820 ? 2 : 1;
+                    return GridView.count(
+                      crossAxisCount: columns,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: columns == 1 ? 5 : 4.4,
+                      physics: const NeverScrollableScrollPhysics(),
+                      shrinkWrap: true,
+                      children: [
+                        for (final field in widget.group.fields)
+                          _SettingField(
+                            field: field,
+                            enabled: _editing && !_saving,
+                            value: _draft.value(widget.group.id, field.key),
+                            onChanged: (value) {
+                              setState(() {
+                                _draft = _draft.copyWithValue(
+                                  widget.group.id,
+                                  field.key,
+                                  value,
+                                );
+                              });
+                            },
+                          ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
-          child: TextField(
-            controller: _searchController,
-            decoration: const InputDecoration(
-              labelText: 'Search permissions',
-              prefixIcon: Icon(Icons.search),
-            ),
-            onChanged: (value) {
-              setState(() {
-                _query = value.trim();
-              });
-            },
-          ),
-        ),
-        Expanded(
-          child: permissions.isEmpty
-              ? const Center(child: Text('No permissions found.'))
-              : LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (constraints.maxWidth >= 880) {
-                      return _PermissionTable(
-                        permissions: permissions,
-                        selectedIds: _selectedIds,
-                        onChanged: _toggle,
-                      );
-                    }
-                    return _PermissionList(
-                      permissions: permissions,
-                      selectedIds: _selectedIds,
-                      onChanged: _toggle,
-                    );
-                  },
-                ),
-        ),
       ],
     );
   }
 
+  void _cancel() {
+    setState(() {
+      _draft = widget.initialSettings;
+      _editing = false;
+    });
+  }
+
   Future<void> _save() async {
     setState(() => _saving = true);
-    final roleId = widget.matrix.roleId;
     final result = await ref
         .read(settingsRepositoryProvider)
-        .updateRolePermissions(roleId, _selectedIds.toList(growable: false));
-
+        .updateAppSettings(_draft);
     if (!mounted) {
       return;
     }
-
     setState(() => _saving = false);
     result.when(
-      success: (matrix) {
-        setState(() {
-          _selectedIds = _assignedIds(matrix);
-        });
-        ref.invalidate(rolePermissionMatrixProvider(roleId));
-        ref.invalidate(currentMenuProvider);
-        _snack(context, 'Role permissions updated.');
+      success: (_) {
+        ref.invalidate(appSettingsProvider);
+        setState(() => _editing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Settings saved.')),
+        );
       },
-      failure: (failure) => _snack(context, failure.message),
-    );
-  }
-
-  void _toggle(String permissionId, bool value) {
-    setState(() {
-      if (value) {
-        _selectedIds.add(permissionId);
-      } else {
-        _selectedIds.remove(permissionId);
-      }
-    });
-  }
-}
-
-class _PermissionTable extends StatelessWidget {
-  const _PermissionTable({
-    required this.permissions,
-    required this.selectedIds,
-    required this.onChanged,
-  });
-
-  final List<PermissionOptionModel> permissions;
-  final Set<String> selectedIds;
-  final void Function(String permissionId, bool value) onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: SizedBox(
-        width: double.infinity,
-        child: DataTable(
-          headingRowHeight: 44,
-          dataRowMinHeight: 58,
-          dataRowMaxHeight: 72,
-          columns: const [
-            DataColumn(label: Text('Allow')),
-            DataColumn(label: Text('Permission')),
-            DataColumn(label: Text('Module')),
-            DataColumn(label: Text('Description')),
-          ],
-          rows: [
-            for (final permission in permissions)
-              DataRow(
-                cells: [
-                  DataCell(
-                    Checkbox(
-                      value: selectedIds.contains(permission.id),
-                      onChanged: (value) {
-                        onChanged(permission.id, value ?? false);
-                      },
-                    ),
-                  ),
-                  DataCell(_PermissionName(permission: permission)),
-                  DataCell(Text(_moduleName(permission.code))),
-                  DataCell(
-                    SizedBox(
-                      width: 360,
-                      child: Text(
-                        permission.description?.trim().isNotEmpty ?? false
-                            ? permission.description!
-                            : 'No description',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-          ],
-        ),
+      failure: (failure) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(failure.message)),
       ),
     );
   }
 }
 
-class _PermissionList extends StatelessWidget {
-  const _PermissionList({
-    required this.permissions,
-    required this.selectedIds,
+class _SettingField extends StatelessWidget {
+  const _SettingField({
+    required this.field,
+    required this.value,
+    required this.enabled,
     required this.onChanged,
   });
 
-  final List<PermissionOptionModel> permissions;
-  final Set<String> selectedIds;
-  final void Function(String permissionId, bool value) onChanged;
+  final _SettingsField field;
+  final String value;
+  final bool enabled;
+  final ValueChanged<String> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.all(24),
-      itemCount: permissions.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final permission = permissions[index];
-        return Card(
-          child: CheckboxListTile(
-            value: selectedIds.contains(permission.id),
-            onChanged: (value) => onChanged(permission.id, value ?? false),
-            title: _PermissionName(permission: permission),
-            subtitle: Text(
-              permission.description?.trim().isNotEmpty ?? false
-                  ? permission.description!
-                  : _moduleName(permission.code),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            controlAffinity: ListTileControlAffinity.leading,
-          ),
-        );
-      },
+    if (field.kind == _FieldKind.boolean) {
+      return SwitchListTile(
+        value: value.toLowerCase() == 'true',
+        onChanged: enabled ? (next) => onChanged(next.toString()) : null,
+        title: Text(field.label),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+      );
+    }
+    if (field.options.isNotEmpty) {
+      final current = field.options.contains(value) ? value : field.options.first;
+      return DropdownButtonFormField<String>(
+        initialValue: current,
+        decoration: InputDecoration(
+          labelText: field.label,
+          prefixIcon: Icon(field.icon),
+        ),
+        items: [
+          for (final option in field.options)
+            DropdownMenuItem(value: option, child: Text(option)),
+        ],
+        onChanged: enabled ? (next) => onChanged(next ?? current) : null,
+      );
+    }
+    return TextFormField(
+      initialValue: value,
+      enabled: enabled,
+      decoration: InputDecoration(
+        labelText: field.label,
+        prefixIcon: Icon(field.icon),
+      ),
+      keyboardType: field.kind == _FieldKind.number
+          ? const TextInputType.numberWithOptions(decimal: true)
+          : TextInputType.text,
+      onChanged: onChanged,
     );
   }
 }
 
-class _PermissionName extends StatelessWidget {
-  const _PermissionName({required this.permission});
+enum _FieldKind { text, number, boolean }
 
-  final PermissionOptionModel permission;
+class _SettingsGroup {
+  const _SettingsGroup({
+    required this.id,
+    required this.title,
+    required this.icon,
+    required this.fields,
+  });
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          permission.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          permission.code,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.primary,
-          ),
-        ),
-      ],
-    );
-  }
+  final String id;
+  final String title;
+  final IconData icon;
+  final List<_SettingsField> fields;
 }
 
-Set<String> _assignedIds(RolePermissionMatrixModel matrix) {
-  return matrix.permissions
-      .where((permission) => permission.assigned)
-      .map((permission) => permission.id)
-      .toSet();
+class _SettingsField {
+  const _SettingsField({
+    required this.key,
+    required this.label,
+    required this.icon,
+    this.kind = _FieldKind.text,
+    this.options = const [],
+  });
+
+  final String key;
+  final String label;
+  final IconData icon;
+  final _FieldKind kind;
+  final List<String> options;
 }
 
-List<PermissionOptionModel> _filteredPermissions(
-  List<PermissionOptionModel> permissions,
-  String query,
-) {
-  if (query.isEmpty) {
-    return permissions;
-  }
-  final normalized = query.toLowerCase();
-  return permissions.where((permission) {
-    return permission.code.toLowerCase().contains(normalized) ||
-        permission.name.toLowerCase().contains(normalized) ||
-        (permission.description ?? '').toLowerCase().contains(normalized);
-  }).toList(growable: false);
-}
+const _groups = [
+  _SettingsGroup(
+    id: 'schoolProfile',
+    title: 'School Profile Settings',
+    icon: Icons.school_outlined,
+    fields: [
+      _SettingsField(key: 'schoolName', label: 'School name', icon: Icons.school_outlined),
+      _SettingsField(key: 'schoolCode', label: 'School code', icon: Icons.tag_outlined),
+      _SettingsField(key: 'address', label: 'Address', icon: Icons.location_on_outlined),
+      _SettingsField(key: 'contactNumber', label: 'Contact number', icon: Icons.call_outlined),
+      _SettingsField(key: 'email', label: 'Email', icon: Icons.email_outlined),
+      _SettingsField(key: 'logoUrl', label: 'Logo URL', icon: Icons.image_outlined),
+      _SettingsField(key: 'principalName', label: 'Principal name', icon: Icons.person_outline),
+      _SettingsField(key: 'affiliationBoard', label: 'Affiliation / board', icon: Icons.verified_outlined),
+    ],
+  ),
+  _SettingsGroup(
+    id: 'academic',
+    title: 'Academic Settings',
+    icon: Icons.calendar_month_outlined,
+    fields: [
+      _SettingsField(key: 'currentAcademicYearId', label: 'Current academic year', icon: Icons.calendar_today_outlined),
+      _SettingsField(key: 'defaultAttendanceTime', label: 'Default attendance time', icon: Icons.schedule_outlined),
+      _SettingsField(key: 'workingDays', label: 'Working days', icon: Icons.date_range_outlined),
+      _SettingsField(key: 'holidayConfiguration', label: 'Holiday configuration', icon: Icons.event_busy_outlined),
+    ],
+  ),
+  _SettingsGroup(
+    id: 'fees',
+    title: 'Fee Settings',
+    icon: Icons.payments_outlined,
+    fields: [
+      _SettingsField(key: 'receiptPrefix', label: 'Receipt prefix', icon: Icons.receipt_outlined),
+      _SettingsField(key: 'receiptNumberFormat', label: 'Receipt number format', icon: Icons.format_list_numbered_outlined),
+      _SettingsField(key: 'lateFeeDefaultAmount', label: 'Late fee default', icon: Icons.warning_amber_outlined, kind: _FieldKind.number),
+      _SettingsField(key: 'paymentModesEnabled', label: 'Payment modes enabled', icon: Icons.account_balance_wallet_outlined),
+      _SettingsField(key: 'onlinePaymentEnabled', label: 'Online payment enabled', icon: Icons.public_outlined, kind: _FieldKind.boolean),
+    ],
+  ),
+  _SettingsGroup(
+    id: 'notifications',
+    title: 'Notification Settings',
+    icon: Icons.notifications_active_outlined,
+    fields: [
+      _SettingsField(key: 'emailEnabled', label: 'Email enabled', icon: Icons.email_outlined, kind: _FieldKind.boolean),
+      _SettingsField(key: 'smsEnabled', label: 'SMS enabled', icon: Icons.sms_outlined, kind: _FieldKind.boolean),
+      _SettingsField(key: 'whatsAppEnabled', label: 'WhatsApp enabled', icon: Icons.chat_outlined, kind: _FieldKind.boolean),
+      _SettingsField(key: 'reminderDaysBeforeDueDate', label: 'Reminder days before due date', icon: Icons.alarm_outlined, kind: _FieldKind.number),
+      _SettingsField(key: 'schedulerEnabled', label: 'Scheduler enabled', icon: Icons.update_outlined, kind: _FieldKind.boolean),
+    ],
+  ),
+  _SettingsGroup(
+    id: 'system',
+    title: 'System Settings',
+    icon: Icons.settings_outlined,
+    fields: [
+      _SettingsField(key: 'timezone', label: 'Timezone', icon: Icons.public_outlined),
+      _SettingsField(key: 'dateFormat', label: 'Date format', icon: Icons.date_range_outlined, options: ['yyyy-MM-dd', 'dd-MM-yyyy', 'MM/dd/yyyy']),
+      _SettingsField(key: 'language', label: 'Language', icon: Icons.language_outlined, options: ['en', 'hi']),
+      _SettingsField(key: 'themePreference', label: 'Theme preference', icon: Icons.contrast_outlined, options: ['system', 'light', 'dark']),
+      _SettingsField(key: 'maintenanceMode', label: 'Maintenance mode', icon: Icons.construction_outlined, kind: _FieldKind.boolean),
+    ],
+  ),
+];
 
-String _moduleName(String permissionCode) {
-  final prefix = permissionCode.split('_').first;
-  return prefix
-      .toLowerCase()
-      .split('-')
-      .where((word) => word.isNotEmpty)
-      .map((word) => '${word[0].toUpperCase()}${word.substring(1)}')
-      .join(' ');
-}
-
-void _snack(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+String _message(Object error) {
+  return error.toString().replaceFirst('Exception: ', '');
 }

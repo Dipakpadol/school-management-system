@@ -212,6 +212,21 @@ class StudentsRepositoryImpl implements StudentsRepository {
   }
 
   @override
+  Future<Result<void>> downloadGeneratedDocument(
+    String studentId,
+    String type,
+  ) {
+    return _guard(() async {
+      final bytes = await _remoteDataSource.generatedDocument(studentId, type);
+      await downloadBytes(
+        bytes,
+        "student-$studentId-${type.toLowerCase().replaceAll('_', '-')}.pdf",
+        'application/pdf',
+      );
+    });
+  }
+
+  @override
   Future<Result<StudentImportResultModel>> importExcel(
     List<int> bytes,
     String filename,

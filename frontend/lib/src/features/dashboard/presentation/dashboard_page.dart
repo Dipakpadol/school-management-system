@@ -115,21 +115,7 @@ class _DashboardContent extends StatelessWidget {
             ),
           ),
         ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(24, 18, 24, 8),
-          sliver: SliverToBoxAdapter(
-            child: Text(
-              'Modules',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-          sliver: _ModuleGrid(modules: modules),
-        ),
+        
       ],
     );
   }

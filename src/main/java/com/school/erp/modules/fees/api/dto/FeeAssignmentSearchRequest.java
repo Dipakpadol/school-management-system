@@ -11,6 +11,8 @@ import jakarta.validation.constraints.Size;
 @Schema(description = "Student fee assignment search filters.")
 public record FeeAssignmentSearchRequest(
 		UUID studentId,
+		UUID academicYearId,
+		UUID classId,
 		@Size(max = 40) @Schema(example = "ADM-2026-0001") String admissionNumber,
 		@Size(max = 120) @Schema(example = "aarav") String studentName,
 		@Size(max = 20) @Schema(example = "2026-2027") String academicYear,

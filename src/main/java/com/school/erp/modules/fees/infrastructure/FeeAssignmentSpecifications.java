@@ -29,6 +29,12 @@ public final class FeeAssignmentSpecifications {
 			if (request.studentId() != null) {
 				predicates.add(criteriaBuilder.equal(student.get("id"), request.studentId()));
 			}
+			if (request.academicYearId() != null) {
+				predicates.add(criteriaBuilder.equal(root.get("academicYearEntity").get("id"), request.academicYearId()));
+			}
+			if (request.classId() != null) {
+				predicates.add(criteriaBuilder.equal(root.get("classEntity").get("id"), request.classId()));
+			}
 			if (StringUtils.hasText(request.admissionNumber())) {
 				predicates.add(criteriaBuilder.equal(
 						criteriaBuilder.lower(student.get("admissionNumber")),

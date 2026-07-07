@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,8 @@ import com.school.erp.modules.hostel.api.dto.HostelFeeAssignmentRequest;
 import com.school.erp.modules.hostel.api.dto.HostelFeeAssignmentResponse;
 import com.school.erp.modules.hostel.api.dto.HostelFeeStructureRequest;
 import com.school.erp.modules.hostel.api.dto.HostelFeeStructureResponse;
+import com.school.erp.modules.hostel.api.dto.HostelRequest;
+import com.school.erp.modules.hostel.api.dto.HostelRoomRequest;
 import com.school.erp.modules.hostel.api.dto.HostelRoomDetailsResponse;
 import com.school.erp.modules.hostel.api.dto.HostelRoomSummaryResponse;
 import com.school.erp.modules.hostel.api.dto.HostelStudentRoomResponse;
@@ -93,6 +96,139 @@ public class HostelService {
 
 	@Transactional(readOnly = true)
 	public List<HostelSummaryResponse> hostels() {
+		return hostels(true);
+	}
+
+	@Transactional(readOnly = true)
+	public List<HostelSummaryResponse> hostels(boolean activeOnly) {
+		List<Hostel> hostels = activeOnly
+				? hostelRepository.findAllByActiveTrueAndDeletedFalseOrderByNameAsc()
+				: hostelRepository.findAllByDeletedFalseOrderByNameAsc();
+		return hostels.stream()
+				.map(hostelMapper::toHostelSummary)
+				.toList();
+	}
+
+	@Transactional
+	public HostelSummaryResponse createHostel(HostelRequest request) {
+		ensureHostelCodeUnique(request.code(), null);
+		Hostel hostel = hostelRepository.save(new Hostel(request.code(), request.name(), request.address()));
+		if (!request.activeFlag()) {
+			hostel.update(request.code(), request.name(), request.address(), false);
+		}
+		HostelSummaryResponse response = hostelMapper.toHostelSummary(hostel);
+		audit("Hostel", response.id(), "CREATE", null, response);
+		return response;
+	}
+
+	@Transactional
+	public HostelSummaryResponse updateHostel(UUID hostelId, HostelRequest request) {
+		Hostel hostel = loadHostel(hostelId);
+		HostelSummaryResponse oldValue = hostelMapper.toHostelSummary(hostel);
+		ensureHostelCodeUnique(request.code(), hostelId);
+		hostel.update(request.code(), request.name(), request.address(), request.activeFlag());
+		HostelSummaryResponse response = hostelMapper.toHostelSummary(hostel);
+		audit("Hostel", response.id(), "UPDATE", oldValue, response);
+		return response;
+	}
+
+	@Transactional
+	public HostelSummaryResponse deleteHostel(UUID hostelId) {
+		Hostel hostel = loadHostel(hostelId);
+		if (allocationRepository.existsByHostelIdAndStatusAndDeletedFalse(hostelId, HostelAllocationStatus.ACTIVE)) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Hostel with active allocations cannot be deleted.");
+		}
+		HostelSummaryResponse oldValue = hostelMapper.toHostelSummary(hostel);
+		String actor = currentActor();
+		hostel.getRooms().stream()
+				.filter(room -> !room.isDeleted())
+				.forEach(room -> {
+					room.getBeds().stream()
+							.filter(bed -> !bed.isDeleted())
+							.forEach(bed -> bed.softDelete(actor));
+					room.softDelete(actor);
+				});
+		hostel.softDelete(actor);
+		audit("Hostel", hostelId, "DELETE", oldValue, Map.of("deleted", true, "hostelId", hostelId));
+		return hostelMapper.toHostelSummary(hostel);
+	}
+
+	@Transactional(readOnly = true)
+	public List<HostelRoomSummaryResponse> allRooms(boolean activeOnly) {
+		List<HostelRoom> rooms = activeOnly
+				? roomRepository.findByActiveTrueAndDeletedFalseOrderByHostelNameAscRoomNumberAsc()
+				: roomRepository.findByDeletedFalseOrderByHostelNameAscRoomNumberAsc();
+		return rooms.stream()
+				.map(room -> hostelMapper.toRoomSummary(room, 0, Set.of()))
+				.toList();
+	}
+
+	@Transactional
+	public HostelRoomSummaryResponse createRoom(HostelRoomRequest request) {
+		Hostel hostel = loadHostel(request.hostelId());
+		ensureRoomNumberUnique(hostel.getId(), request.roomNumber(), null);
+		HostelRoom room = roomRepository.save(new HostelRoom(
+				hostel,
+				request.roomNumber(),
+				request.roomType(),
+				request.capacity(),
+				request.usesBeds()));
+		if (!request.activeFlag()) {
+			room.update(request.roomNumber(), request.roomType(), request.capacity(), request.usesBeds(), false);
+		}
+		syncBeds(room, request.capacity(), request.usesBeds());
+		HostelRoomSummaryResponse response = hostelMapper.toRoomSummary(room, 0, Set.of());
+		audit("HostelRoom", response.id(), "CREATE", null, response);
+		return response;
+	}
+
+	@Transactional
+	public HostelRoomSummaryResponse updateRoom(UUID roomId, HostelRoomRequest request) {
+		HostelRoom room = loadRoom(roomId);
+		HostelRoomSummaryResponse oldValue = hostelMapper.toRoomSummary(room, 0, Set.of());
+		Hostel hostel = loadHostel(request.hostelId());
+		if (!room.getHostel().getId().equals(hostel.getId())) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Rooms cannot be moved to another hostel after creation.");
+		}
+		ensureRoomNumberUnique(hostel.getId(), request.roomNumber(), roomId);
+		ensureRoomCapacity(room, request.capacity());
+		if (room.isHasBeds() && !request.usesBeds()
+				&& allocationRepository.existsActiveBedAllocation(roomId, HostelAllocationStatus.ACTIVE)) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Bed concept cannot be disabled while active bed allocations exist.");
+		}
+		room.update(request.roomNumber(), request.roomType(), request.capacity(), request.usesBeds(), request.activeFlag());
+		syncBeds(room, request.capacity(), request.usesBeds());
+		HostelRoomSummaryResponse response = hostelMapper.toRoomSummary(room, 0, Set.of());
+		audit("HostelRoom", response.id(), "UPDATE", oldValue, response);
+		return response;
+	}
+
+	@Transactional
+	public HostelRoomSummaryResponse deleteRoom(UUID roomId) {
+		HostelRoom room = loadRoom(roomId);
+		if (allocationRepository.existsByRoomIdAndStatusAndDeletedFalse(roomId, HostelAllocationStatus.ACTIVE)) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Room with active allocations cannot be deleted.");
+		}
+		HostelRoomSummaryResponse oldValue = hostelMapper.toRoomSummary(room, 0, Set.of());
+		String actor = currentActor();
+		room.getBeds().stream()
+				.filter(bed -> !bed.isDeleted())
+				.forEach(bed -> bed.softDelete(actor));
+		room.softDelete(actor);
+		audit("HostelRoom", roomId, "DELETE", oldValue, Map.of("deleted", true, "roomId", roomId));
+		return oldValue;
+	}
+
+	@Transactional(readOnly = true)
+	public List<HostelSummaryResponse> activeHostels() {
 		return hostelRepository.findAllByActiveTrueAndDeletedFalseOrderByNameAsc().stream()
 				.map(hostelMapper::toHostelSummary)
 				.toList();
@@ -408,6 +544,71 @@ public class HostelService {
 		HostelFeeAssignmentResponse response = new HostelFeeAssignmentResponse(assignments.size(), 0, assignments);
 		audit("HostelFeeAssignment", allocation.getId(), "HOSTEL_FEE_ASSIGNED_TO_STUDENT", null, response);
 		return response;
+	}
+
+	private void ensureHostelCodeUnique(String code, UUID existingId) {
+		hostelRepository.findByCodeIgnoreCaseAndDeletedFalse(code)
+				.filter(existing -> existingId == null || !existing.getId().equals(existingId))
+				.ifPresent(existing -> {
+					throw new BusinessException(ErrorCode.CONFLICT, "Hostel code already exists.");
+				});
+	}
+
+	private void ensureRoomNumberUnique(UUID hostelId, String roomNumber, UUID existingId) {
+		roomRepository.findByHostelIdAndRoomNumberIgnoreCaseAndDeletedFalse(hostelId, roomNumber)
+				.filter(existing -> existingId == null || !existing.getId().equals(existingId))
+				.ifPresent(existing -> {
+					throw new BusinessException(
+							ErrorCode.CONFLICT,
+							"Room number already exists for the selected hostel.");
+				});
+	}
+
+	private void ensureRoomCapacity(HostelRoom room, int capacity) {
+		long maxOccupancy = allocationRepository.activeOccupancyCountsByRoom(room.getId(), HostelAllocationStatus.ACTIVE)
+				.stream()
+				.max(Long::compareTo)
+				.orElse(0L);
+		if (maxOccupancy > capacity) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Room capacity cannot be lower than active occupancy.");
+		}
+	}
+
+	private void syncBeds(HostelRoom room, int capacity, boolean usesBeds) {
+		List<HostelBed> beds = room.getBeds().stream()
+				.filter(bed -> !bed.isDeleted())
+				.sorted(Comparator.comparing(HostelBed::getBedNumber))
+				.toList();
+		if (!usesBeds) {
+			beds.forEach(bed -> bed.update(bed.getBedNumber(), false));
+			return;
+		}
+		Set<String> expected = new LinkedHashSet<>();
+		for (int bedIndex = 1; bedIndex <= capacity; bedIndex++) {
+			String bedNumber = "B" + bedIndex;
+			expected.add(bedNumber.toUpperCase());
+			Optional<HostelBed> existing = beds.stream()
+					.filter(bed -> bedNumber.equalsIgnoreCase(bed.getBedNumber()))
+					.findFirst();
+			if (existing.isPresent()) {
+				existing.get().update(existing.get().getBedNumber(), true);
+			}
+			else {
+				bedRepository.save(room.addBed(bedNumber));
+			}
+		}
+		for (HostelBed bed : beds) {
+			if (!expected.contains(firstText(bed.getBedNumber(), "").toUpperCase())) {
+				if (allocationRepository.existsByBedIdAndStatusAndDeletedFalse(bed.getId(), HostelAllocationStatus.ACTIVE)) {
+					throw new BusinessException(
+							ErrorCode.BUSINESS_RULE_VIOLATION,
+							"Capacity cannot remove beds that have active allocations.");
+				}
+				bed.update(bed.getBedNumber(), false);
+			}
+		}
 	}
 
 	private HostelAllocation createActiveAllocation(

@@ -29,11 +29,65 @@ class HostelRemoteDataSource {
     return _unwrapList(response.data, HostelSummaryModel.fromJson);
   }
 
+  Future<HostelSummaryModel> createHostel(Map<String, dynamic> payload) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.hostels,
+      data: payload,
+    );
+    return HostelSummaryModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<HostelSummaryModel> updateHostel(
+    String id,
+    Map<String, dynamic> payload,
+  ) async {
+    final response = await _apiClient.put<Map<String, dynamic>>(
+      ApiPaths.hostel(id),
+      data: payload,
+    );
+    return HostelSummaryModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<HostelSummaryModel> deleteHostel(String id) async {
+    final response = await _apiClient.delete<Map<String, dynamic>>(
+      ApiPaths.hostel(id),
+    );
+    return HostelSummaryModel.fromJson(_unwrapData(response.data));
+  }
+
   Future<List<HostelRoomSummaryModel>> rooms(String academicYearId) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.hostelAcademicYearRooms(academicYearId),
     );
     return _unwrapList(response.data, HostelRoomSummaryModel.fromJson);
+  }
+
+  Future<HostelRoomSummaryModel> createRoom(
+    Map<String, dynamic> payload,
+  ) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.hostelRooms,
+      data: payload,
+    );
+    return HostelRoomSummaryModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<HostelRoomSummaryModel> updateRoom(
+    String id,
+    Map<String, dynamic> payload,
+  ) async {
+    final response = await _apiClient.put<Map<String, dynamic>>(
+      ApiPaths.hostelRoom(id),
+      data: payload,
+    );
+    return HostelRoomSummaryModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<HostelRoomSummaryModel> deleteRoom(String id) async {
+    final response = await _apiClient.delete<Map<String, dynamic>>(
+      ApiPaths.hostelRoom(id),
+    );
+    return HostelRoomSummaryModel.fromJson(_unwrapData(response.data));
   }
 
   Future<HostelRoomDetailsModel> roomDetails(

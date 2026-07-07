@@ -382,7 +382,7 @@ class _StudentFeeAssignmentPageState
     setState(() => _saving = false);
     result.when<void>(
       success: (summary) {
-        ref.invalidate(feeAssignmentsProvider);
+        ref.invalidate(feeAssignmentsProvider(const FeeListFilter()));
         ref.invalidate(classFeeStudentsProvider(classId));
         _showSnack(
           summary.message ??

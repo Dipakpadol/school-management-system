@@ -7,6 +7,7 @@ import '../../../users/data/models/user_models.dart';
 import '../../domain/repositories/settings_repository.dart';
 import '../datasources/settings_remote_data_source.dart';
 import '../models/role_permission_models.dart';
+import '../models/settings_models.dart';
 
 final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
   return SettingsRepositoryImpl(ref.watch(settingsRemoteDataSourceProvider));
@@ -16,6 +17,18 @@ class SettingsRepositoryImpl implements SettingsRepository {
   const SettingsRepositoryImpl(this._remoteDataSource);
 
   final SettingsRemoteDataSource _remoteDataSource;
+
+  @override
+  Future<Result<ApplicationSettingsModel>> appSettings() {
+    return _guard(_remoteDataSource.appSettings);
+  }
+
+  @override
+  Future<Result<ApplicationSettingsModel>> updateAppSettings(
+    ApplicationSettingsModel settings,
+  ) {
+    return _guard(() => _remoteDataSource.updateAppSettings(settings));
+  }
 
   @override
   Future<Result<List<RoleModel>>> roles({String? query, String? status}) {
@@ -41,8 +54,40 @@ class SettingsRepositoryImpl implements SettingsRepository {
   }
 
   @override
-  Future<Result<List<PermissionOptionModel>>> permissions() {
-    return _guard(_remoteDataSource.permissions);
+  Future<Result<List<PermissionOptionModel>>> permissions({
+    String? query,
+    String? moduleName,
+    String? status,
+  }) {
+    return _guard(
+      () => _remoteDataSource.permissions(
+        query: query,
+        moduleName: moduleName,
+        status: status,
+      ),
+    );
+  }
+
+  @override
+  Future<Result<PermissionOptionModel>> createPermission(
+    Map<String, dynamic> payload,
+  ) {
+    return _guard(() => _remoteDataSource.createPermission(payload));
+  }
+
+  @override
+  Future<Result<PermissionOptionModel>> updatePermission(
+    String permissionId,
+    Map<String, dynamic> payload,
+  ) {
+    return _guard(
+      () => _remoteDataSource.updatePermission(permissionId, payload),
+    );
+  }
+
+  @override
+  Future<Result<void>> deletePermission(String permissionId) {
+    return _guard(() => _remoteDataSource.deletePermission(permissionId));
   }
 
   @override

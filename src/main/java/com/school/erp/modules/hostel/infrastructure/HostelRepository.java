@@ -13,5 +13,7 @@ public interface HostelRepository extends BaseRepository<Hostel, UUID> {
 
 	Optional<Hostel> findByNameIgnoreCaseAndDeletedFalse(String name);
 
+	List<Hostel> findAllByDeletedFalseOrderByNameAsc();
+
 	List<Hostel> findAllByActiveTrueAndDeletedFalseOrderByNameAsc();
 }

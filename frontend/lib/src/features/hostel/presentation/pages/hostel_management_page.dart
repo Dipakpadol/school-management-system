@@ -172,6 +172,35 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
           selectedHostelId: effectiveHostelId,
           hostels: hostels,
           onHostelChanged: (id) => setState(() => _selectedHostelId = id),
+          onAddHostel: _showHostelDialog,
+          onEditHostel: effectiveHostelId == null
+              ? null
+              : () => _showHostelDialog(
+                    hostel: hostels.firstWhere(
+                      (hostel) => hostel.id == effectiveHostelId,
+                    ),
+                  ),
+          onDeleteHostel: effectiveHostelId == null
+              ? null
+              : () => _deleteHostel(
+                    hostels.firstWhere(
+                      (hostel) => hostel.id == effectiveHostelId,
+                    ),
+                  ),
+          onAddRoom: hostels.isEmpty
+              ? null
+              : () => _showRoomDialog(
+                    hostels: hostels,
+                    initialHostelId: effectiveHostelId ?? hostels.first.id,
+                    academicYearId: effectiveYearId,
+                  ),
+          onEditRoom: (room) => _showRoomDialog(
+            hostels: hostels,
+            initialHostelId: room.hostelId,
+            academicYearId: effectiveYearId,
+            room: room,
+          ),
+          onDeleteRoom: (room) => _deleteRoom(room, effectiveYearId),
           onRoomTap: (room) {
             if (effectiveYearId != null) {
               _showRoomDetails(room, effectiveYearId);
@@ -359,6 +388,332 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _showHostelDialog({HostelSummaryModel? hostel}) async {
+    final formKey = GlobalKey<FormState>();
+    final code = TextEditingController(text: hostel?.code ?? '');
+    final name = TextEditingController(text: hostel?.name ?? '');
+    final address = TextEditingController(text: hostel?.address ?? '');
+    var active = hostel?.active ?? true;
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(hostel == null ? 'Add hostel' : 'Edit hostel'),
+              content: Form(
+                key: formKey,
+                child: SizedBox(
+                  width: 520,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: code,
+                        decoration: const InputDecoration(labelText: 'Code'),
+                        validator: _required,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: name,
+                        decoration: const InputDecoration(labelText: 'Name'),
+                        validator: _required,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: address,
+                        decoration: const InputDecoration(labelText: 'Address'),
+                        maxLines: 2,
+                      ),
+                      const SizedBox(height: 12),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Active'),
+                        value: active,
+                        onChanged: (value) =>
+                            setDialogState(() => active = value),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton.icon(
+                  onPressed: () async {
+                    if (!(formKey.currentState?.validate() ?? false)) {
+                      return;
+                    }
+                    final payload = {
+                      'code': code.text.trim(),
+                      'name': name.text.trim(),
+                      'address': _blankToNull(address.text),
+                      'active': active,
+                    };
+                    final repository = ref.read(hostelRepositoryProvider);
+                    final Result<HostelSummaryModel> result = hostel == null
+                        ? await repository.createHostel(payload)
+                        : await repository.updateHostel(hostel.id, payload);
+                    if (!context.mounted) {
+                      return;
+                    }
+                    result.when(
+                      success: (saved) {
+                        setState(() => _selectedHostelId = saved.id);
+                        ref.invalidate(hostelsProvider);
+                        if (_selectedAcademicYearId != null) {
+                          ref.invalidate(
+                            hostelRoomsProvider(_selectedAcademicYearId!),
+                          );
+                        }
+                        _snack(context, 'Hostel saved.');
+                        Navigator.of(context).pop();
+                      },
+                      failure: (failure) => _snack(context, failure.message),
+                    );
+                  },
+                  icon: const Icon(Icons.save_outlined),
+                  label: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    code.dispose();
+    name.dispose();
+    address.dispose();
+  }
+
+  Future<void> _deleteHostel(HostelSummaryModel hostel) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete hostel'),
+        content: Text(hostel.name),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(context).pop(true),
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+    final result = await ref.read(hostelRepositoryProvider).deleteHostel(
+          hostel.id,
+        );
+    if (!mounted) {
+      return;
+    }
+    result.when(
+      success: (_) {
+        setState(() => _selectedHostelId = null);
+        ref.invalidate(hostelsProvider);
+        if (_selectedAcademicYearId != null) {
+          ref.invalidate(hostelRoomsProvider(_selectedAcademicYearId!));
+        }
+        _snack(context, 'Hostel deleted.');
+      },
+      failure: (failure) => _snack(context, failure.message),
+    );
+  }
+
+  Future<void> _showRoomDialog({
+    required List<HostelSummaryModel> hostels,
+    required String initialHostelId,
+    required String? academicYearId,
+    HostelRoomSummaryModel? room,
+  }) async {
+    final formKey = GlobalKey<FormState>();
+    final roomNumber = TextEditingController(text: room?.roomNumber ?? '');
+    final roomType = TextEditingController(text: room?.roomType ?? '');
+    final capacity = TextEditingController(
+      text: room == null ? '' : room.capacity.toString(),
+    );
+    String selectedHostelId = room?.hostelId ?? initialHostelId;
+    var bedConceptEnabled = room?.bedConceptEnabled ?? true;
+    var active = room?.active ?? true;
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(room == null ? 'Add room' : 'Edit room'),
+              content: Form(
+                key: formKey,
+                child: SizedBox(
+                  width: 560,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedHostelId,
+                        decoration: const InputDecoration(labelText: 'Hostel'),
+                        items: [
+                          for (final hostel in hostels)
+                            DropdownMenuItem(
+                              value: hostel.id,
+                              child: Text(hostel.name),
+                            ),
+                        ],
+                        onChanged: room == null
+                            ? (value) => setDialogState(
+                                  () => selectedHostelId =
+                                      value ?? selectedHostelId,
+                                )
+                            : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: roomNumber,
+                        decoration: const InputDecoration(
+                          labelText: 'Room number',
+                        ),
+                        validator: _required,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: roomType,
+                        decoration: const InputDecoration(
+                          labelText: 'Room type',
+                        ),
+                        validator: _required,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: capacity,
+                        decoration: const InputDecoration(
+                          labelText: 'Capacity',
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: _positiveInt,
+                      ),
+                      const SizedBox(height: 12),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Bed-wise allocation'),
+                        value: bedConceptEnabled,
+                        onChanged: (value) => setDialogState(
+                          () => bedConceptEnabled = value,
+                        ),
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Active'),
+                        value: active,
+                        onChanged: (value) =>
+                            setDialogState(() => active = value),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton.icon(
+                  onPressed: () async {
+                    if (!(formKey.currentState?.validate() ?? false)) {
+                      return;
+                    }
+                    final payload = {
+                      'hostelId': selectedHostelId,
+                      'roomNumber': roomNumber.text.trim(),
+                      'roomType': roomType.text.trim(),
+                      'capacity': int.parse(capacity.text.trim()),
+                      'bedConceptEnabled': bedConceptEnabled,
+                      'active': active,
+                    };
+                    final repository = ref.read(hostelRepositoryProvider);
+                    final Result<HostelRoomSummaryModel> result = room == null
+                        ? await repository.createRoom(payload)
+                        : await repository.updateRoom(room.id, payload);
+                    if (!context.mounted) {
+                      return;
+                    }
+                    result.when(
+                      success: (_) {
+                        setState(() => _selectedHostelId = selectedHostelId);
+                        if (academicYearId != null) {
+                          ref.invalidate(hostelRoomsProvider(academicYearId));
+                        }
+                        _snack(context, 'Room saved.');
+                        Navigator.of(context).pop();
+                      },
+                      failure: (failure) => _snack(context, failure.message),
+                    );
+                  },
+                  icon: const Icon(Icons.save_outlined),
+                  label: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    roomNumber.dispose();
+    roomType.dispose();
+    capacity.dispose();
+  }
+
+  Future<void> _deleteRoom(
+    HostelRoomSummaryModel room,
+    String? academicYearId,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete room'),
+        content: Text('${room.hostelName} - Room ${room.roomNumber}'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(context).pop(true),
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+    final result = await ref.read(hostelRepositoryProvider).deleteRoom(room.id);
+    if (!mounted) {
+      return;
+    }
+    result.when(
+      success: (_) {
+        if (academicYearId != null) {
+          ref.invalidate(hostelRoomsProvider(academicYearId));
+        }
+        _snack(context, 'Room deleted.');
+      },
+      failure: (failure) => _snack(context, failure.message),
     );
   }
 
@@ -1271,6 +1626,12 @@ class _RoomsPanel extends ConsumerWidget {
     required this.selectedHostelId,
     required this.hostels,
     required this.onHostelChanged,
+    required this.onAddHostel,
+    required this.onEditHostel,
+    required this.onDeleteHostel,
+    required this.onAddRoom,
+    required this.onEditRoom,
+    required this.onDeleteRoom,
     required this.onRoomTap,
   });
 
@@ -1278,6 +1639,12 @@ class _RoomsPanel extends ConsumerWidget {
   final String? selectedHostelId;
   final List<HostelSummaryModel> hostels;
   final ValueChanged<String?> onHostelChanged;
+  final VoidCallback onAddHostel;
+  final VoidCallback? onEditHostel;
+  final VoidCallback? onDeleteHostel;
+  final VoidCallback? onAddRoom;
+  final ValueChanged<HostelRoomSummaryModel> onEditRoom;
+  final ValueChanged<HostelRoomSummaryModel> onDeleteRoom;
   final ValueChanged<HostelRoomSummaryModel> onRoomTap;
 
   @override
@@ -1293,7 +1660,10 @@ class _RoomsPanel extends ConsumerWidget {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               SizedBox(
                 width: 280,
@@ -1316,7 +1686,26 @@ class _RoomsPanel extends ConsumerWidget {
                   ),
                 ),
               ),
-              const Spacer(),
+              IconButton(
+                tooltip: 'Add hostel',
+                onPressed: onAddHostel,
+                icon: const Icon(Icons.add_business_outlined),
+              ),
+              IconButton(
+                tooltip: 'Edit hostel',
+                onPressed: onEditHostel,
+                icon: const Icon(Icons.edit_location_alt_outlined),
+              ),
+              IconButton(
+                tooltip: 'Delete hostel',
+                onPressed: onDeleteHostel,
+                icon: const Icon(Icons.delete_outline),
+              ),
+              AppButton(
+                label: 'Add room',
+                icon: Icons.add_outlined,
+                onPressed: onAddRoom,
+              ),
               IconButton(
                 tooltip: 'Refresh rooms',
                 onPressed: () =>
@@ -1375,6 +1764,29 @@ class _RoomsPanel extends ConsumerWidget {
                       label: 'Beds',
                       cellBuilder: (_, room) =>
                           Text(room.bedConceptEnabled ? 'Enabled' : 'Room'),
+                    ),
+                    AppTableColumn(
+                      label: 'Status',
+                      cellBuilder: (_, room) =>
+                          _StatusBadge(label: room.active ? 'ACTIVE' : 'INACTIVE'),
+                    ),
+                    AppTableColumn(
+                      label: 'Actions',
+                      cellBuilder: (_, room) => Wrap(
+                        spacing: 2,
+                        children: [
+                          IconButton(
+                            tooltip: 'Edit room',
+                            onPressed: () => onEditRoom(room),
+                            icon: const Icon(Icons.edit_outlined),
+                          ),
+                          IconButton(
+                            tooltip: 'Delete room',
+                            onPressed: () => onDeleteRoom(room),
+                            icon: const Icon(Icons.delete_outline),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 );

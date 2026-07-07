@@ -19,6 +19,9 @@ public interface HostelRoomRepository extends BaseRepository<HostelRoom, UUID> {
 
 	List<HostelRoom> findByActiveTrueAndDeletedFalseOrderByHostelNameAscRoomNumberAsc();
 
+	@EntityGraph(attributePaths = { "hostel", "beds" })
+	List<HostelRoom> findByDeletedFalseOrderByHostelNameAscRoomNumberAsc();
+
 	List<HostelRoom> findByHostelIdAndActiveTrueAndDeletedFalseOrderByRoomNumberAsc(UUID hostelId);
 
 	Optional<HostelRoom> findByHostelIdAndRoomNumberIgnoreCaseAndDeletedFalse(UUID hostelId, String roomNumber);

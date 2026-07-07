@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/result/result.dart';
 import '../../../users/data/models/user_models.dart';
 import '../../data/models/role_permission_models.dart';
+import '../../data/models/settings_models.dart';
 import '../../data/repositories/settings_repository_impl.dart';
 
 final roleManagementSearchQueryProvider =
@@ -13,6 +14,21 @@ final roleManagementSearchQueryProvider =
 final roleManagementStatusFilterProvider =
     NotifierProvider<RoleManagementStatusFilterController, String?>(
       RoleManagementStatusFilterController.new,
+    );
+
+final permissionSearchQueryProvider =
+    NotifierProvider<PermissionSearchQueryController, String>(
+      PermissionSearchQueryController.new,
+    );
+
+final permissionModuleFilterProvider =
+    NotifierProvider<PermissionModuleFilterController, String?>(
+      PermissionModuleFilterController.new,
+    );
+
+final permissionStatusFilterProvider =
+    NotifierProvider<PermissionStatusFilterController, String?>(
+      PermissionStatusFilterController.new,
     );
 
 final roleManagementRolesProvider = FutureProvider<List<RoleModel>>((ref) {
@@ -26,8 +42,28 @@ final roleManagementRolesProvider = FutureProvider<List<RoleModel>>((ref) {
   );
 });
 
+final appSettingsProvider = FutureProvider<ApplicationSettingsModel>((ref) {
+  return _resolve(ref.watch(settingsRepositoryProvider).appSettings());
+});
+
 final permissionsProvider = FutureProvider<List<PermissionOptionModel>>((ref) {
-  return _resolve(ref.watch(settingsRepositoryProvider).permissions());
+  return _resolve(
+    ref.watch(settingsRepositoryProvider).permissions(status: 'ACTIVE'),
+  );
+});
+
+final permissionManagementProvider = FutureProvider<List<PermissionOptionModel>>((
+  ref,
+) {
+  return _resolve(
+    ref
+        .watch(settingsRepositoryProvider)
+        .permissions(
+          query: ref.watch(permissionSearchQueryProvider),
+          moduleName: ref.watch(permissionModuleFilterProvider),
+          status: ref.watch(permissionStatusFilterProvider),
+        ),
+  );
 });
 
 final selectedSettingsRoleIdProvider =
@@ -69,6 +105,33 @@ class RoleManagementSearchQueryController extends Notifier<String> {
 }
 
 class RoleManagementStatusFilterController extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void set(String? value) {
+    state = value;
+  }
+}
+
+class PermissionSearchQueryController extends Notifier<String> {
+  @override
+  String build() => '';
+
+  void set(String value) {
+    state = value;
+  }
+}
+
+class PermissionModuleFilterController extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void set(String? value) {
+    state = value;
+  }
+}
+
+class PermissionStatusFilterController extends Notifier<String?> {
   @override
   String? build() => null;
 

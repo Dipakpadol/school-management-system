@@ -228,6 +228,10 @@ class StudentsRemoteDataSource {
     return _apiClient.download(ApiPaths.studentPdf(studentId));
   }
 
+  Future<List<int>> generatedDocument(String studentId, String type) {
+    return _apiClient.download(ApiPaths.studentGeneratedDocument(studentId, type));
+  }
+
   Future<StudentImportResultModel> importExcel(
     List<int> bytes,
     String filename,

@@ -28,6 +28,7 @@ abstract final class AppRoutes {
   static const settings = '/settings';
   static const newFeeStructure = '/fees/structures/new';
   static const feeAssignments = '/fees/assignments';
+  static const feeDefaulters = '/fees/defaulters';
   static const legacyNewFeeAssignment = '/fees/assignments/new';
   static const newFeeAssignment = feeAssignments;
   static const feePayments = '/fees/payments';
@@ -142,6 +143,7 @@ abstract final class AppRouteName {
   static const newFeeStructure = 'new-fee-structure';
   static const editFeeStructure = 'edit-fee-structure';
   static const feeAssignments = 'fee-assignments';
+  static const feeDefaulters = 'fee-defaulters';
   static const newFeeAssignment = 'new-fee-assignment';
   static const feePayments = 'fee-payments';
   static const collectFeePayment = 'collect-fee-payment';

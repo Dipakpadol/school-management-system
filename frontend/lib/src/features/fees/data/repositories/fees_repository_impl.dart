@@ -81,8 +81,16 @@ class FeesRepositoryImpl implements FeesRepository {
   }
 
   @override
-  Future<Result<List<StudentFeeAssignmentModel>>> assignments() {
-    return _guard(() async => (await _remoteDataSource.assignments()).content);
+  Future<Result<List<StudentFeeAssignmentModel>>> assignments({
+    String? academicYearId,
+    String? classId,
+  }) {
+    return _guard(
+      () async => (await _remoteDataSource.assignments(
+        academicYearId: academicYearId,
+        classId: classId,
+      )).content,
+    );
   }
 
   @override
@@ -148,8 +156,22 @@ class FeesRepositoryImpl implements FeesRepository {
   }
 
   @override
-  Future<Result<List<FeeDefaulterModel>>> defaulters() {
-    return _guard(() async => (await _remoteDataSource.defaulters()).content);
+  Future<Result<List<FeeDefaulterModel>>> defaulters({
+    String? academicYearId,
+    String? classId,
+    String? sectionId,
+    String? asOf,
+    String? query,
+  }) {
+    return _guard(
+      () async => (await _remoteDataSource.defaulters(
+        academicYearId: academicYearId,
+        classId: classId,
+        sectionId: sectionId,
+        asOf: asOf,
+        query: query,
+      )).content,
+    );
   }
 
   @override
@@ -240,9 +262,19 @@ class FeesRepositoryImpl implements FeesRepository {
   }
 
   @override
-  Future<Result<void>> exportDefaulters(String format) {
+  Future<Result<void>> exportDefaulters(
+    String format, {
+    String? academicYearId,
+    String? classId,
+    String? asOf,
+  }) {
     return _guard(() async {
-      final bytes = await _remoteDataSource.defaultersExport(format);
+      final bytes = await _remoteDataSource.defaultersExport(
+        format,
+        academicYearId: academicYearId,
+        classId: classId,
+        asOf: asOf,
+      );
       await downloadBytes(
         bytes,
         'fee-defaulters.${_extension(format)}',

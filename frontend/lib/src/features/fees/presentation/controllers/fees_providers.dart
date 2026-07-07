@@ -31,11 +31,20 @@ final feeStructureProvider = FutureProvider.family<FeeStructureModel, String>((
   return _resolve(ref.watch(feesRepositoryProvider).structure(id));
 });
 
-final feeAssignmentsProvider = FutureProvider<List<StudentFeeAssignmentModel>>((
-  ref,
-) {
-  return _resolve(ref.watch(feesRepositoryProvider).assignments());
-});
+final feeAssignmentsProvider =
+    FutureProvider.family<List<StudentFeeAssignmentModel>, FeeListFilter>((
+      ref,
+      filter,
+    ) {
+      return _resolve(
+        ref
+            .watch(feesRepositoryProvider)
+            .assignments(
+              academicYearId: filter.academicYearId,
+              classId: filter.classId,
+            ),
+      );
+    });
 
 final feeAssignmentProvider =
     FutureProvider.family<StudentFeeAssignmentModel, String>((
@@ -61,9 +70,23 @@ final studentPaymentHistoryProvider =
       );
     });
 
-final feeDefaultersProvider = FutureProvider<List<FeeDefaulterModel>>((ref) {
-  return _resolve(ref.watch(feesRepositoryProvider).defaulters());
-});
+final feeDefaultersProvider =
+    FutureProvider.family<List<FeeDefaulterModel>, FeeDefaulterFilter>((
+      ref,
+      filter,
+    ) {
+      return _resolve(
+        ref
+            .watch(feesRepositoryProvider)
+            .defaulters(
+              academicYearId: filter.academicYearId,
+              classId: filter.classId,
+              sectionId: filter.sectionId,
+              asOf: filter.asOf,
+              query: filter.query,
+            ),
+      );
+    });
 
 final classFeeStudentsProvider =
     FutureProvider.family<List<ClassStudentFeeModel>, String>((ref, classId) {
@@ -93,4 +116,56 @@ class FeeClassKey {
 
   @override
   int get hashCode => Object.hash(academicYearId, classId);
+}
+
+class FeeListFilter {
+  const FeeListFilter({this.academicYearId, this.classId});
+
+  final String? academicYearId;
+  final String? classId;
+
+  @override
+  bool operator ==(Object other) {
+    return other is FeeListFilter &&
+        other.academicYearId == academicYearId &&
+        other.classId == classId;
+  }
+
+  @override
+  int get hashCode => Object.hash(academicYearId, classId);
+}
+
+class FeeDefaulterFilter {
+  const FeeDefaulterFilter({
+    this.academicYearId,
+    this.classId,
+    this.sectionId,
+    this.asOf,
+    this.query,
+  });
+
+  final String? academicYearId;
+  final String? classId;
+  final String? sectionId;
+  final String? asOf;
+  final String? query;
+
+  @override
+  bool operator ==(Object other) {
+    return other is FeeDefaulterFilter &&
+        other.academicYearId == academicYearId &&
+        other.classId == classId &&
+        other.sectionId == sectionId &&
+        other.asOf == asOf &&
+        other.query == query;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    academicYearId,
+    classId,
+    sectionId,
+    asOf,
+    query,
+  );
 }

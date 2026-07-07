@@ -11,6 +11,9 @@ import com.school.erp.common.modules.api.dto.ModuleRecordCountResponse;
 import com.school.erp.common.modules.api.dto.ModuleRecordRequest;
 import com.school.erp.common.modules.api.dto.ModuleRecordResponse;
 import com.school.erp.common.modules.api.dto.ModuleRecordSearchRequest;
+import com.school.erp.modules.settings.api.dto.ApplicationSettingsRequest;
+import com.school.erp.modules.settings.api.dto.ApplicationSettingsResponse;
+import com.school.erp.modules.settings.application.ApplicationSettingsService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -45,6 +48,31 @@ public class SettingsController {
 	private static final String MODULE = "SETTINGS";
 
 	private final ModuleRecordControllerSupport support;
+	private final ApplicationSettingsService applicationSettingsService;
+
+	@GetMapping
+	@PreAuthorize("hasAuthority('SETTINGS_READ')")
+	@Operation(summary = "Get application settings")
+	public ResponseEntity<ApiResponse<ApplicationSettingsResponse>> getSettings(HttpServletRequest request) {
+		return ResponseEntity.ok(ApiResponse.success(
+				applicationSettingsService.getSettings(),
+				"Settings fetched successfully",
+				request.getRequestURI(),
+				null));
+	}
+
+	@PutMapping
+	@PreAuthorize("hasAuthority('SETTINGS_UPDATE')")
+	@Operation(summary = "Update application settings")
+	public ResponseEntity<ApiResponse<ApplicationSettingsResponse>> updateSettings(
+			@Valid @RequestBody ApplicationSettingsRequest body,
+			HttpServletRequest request) {
+		return ResponseEntity.ok(ApiResponse.success(
+				applicationSettingsService.updateSettings(body),
+				"Settings updated successfully",
+				request.getRequestURI(),
+				null));
+	}
 
 	@GetMapping("/{recordType}")
 	@PreAuthorize("hasAuthority('SETTINGS_READ')")

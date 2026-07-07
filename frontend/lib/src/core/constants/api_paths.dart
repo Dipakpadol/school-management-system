@@ -49,12 +49,14 @@ abstract final class ApiPaths {
   static const notificationTestEmail = '/v1/notifications/test/email';
   static const notificationTestSms = '/v1/notifications/test/sms';
   static const notificationTestWhatsApp = '/v1/notifications/test/whatsapp';
+  static const appSettings = '/v1/settings';
 
   static String notificationTemplate(String id) =>
       '/v1/notifications/templates/$id';
 
   static const hostelAcademicYears = '/v1/hostels/academic-years';
   static const hostels = '/v1/hostels';
+  static const hostelRooms = '/v1/hostels/rooms';
   static const hostelFeeStructures = '/v1/hostels/fees/structures';
   static const hostelFeeAssign = '/v1/hostels/fees/assign';
 
@@ -69,6 +71,10 @@ abstract final class ApiPaths {
 
   static String hostelRoomDetails(String roomId) =>
       '/v1/hostels/rooms/$roomId/details';
+
+  static String hostel(String hostelId) => '/v1/hostels/$hostelId';
+
+  static String hostelRoom(String roomId) => '/v1/hostels/rooms/$roomId';
 
   static String hostelRoomStudents(String roomId) =>
       '/v1/hostels/rooms/$roomId/students';
@@ -144,7 +150,7 @@ abstract final class ApiPaths {
   static const feeStructures = '/v1/fees/structures';
   static const lateFeeRules = '/v1/fees/late-fee-rules';
   static const feeAssignments = '/v1/fees/assignments';
-  static const feeDefaulters = '/v1/fees/reports/defaulters';
+  static const feeDefaulters = '/v1/fees/defaulters';
   static const feeSummary = '/v1/fees/reports/summary';
   static const feeStructuresExportExcel = '/v1/fees/structures/export/excel';
   static const feeAssignmentsExportExcel = '/v1/fees/assignments/export/excel';
@@ -198,7 +204,7 @@ abstract final class ApiPaths {
       '/v1/fees/payments/$paymentId/refund';
 
   static String feeDefaultersExport(String format) =>
-      '/v1/fees/reports/defaulters/export/$format';
+      '/v1/fees/defaulters/export/$format';
 
   static String feeCollectionExport(String format) =>
       '/v1/fees/reports/collection/export/$format';
@@ -206,6 +212,9 @@ abstract final class ApiPaths {
   static String student(String id) => '/v1/students/$id';
 
   static String studentPdf(String id) => '/v1/students/$id/pdf';
+
+  static String studentGeneratedDocument(String id, String type) =>
+      '/v1/students/$id/documents/generated/$type';
 
   static String studentProfile(String id) => '/v1/students/$id/profile';
 
@@ -317,6 +326,8 @@ abstract final class ApiPaths {
   static String userResetPassword(String id) => '/v1/users/$id/reset-password';
 
   static String role(String id) => '/v1/roles/$id';
+
+  static String permission(String id) => '/v1/permissions/$id';
 
   static String rolePermissions(String id) => '/v1/roles/$id/permissions';
 

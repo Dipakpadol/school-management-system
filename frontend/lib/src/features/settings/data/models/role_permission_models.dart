@@ -3,6 +3,8 @@ class PermissionOptionModel {
     required this.id,
     required this.code,
     required this.name,
+    required this.moduleName,
+    required this.status,
     required this.assigned,
     this.description,
   });
@@ -12,7 +14,11 @@ class PermissionOptionModel {
       id: json['id'] as String? ?? '',
       code: json['code'] as String? ?? '',
       name: json['name'] as String? ?? '',
+      moduleName:
+          json['moduleName'] as String? ??
+          _moduleNameFromCode(json['code'] as String? ?? ''),
       description: json['description'] as String?,
+      status: json['status'] as String? ?? 'ACTIVE',
       assigned: json['assigned'] as bool? ?? false,
     );
   }
@@ -20,7 +26,9 @@ class PermissionOptionModel {
   final String id;
   final String code;
   final String name;
+  final String moduleName;
   final String? description;
+  final String status;
   final bool assigned;
 }
 
@@ -64,4 +72,9 @@ List<PermissionOptionModel> _permissions(Object? value) {
       .whereType<Map<String, dynamic>>()
       .map(PermissionOptionModel.fromJson)
       .toList(growable: false);
+}
+
+String _moduleNameFromCode(String code) {
+  final parts = code.split('_');
+  return parts.isEmpty ? '' : parts.first;
 }

@@ -114,7 +114,8 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
         ),
       );
     }
-    final assignments = ref.watch(feeAssignmentsProvider);
+    const filter = FeeListFilter();
+    final assignments = ref.watch(feeAssignmentsProvider(filter));
 
     return _shell(
       child: assignments.when(
@@ -122,7 +123,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
         error: (error, _) => AppErrorState(
           message:
               'Unable to load payment details. Please try again.\n${_message(error)}',
-          onRetry: () => ref.invalidate(feeAssignmentsProvider),
+          onRetry: () => ref.invalidate(feeAssignmentsProvider(filter)),
         ),
         loading: () => const AppLoadingState(label: 'Loading assignments'),
       ),
@@ -417,7 +418,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
     setState(() => _saving = false);
     result.when<void>(
       success: (receipt) {
-        ref.invalidate(feeAssignmentsProvider);
+        ref.invalidate(feeAssignmentsProvider(const FeeListFilter()));
         if (widget.assignmentId != null) {
           ref.invalidate(feeAssignmentProvider(widget.assignmentId!));
         }
@@ -425,7 +426,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
           ref.invalidate(studentFeeSummaryProvider(widget.studentId!));
           ref.invalidate(studentPaymentHistoryProvider(widget.studentId!));
         }
-        ref.invalidate(feeDefaultersProvider);
+        ref.invalidate(feeDefaultersProvider(const FeeDefaulterFilter()));
         setState(() => _receipt = receipt);
       },
       failure: (failure) => _showSnack(failure.message),

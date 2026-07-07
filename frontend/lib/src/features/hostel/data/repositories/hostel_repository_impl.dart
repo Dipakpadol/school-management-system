@@ -29,8 +29,48 @@ class HostelRepositoryImpl implements HostelRepository {
   }
 
   @override
+  Future<Result<HostelSummaryModel>> createHostel(
+    Map<String, dynamic> payload,
+  ) {
+    return _guard(() => _remoteDataSource.createHostel(payload));
+  }
+
+  @override
+  Future<Result<HostelSummaryModel>> updateHostel(
+    String id,
+    Map<String, dynamic> payload,
+  ) {
+    return _guard(() => _remoteDataSource.updateHostel(id, payload));
+  }
+
+  @override
+  Future<Result<HostelSummaryModel>> deleteHostel(String id) {
+    return _guard(() => _remoteDataSource.deleteHostel(id));
+  }
+
+  @override
   Future<Result<List<HostelRoomSummaryModel>>> rooms(String academicYearId) {
     return _guard(() => _remoteDataSource.rooms(academicYearId));
+  }
+
+  @override
+  Future<Result<HostelRoomSummaryModel>> createRoom(
+    Map<String, dynamic> payload,
+  ) {
+    return _guard(() => _remoteDataSource.createRoom(payload));
+  }
+
+  @override
+  Future<Result<HostelRoomSummaryModel>> updateRoom(
+    String id,
+    Map<String, dynamic> payload,
+  ) {
+    return _guard(() => _remoteDataSource.updateRoom(id, payload));
+  }
+
+  @override
+  Future<Result<HostelRoomSummaryModel>> deleteRoom(String id) {
+    return _guard(() => _remoteDataSource.deleteRoom(id));
   }
 
   @override
