@@ -31,13 +31,21 @@ import '../../features/teachers/presentation/pages/teacher_management_page.dart'
 import '../../features/teachers/presentation/pages/teacher_attendance_page.dart';
 import '../../features/transport/presentation/pages/transport_management_page.dart';
 import '../../features/users/presentation/pages/users_page.dart';
+import '../../modules/public_website/pages/public_about_page.dart';
+import '../../modules/public_website/pages/public_academics_page.dart';
+import '../../modules/public_website/pages/public_admissions_page.dart';
+import '../../modules/public_website/pages/public_contact_page.dart';
+import '../../modules/public_website/pages/public_events_page.dart';
+import '../../modules/public_website/pages/public_facilities_page.dart';
+import '../../modules/public_website/pages/public_gallery_page.dart';
+import '../../modules/public_website/pages/public_home_page.dart';
 import 'app_routes.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authControllerProvider);
 
   return GoRouter(
-    initialLocation: AppRoutes.login,
+    initialLocation: AppRoutes.publicHome,
     redirect: (context, state) {
       final publicAuthRoutes = {
         AppRoutes.login,
@@ -48,15 +56,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final onPublicAuthRoute = publicAuthRoutes.contains(
         state.matchedLocation,
       );
+      final onPublicWebsiteRoute = AppRoutes.isPublicWebsiteRoute(
+        state.matchedLocation,
+      );
 
       if (authState.status == AuthStatus.checking) {
-        return onPublicAuthRoute ? null : AppRoutes.login;
+        return onPublicAuthRoute || onPublicWebsiteRoute
+            ? null
+            : AppRoutes.login;
       }
       if (!authState.isAuthenticated) {
-        return onPublicAuthRoute ? null : AppRoutes.login;
+        return onPublicAuthRoute || onPublicWebsiteRoute
+            ? null
+            : AppRoutes.login;
       }
       if (onPublicAuthRoute) {
         return AppRoutes.dashboard;
+      }
+      if (onPublicWebsiteRoute) {
+        return null;
       }
       final guardedModuleId = moduleIdForPath(state.uri.path);
       if (guardedModuleId != null &&
@@ -89,9 +107,49 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: AppRoutes.publicAbout,
+        name: AppRouteName.publicAbout,
+        builder: (context, state) => const PublicAboutPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.publicAdmissions,
+        name: AppRouteName.publicAdmissions,
+        builder: (context, state) => const PublicAdmissionsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.publicAcademics,
+        name: AppRouteName.publicAcademics,
+        builder: (context, state) => const PublicAcademicsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.publicFacilities,
+        name: AppRouteName.publicFacilities,
+        builder: (context, state) => const PublicFacilitiesPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.publicGallery,
+        name: AppRouteName.publicGallery,
+        builder: (context, state) => const PublicGalleryPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.publicEvents,
+        name: AppRouteName.publicEvents,
+        builder: (context, state) => const PublicEventsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.publicContact,
+        name: AppRouteName.publicContact,
+        builder: (context, state) => const PublicContactPage(),
+      ),
+      GoRoute(
         path: AppRoutes.dashboard,
         name: AppRouteName.dashboard,
-        builder: (context, state) => const DashboardPage(),
+        builder: (context, state) {
+          if (authState.isAuthenticated) {
+            return const DashboardPage();
+          }
+          return const PublicHomePage();
+        },
       ),
       GoRoute(
         path: AppRoutes.students,

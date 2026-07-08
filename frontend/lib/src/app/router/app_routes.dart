@@ -1,4 +1,13 @@
 abstract final class AppRoutes {
+  static const publicHome = '/';
+  static const publicAbout = '/about';
+  static const publicAdmissions = '/admissions';
+  static const publicAcademics = '/academics';
+  static const publicFacilities = '/facilities';
+  static const publicGallery = '/gallery';
+  static const publicEvents = '/events';
+  static const publicContact = '/contact';
+
   static const login = '/login';
   static const signup = '/signup';
   static const forgotPassword = '/forgot-password';
@@ -107,9 +116,30 @@ abstract final class AppRoutes {
   static String studentProfile(String studentId) {
     return '/students/$studentId/profile';
   }
+
+  static bool isPublicWebsiteRoute(String path) {
+    return const {
+      publicHome,
+      publicAbout,
+      publicAdmissions,
+      publicAcademics,
+      publicFacilities,
+      publicGallery,
+      publicEvents,
+      publicContact,
+    }.contains(path);
+  }
 }
 
 abstract final class AppRouteName {
+  static const publicAbout = 'public-about';
+  static const publicAdmissions = 'public-admissions';
+  static const publicAcademics = 'public-academics';
+  static const publicFacilities = 'public-facilities';
+  static const publicGallery = 'public-gallery';
+  static const publicEvents = 'public-events';
+  static const publicContact = 'public-contact';
+
   static const login = 'login';
   static const signup = 'signup';
   static const forgotPassword = 'forgot-password';
