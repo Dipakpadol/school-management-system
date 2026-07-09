@@ -21,7 +21,7 @@ class PublicHomePage extends StatelessWidget {
             eyebrow: 'About the school',
             title: 'A caring campus for confident learners.',
             subtitle:
-                'Green Valley Public School combines strong academics, values, activity-based learning, and parent communication through the School ERP platform.',
+                'Start International School combines strong academics, values, activity-based learning, and parent communication through the School ERP platform.',
             backgroundColor: Colors.white,
             child: LayoutBuilder(
               builder: (context, constraints) {

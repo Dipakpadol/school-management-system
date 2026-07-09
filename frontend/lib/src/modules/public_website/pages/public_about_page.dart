@@ -29,7 +29,7 @@ class PublicAboutPage extends StatelessWidget {
               builder: (context, constraints) {
                 final stacked = constraints.maxWidth < 820;
                 final text = Text(
-                  'Green Valley Public School is a progressive campus for students from pre-primary to senior secondary classes. The school focuses on academic discipline, curiosity, confidence, and responsible citizenship. Facilities such as digital classrooms, transport, hostel, library, labs, sports spaces, and ERP-enabled communication support a complete school experience.',
+                  'Start International School is a progressive campus for students from pre-primary to senior secondary classes. The school focuses on academic discipline, curiosity, confidence, and responsible citizenship. Facilities such as digital classrooms, transport, hostel, library, labs, sports spaces, and ERP-enabled communication support a complete school experience.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: PublicSiteColors.text,
                         height: 1.65,
