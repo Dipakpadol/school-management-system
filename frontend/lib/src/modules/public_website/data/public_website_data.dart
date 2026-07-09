@@ -4,13 +4,14 @@ import '../../../app/router/app_routes.dart';
 import '../models/public_website_models.dart';
 
 const schoolProfile = SchoolProfile(
-  name: 'Green Valley Public School',
+  name: 'Star International School',
   tagline: 'Learning with character, curiosity, and care.',
   admissionText:
-      'Admissions are open for Nursery to Class XII for the 2026-27 academic year.',
-  address: 'Green Valley Road, Knowledge Park, Springfield - 560001',
-  phone: '+91 98765 43210',
-  email: 'info@greenvalleyschool.edu',
+      'Admissions are open for Nursery to Class X for the 2026-27 academic year.',
+  address:
+      'Waghrul pati, Waghrul, Taluka: Badnapur, District: Jalna, Maharashtra, India, 431202',
+  phone: '+91 XXXXXXXXXX',
+  email: 'info@starinternationalschool.com',
   officeHours: 'Monday to Saturday, 8:30 AM - 4:30 PM',
   heroImageUrl:
       'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1800&q=80',
