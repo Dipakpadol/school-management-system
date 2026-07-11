@@ -1,0 +1,8 @@
+flutter run -d chrome --web-port=8081 --dart-define=API_BASE_URL=http://localhost:8080/api
+
+
+cd frontend
+flutter pub get
+flutter run -d web-server --web-hostname 127.0.0.1 --web-port 8080
+
+http://127.0.0.1:8080/

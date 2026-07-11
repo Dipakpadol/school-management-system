@@ -361,7 +361,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
               ),
               const SizedBox(height: 12),
               _EmptyAssignmentsPanel(
-                onAssignFee: () => context.go(AppRoutes.feeAssignments),
+                onAssignFee: () => context.go(AppRoutes.newFeeAssignment),
               ),
             ],
           ),

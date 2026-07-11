@@ -215,6 +215,7 @@ class StudentProfileModel {
     this.photoContentType,
     this.photoFileName,
     this.currentAssignment,
+    this.feeAssignmentSummary,
   });
 
   factory StudentProfileModel.fromJson(Map<String, dynamic> json) {
@@ -258,6 +259,11 @@ class StudentProfileModel {
         json['classAssignments'],
         ClassAssignmentModel.fromJson,
       ),
+      feeAssignmentSummary: json['feeAssignmentSummary'] is Map<String, dynamic>
+          ? FeeAssignmentSummaryModel.fromJson(
+              json['feeAssignmentSummary'] as Map<String, dynamic>,
+            )
+          : null,
     );
   }
 
@@ -290,6 +296,7 @@ class StudentProfileModel {
   final List<StudentDocumentModel> documents;
   final ClassAssignmentModel? currentAssignment;
   final List<ClassAssignmentModel> classAssignments;
+  final FeeAssignmentSummaryModel? feeAssignmentSummary;
 
   Map<String, dynamic> toProfilePayload({
     String? firstName,
@@ -316,6 +323,36 @@ class StudentProfileModel {
       'country': country,
     };
   }
+}
+
+class FeeAssignmentSummaryModel {
+  const FeeAssignmentSummaryModel({
+    required this.classFeesAssignedCount,
+    required this.hostelFeesAssignedCount,
+    required this.transportFeesAssignedCount,
+    required this.warnings,
+    required this.skippedDuplicates,
+  });
+
+  factory FeeAssignmentSummaryModel.fromJson(Map<String, dynamic> json) {
+    final warnings = json['warnings'];
+    return FeeAssignmentSummaryModel(
+      classFeesAssignedCount: json['classFeesAssignedCount'] as int? ?? 0,
+      hostelFeesAssignedCount: json['hostelFeesAssignedCount'] as int? ?? 0,
+      transportFeesAssignedCount:
+          json['transportFeesAssignedCount'] as int? ?? 0,
+      warnings: warnings is List
+          ? warnings.whereType<String>().toList(growable: false)
+          : const [],
+      skippedDuplicates: json['skippedDuplicates'] as int? ?? 0,
+    );
+  }
+
+  final int classFeesAssignedCount;
+  final int hostelFeesAssignedCount;
+  final int transportFeesAssignedCount;
+  final List<String> warnings;
+  final int skippedDuplicates;
 }
 
 class StudentParentModel {

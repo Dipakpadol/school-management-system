@@ -1,8 +1,10 @@
 package com.school.erp.modules.fees.application;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 
 import com.school.erp.modules.fees.api.dto.FeeCategoryResponse;
 import com.school.erp.modules.fees.api.dto.FeeDefaulterResponse;
@@ -30,6 +32,8 @@ import com.school.erp.modules.fees.domain.StudentFeeAssignment;
 import com.school.erp.modules.fees.domain.StudentFeeInstallment;
 import com.school.erp.modules.fees.infrastructure.FeeReportTotals;
 import com.school.erp.modules.students.domain.Student;
+import com.school.erp.modules.students.domain.StudentClassAssignment;
+import com.school.erp.modules.students.domain.StudentParent;
 
 import org.springframework.stereotype.Component;
 
@@ -85,15 +89,20 @@ public class FeeMapper {
 
 	public StudentFeeAssignmentResponse toAssignmentResponse(StudentFeeAssignment assignment) {
 		Student student = assignment.getStudent();
+		UUID sectionId = sectionId(assignment);
 		return new StudentFeeAssignmentResponse(
+				assignment.getId(),
 				assignment.getId(),
 				student.getId(),
 				student.getAdmissionNumber(),
 				student.getDisplayName(),
 				assignment.getFeeStructure().getId(),
 				assignment.getFeeStructure().getName(),
+				feeCategoryName(assignment.getFeeStructure()),
 				assignment.getAcademicYearEntity() == null ? null : assignment.getAcademicYearEntity().getId(),
+				assignment.getAcademicYear(),
 				assignment.getClassEntity() == null ? null : assignment.getClassEntity().getId(),
+				sectionId,
 				assignment.getFeeScope(),
 				assignment.getSourceType(),
 				assignment.getSourceReferenceId(),
@@ -114,6 +123,8 @@ public class FeeMapper {
 				assignment.getDiscountAmount(),
 				assignment.getLateFeeAmount(),
 				assignment.getPaidAmount(),
+				assignment.getBalanceAmount(),
+				assignment.getGrossAmount(),
 				assignment.getBalanceAmount(),
 				assignment.getStatus(),
 				assignment.getNotes(),
@@ -153,10 +164,12 @@ public class FeeMapper {
 	public FeeDefaulterResponse toDefaulterResponse(StudentFeeAssignment assignment, LocalDate asOf) {
 		List<StudentFeeInstallment> overdueInstallments = assignment.getInstallments().stream()
 				.filter(installment -> installment.getBalanceAmount().signum() > 0)
-				.filter(installment -> installment.getDueDate().isBefore(asOf))
+				.filter(installment -> !installment.getDueDate().isAfter(asOf))
 				.sorted(Comparator.comparing(StudentFeeInstallment::getDueDate))
 				.toList();
 		Student student = assignment.getStudent();
+		LocalDate dueDate = overdueInstallments.isEmpty() ? null : overdueInstallments.getFirst().getDueDate();
+		StudentParent primaryParent = primaryParent(student);
 		return new FeeDefaulterResponse(
 				assignment.getId(),
 				student.getId(),
@@ -165,8 +178,16 @@ public class FeeMapper {
 				assignment.getAcademicYear(),
 				assignment.getClassName(),
 				assignment.getSectionName(),
+				assignment.getSourceType(),
+				assignment.getGrossAmount(),
+				assignment.getPaidAmount(),
 				assignment.getBalanceAmount(),
-				overdueInstallments.isEmpty() ? null : overdueInstallments.getFirst().getDueDate(),
+				dueDate,
+				dueDate == null ? 0 : Math.max(0, ChronoUnit.DAYS.between(dueDate, asOf)),
+				primaryParent == null ? student.getPhoneNumber() : primaryParent.getParent().getPhoneNumber(),
+				primaryParent == null ? null : primaryParent.getParent().getDisplayName(),
+				assignment.getBalanceAmount(),
+				dueDate,
 				overdueInstallments.size());
 	}
 
@@ -267,5 +288,44 @@ public class FeeMapper {
 				allocation.getInstallment().getId(),
 				allocation.getInstallment().getTitle(),
 				allocation.getAmount());
+	}
+
+	private String feeCategoryName(FeeStructure structure) {
+		return structure.getItems().stream()
+				.filter(item -> !item.isDeleted())
+				.sorted(Comparator.comparingInt(FeeStructureItem::getSortOrder))
+				.map(item -> item.getCategory().getName())
+				.distinct()
+				.reduce((left, right) -> left + ", " + right)
+				.orElse(null);
+	}
+
+	private UUID sectionId(StudentFeeAssignment assignment) {
+		UUID assignmentAcademicYearId = assignment.getAcademicYearEntity() == null
+				? null
+				: assignment.getAcademicYearEntity().getId();
+		UUID assignmentClassId = assignment.getClassEntity() == null ? null : assignment.getClassEntity().getId();
+		return assignment.getStudent().getClassAssignments().stream()
+				.filter(classAssignment -> !classAssignment.isDeleted())
+				.filter(StudentClassAssignment::isActive)
+				.filter(classAssignment -> assignmentAcademicYearId == null
+						|| (classAssignment.getAcademicYearEntity() != null
+								&& assignmentAcademicYearId.equals(classAssignment.getAcademicYearEntity().getId())))
+				.filter(classAssignment -> assignmentClassId == null
+						|| (classAssignment.getClassEntity() != null
+								&& assignmentClassId.equals(classAssignment.getClassEntity().getId())))
+				.map(StudentClassAssignment::getSectionEntity)
+				.filter(java.util.Objects::nonNull)
+				.map(section -> section.getId())
+				.findFirst()
+				.orElse(null);
+	}
+
+	private StudentParent primaryParent(Student student) {
+		return student.getParents().stream()
+				.filter(parent -> !parent.isDeleted())
+				.sorted(Comparator.comparing(StudentParent::isPrimaryContact).reversed())
+				.findFirst()
+				.orElse(null);
 	}
 }

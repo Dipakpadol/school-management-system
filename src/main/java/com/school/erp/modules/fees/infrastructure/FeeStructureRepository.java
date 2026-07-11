@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.school.erp.common.domain.BaseRepository;
+import com.school.erp.modules.fees.domain.FeeScope;
 import com.school.erp.modules.fees.domain.FeeStructure;
 
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -71,6 +72,12 @@ public interface FeeStructureRepository extends BaseRepository<FeeStructure, UUI
 
 	List<FeeStructure> findByClassEntityIdAndStatusAndDeletedFalseOrderByCreatedAtAsc(
 			UUID classId,
+			com.school.erp.modules.fees.domain.FeeStructureStatus status);
+
+	List<FeeStructure> findByAcademicYearEntityIdAndClassEntityIdAndFeeScopeAndStatusAndDeletedFalseOrderByCreatedAtAsc(
+			UUID academicYearId,
+			UUID classId,
+			FeeScope feeScope,
 			com.school.erp.modules.fees.domain.FeeStructureStatus status);
 
 	Page<FeeStructure> findByAcademicYearEntityIdAndClassEntityIdAndDeletedFalse(

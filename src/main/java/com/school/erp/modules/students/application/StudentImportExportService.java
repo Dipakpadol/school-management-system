@@ -189,6 +189,7 @@ public class StudentImportExportService {
 			try {
 				StudentResponse student = studentService.admitStudent(toAdmissionRequest(row.values()));
 				successRows++;
+				addFeeAssignmentWarnings(row, student, errors);
 				assignHostelForImport(row, student, errors);
 				assignTransportForImport(row, student, errors);
 			}
@@ -337,6 +338,16 @@ public class StudentImportExportService {
 				List.of(),
 				null,
 				null);
+	}
+
+	private void addFeeAssignmentWarnings(ImportRow row, StudentResponse student, List<ImportErrorDto> errors) {
+		if (student.feeAssignmentSummary() == null || student.feeAssignmentSummary().warnings().isEmpty()) {
+			return;
+		}
+		student.feeAssignmentSummary().warnings().forEach(warning -> errors.add(ImportErrorDto.warning(
+				row.rowNumber(),
+				"fees",
+				warning)));
 	}
 
 	private void assignHostelForImport(ImportRow row, StudentResponse student, List<ImportErrorDto> errors) {

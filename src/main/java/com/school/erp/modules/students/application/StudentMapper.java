@@ -3,6 +3,7 @@ package com.school.erp.modules.students.application;
 import java.util.Comparator;
 import java.util.List;
 
+import com.school.erp.modules.fees.api.dto.FeeAutoAssignmentResult;
 import com.school.erp.modules.students.api.dto.ClassSectionAssignmentRequest;
 import com.school.erp.modules.students.api.dto.ClassSectionAssignmentResponse;
 import com.school.erp.modules.students.api.dto.ParentGuardianRequest;
@@ -83,6 +84,10 @@ public class StudentMapper {
 	}
 
 	public StudentResponse toProfileResponse(Student student) {
+		return toProfileResponse(student, null);
+	}
+
+	public StudentResponse toProfileResponse(Student student, FeeAutoAssignmentResult feeAssignmentSummary) {
 		List<ClassSectionAssignmentResponse> assignments = student.getClassAssignments().stream()
 				.filter(assignment -> !assignment.isDeleted())
 				.sorted(assignmentOrder())
@@ -118,6 +123,7 @@ public class StudentMapper {
 				documentResponses(student),
 				student.getCurrentAssignment().map(this::toClassSectionAssignmentResponse).orElse(null),
 				assignments,
+				feeAssignmentSummary,
 				student.getCreatedAt(),
 				student.getUpdatedAt());
 	}

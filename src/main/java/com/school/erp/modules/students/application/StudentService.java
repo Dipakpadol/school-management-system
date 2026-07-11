@@ -15,7 +15,9 @@ import com.school.erp.modules.academic.application.AcademicHierarchyService;
 import com.school.erp.modules.academic.domain.AcademicYear;
 import com.school.erp.modules.academic.domain.ClassEntity;
 import com.school.erp.modules.academic.domain.SectionEntity;
+import com.school.erp.modules.fees.api.dto.FeeAutoAssignmentResult;
 import com.school.erp.modules.fees.application.FeeService;
+import com.school.erp.modules.fees.application.StudentFeeAutoAssignmentService;
 import com.school.erp.modules.hostel.application.HostelService;
 import com.school.erp.modules.transport.application.TransportService;
 import com.school.erp.modules.students.api.dto.ClassSectionAssignmentRequest;
@@ -61,6 +63,7 @@ public class StudentService {
 	private final StudentClassAssignmentRepository studentClassAssignmentRepository;
 	private final AcademicHierarchyService academicHierarchyService;
 	private final FeeService feeService;
+	private final StudentFeeAutoAssignmentService feeAutoAssignmentService;
 	private final HostelService hostelService;
 	private final TransportService transportService;
 	private final StudentMapper studentMapper;
@@ -80,13 +83,45 @@ public class StudentService {
 		optionalDocuments(request.documents()).forEach(document -> addDocument(student, document));
 
 		Student saved = studentRepository.saveAndFlush(student);
-		feeService.assignActiveClassFeesToStudent(
+		FeeAutoAssignmentResult feeSummary = feeAutoAssignmentService.assignClassFees(
 				saved.getId(),
+				resolved.academicYear().getId(),
 				resolved.classEntity().getId(),
 				request.classAssignment().effectiveFrom());
-		hostelService.assignStudentDuringAdmission(saved, resolved.academicYear(), request.hostelAssignment());
-		transportService.assignStudentDuringAdmission(saved, resolved.academicYear(), request.transportAssignment());
-		StudentResponse response = studentMapper.toProfileResponse(saved);
+		var hostelAllocation = hostelService.assignStudentDuringAdmission(
+				saved,
+				resolved.academicYear(),
+				request.hostelAssignment(),
+				false);
+		if (request.hostelAssignment() != null
+				&& request.hostelAssignment().appliesHostelFee()
+				&& hostelAllocation.isPresent()) {
+			var allocation = hostelAllocation.get();
+			feeSummary = feeSummary.merge(feeAutoAssignmentService.assignHostelFees(
+					saved.getId(),
+					allocation.academicYearId(),
+					allocation.hostelId(),
+					allocation.roomId(),
+					allocation.roomType(),
+					allocation.allocationDate()));
+		}
+		var transportAssignment = transportService.assignStudentDuringAdmission(
+				saved,
+				resolved.academicYear(),
+				request.transportAssignment(),
+				false);
+		if (request.transportAssignment() != null
+				&& request.transportAssignment().appliesTransportFee()
+				&& transportAssignment.isPresent()) {
+			var assignment = transportAssignment.get();
+			feeSummary = feeSummary.merge(feeAutoAssignmentService.assignTransportFees(
+					saved.getId(),
+					assignment.academicYearId(),
+					assignment.routeId(),
+					assignment.pickupPointId(),
+					assignment.assignmentDate()));
+		}
+		StudentResponse response = studentMapper.toProfileResponse(saved, feeSummary);
 		auditStudent(response.id(), "CREATE", null, response);
 		return response;
 	}

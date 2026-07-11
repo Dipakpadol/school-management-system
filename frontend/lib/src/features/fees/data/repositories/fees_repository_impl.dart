@@ -84,11 +84,17 @@ class FeesRepositoryImpl implements FeesRepository {
   Future<Result<List<StudentFeeAssignmentModel>>> assignments({
     String? academicYearId,
     String? classId,
+    String? sectionId,
+    String? status,
+    String? query,
   }) {
     return _guard(
       () async => (await _remoteDataSource.assignments(
         academicYearId: academicYearId,
         classId: classId,
+        sectionId: sectionId,
+        status: status,
+        query: query,
       )).content,
     );
   }
@@ -160,6 +166,7 @@ class FeesRepositoryImpl implements FeesRepository {
     String? academicYearId,
     String? classId,
     String? sectionId,
+    String? sourceType,
     String? asOf,
     String? query,
   }) {
@@ -168,6 +175,7 @@ class FeesRepositoryImpl implements FeesRepository {
         academicYearId: academicYearId,
         classId: classId,
         sectionId: sectionId,
+        sourceType: sourceType,
         asOf: asOf,
         query: query,
       )).content,
@@ -266,6 +274,8 @@ class FeesRepositoryImpl implements FeesRepository {
     String format, {
     String? academicYearId,
     String? classId,
+    String? sectionId,
+    String? sourceType,
     String? asOf,
   }) {
     return _guard(() async {
@@ -273,6 +283,8 @@ class FeesRepositoryImpl implements FeesRepository {
         format,
         academicYearId: academicYearId,
         classId: classId,
+        sectionId: sectionId,
+        sourceType: sourceType,
         asOf: asOf,
       );
       await downloadBytes(

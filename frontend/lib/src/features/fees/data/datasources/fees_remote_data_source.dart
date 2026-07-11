@@ -106,6 +106,9 @@ class FeesRemoteDataSource {
   Future<PagePayload<StudentFeeAssignmentModel>> assignments({
     String? academicYearId,
     String? classId,
+    String? sectionId,
+    String? status,
+    String? query,
   }) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.feeAssignments,
@@ -113,6 +116,11 @@ class FeesRemoteDataSource {
         if (academicYearId != null && academicYearId.isNotEmpty)
           'academicYearId': academicYearId,
         if (classId != null && classId.isNotEmpty) 'classId': classId,
+        if (sectionId != null && sectionId.isNotEmpty) 'sectionId': sectionId,
+        if (status != null && status.isNotEmpty) 'status': status,
+        if (query != null && query.trim().isNotEmpty)
+          'studentName': query.trim(),
+        'size': 100,
       },
     );
     return PagePayload.fromJson(
@@ -227,6 +235,7 @@ class FeesRemoteDataSource {
     String? academicYearId,
     String? classId,
     String? sectionId,
+    String? sourceType,
     String? asOf,
     String? query,
   }) async {
@@ -237,8 +246,12 @@ class FeesRemoteDataSource {
           'academicYearId': academicYearId,
         if (classId != null && classId.isNotEmpty) 'classId': classId,
         if (sectionId != null && sectionId.isNotEmpty) 'sectionId': sectionId,
-        if (asOf != null && asOf.isNotEmpty) 'asOf': asOf,
-        if (query != null && query.trim().isNotEmpty) 'studentName': query.trim(),
+        if (sourceType != null && sourceType.isNotEmpty)
+          'sourceType': sourceType,
+        if (asOf != null && asOf.isNotEmpty) 'dueDate': asOf,
+        if (query != null && query.trim().isNotEmpty)
+          'studentName': query.trim(),
+        'size': 100,
       },
     );
     return PagePayload.fromJson(
@@ -275,6 +288,8 @@ class FeesRemoteDataSource {
     String format, {
     String? academicYearId,
     String? classId,
+    String? sectionId,
+    String? sourceType,
     String? asOf,
   }) {
     return _apiClient.download(
@@ -283,7 +298,10 @@ class FeesRemoteDataSource {
         if (academicYearId != null && academicYearId.isNotEmpty)
           'academicYearId': academicYearId,
         if (classId != null && classId.isNotEmpty) 'classId': classId,
-        if (asOf != null && asOf.isNotEmpty) 'asOf': asOf,
+        if (sectionId != null && sectionId.isNotEmpty) 'sectionId': sectionId,
+        if (sourceType != null && sourceType.isNotEmpty)
+          'sourceType': sourceType,
+        if (asOf != null && asOf.isNotEmpty) 'dueDate': asOf,
       },
     );
   }

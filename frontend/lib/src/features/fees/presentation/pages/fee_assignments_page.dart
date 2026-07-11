@@ -4,44 +4,34 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/widgets/admin_shell.dart';
+import '../../../../core/widgets/app_data_table.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../students/data/models/student_models.dart';
 import '../../../students/presentation/controllers/students_providers.dart';
 import '../../data/models/fee_models.dart';
-import '../../data/repositories/fees_repository_impl.dart';
 import '../controllers/fees_providers.dart';
 import '../widgets/fee_widgets.dart';
 
-class FeeDefaultersPage extends ConsumerStatefulWidget {
-  const FeeDefaultersPage({super.key});
+class FeeAssignmentsPage extends ConsumerStatefulWidget {
+  const FeeAssignmentsPage({super.key});
 
   @override
-  ConsumerState<FeeDefaultersPage> createState() => _FeeDefaultersPageState();
+  ConsumerState<FeeAssignmentsPage> createState() => _FeeAssignmentsPageState();
 }
 
-class _FeeDefaultersPageState extends ConsumerState<FeeDefaultersPage> {
-  final _asOfController = TextEditingController();
+class _FeeAssignmentsPageState extends ConsumerState<FeeAssignmentsPage> {
   final _searchController = TextEditingController();
 
   String? _academicYearId;
   String? _classId;
   String? _sectionId;
-  String? _sourceType;
-  late FeeDefaulterFilter _filter;
-  bool _exporting = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _asOfController.text = _dateLabel(DateTime.now());
-    _filter = FeeDefaulterFilter(asOf: _asOfController.text);
-  }
+  String? _status;
+  FeeListFilter _filter = const FeeListFilter();
 
   @override
   void dispose() {
-    _asOfController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -49,10 +39,10 @@ class _FeeDefaultersPageState extends ConsumerState<FeeDefaultersPage> {
   @override
   Widget build(BuildContext context) {
     final years = ref.watch(academicYearsProvider);
-    final defaulters = ref.watch(feeDefaultersProvider(_filter));
+    final assignments = ref.watch(feeAssignmentsProvider(_filter));
 
     return AdminShell(
-      title: 'Fee Defaulters',
+      title: 'Fee Assignments',
       activeModuleId: 'fees',
       onLogout: () async {
         await ref.read(authControllerProvider.notifier).logout();
@@ -64,9 +54,9 @@ class _FeeDefaultersPageState extends ConsumerState<FeeDefaultersPage> {
         padding: const EdgeInsets.all(24),
         children: [
           _Header(
-            exporting: _exporting,
             onBack: () => context.go(AppRoutes.fees),
-            onExport: _export,
+            onNew: () => context.go(AppRoutes.newFeeAssignment),
+            onRefresh: () => ref.invalidate(feeAssignmentsProvider(_filter)),
           ),
           const SizedBox(height: 12),
           years.when(
@@ -78,13 +68,13 @@ class _FeeDefaultersPageState extends ConsumerState<FeeDefaultersPage> {
             loading: () => const AppLoadingState(label: 'Loading filters'),
           ),
           const SizedBox(height: 16),
-          defaulters.when(
-            data: _DefaulterResults.new,
+          assignments.when(
+            data: _AssignmentsTable.new,
             error: (error, _) => AppErrorState(
               message: _message(error),
-              onRetry: () => ref.invalidate(feeDefaultersProvider(_filter)),
+              onRetry: () => ref.invalidate(feeAssignmentsProvider(_filter)),
             ),
-            loading: () => const AppLoadingState(label: 'Loading defaulters'),
+            loading: () => const AppLoadingState(label: 'Loading assignments'),
           ),
         ],
       ),
@@ -148,7 +138,7 @@ class _FeeDefaultersPageState extends ConsumerState<FeeDefaultersPage> {
                           items: const [
                             DropdownMenuItem(
                               value: null,
-                              child: Text('Select academic year'),
+                              child: Text('All classes'),
                             ),
                           ],
                           onChanged: null,
@@ -223,8 +213,9 @@ class _FeeDefaultersPageState extends ConsumerState<FeeDefaultersPage> {
                                   child: Text(section.name),
                                 ),
                             ],
-                            onChanged: (value) =>
-                                setState(() => _sectionId = value),
+                            onChanged: (value) {
+                              setState(() => _sectionId = value);
+                            },
                           ),
                           error: (error, _) => _InlineError(
                             message: _message(error),
@@ -237,39 +228,43 @@ class _FeeDefaultersPageState extends ConsumerState<FeeDefaultersPage> {
                 ),
                 _FieldBox(
                   child: DropdownButtonFormField<String?>(
-                    initialValue: _sourceType,
+                    initialValue: _status,
                     isExpanded: true,
                     decoration: const InputDecoration(
-                      labelText: 'Fee source',
-                      prefixIcon: Icon(Icons.account_tree_outlined),
+                      labelText: 'Status',
+                      prefixIcon: Icon(Icons.flag_outlined),
                     ),
                     items: const [
-                      DropdownMenuItem(value: null, child: Text('All sources')),
-                      DropdownMenuItem(value: 'CLASS', child: Text('Class')),
-                      DropdownMenuItem(value: 'HOSTEL', child: Text('Hostel')),
                       DropdownMenuItem(
-                        value: 'TRANSPORT',
-                        child: Text('Transport'),
+                        value: null,
+                        child: Text('All statuses'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'PENDING',
+                        child: Text('Pending'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'PARTIALLY_PAID',
+                        child: Text('Partially paid'),
+                      ),
+                      DropdownMenuItem(value: 'PAID', child: Text('Paid')),
+                      DropdownMenuItem(
+                        value: 'OVERDUE',
+                        child: Text('Overdue'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'CANCELLED',
+                        child: Text('Cancelled'),
                       ),
                     ],
-                    onChanged: (value) => setState(() => _sourceType = value),
-                  ),
-                ),
-                _FieldBox(
-                  child: TextField(
-                    controller: _asOfController,
-                    decoration: const InputDecoration(
-                      labelText: 'Due on or before',
-                      hintText: 'YYYY-MM-DD',
-                      prefixIcon: Icon(Icons.event_outlined),
-                    ),
+                    onChanged: (value) => setState(() => _status = value),
                   ),
                 ),
                 _FieldBox(
                   child: TextField(
                     controller: _searchController,
                     decoration: const InputDecoration(
-                      labelText: 'Search student',
+                      labelText: 'Search',
                       prefixIcon: Icon(Icons.search),
                     ),
                     onSubmitted: (_) => _applyFilters(),
@@ -302,12 +297,11 @@ class _FeeDefaultersPageState extends ConsumerState<FeeDefaultersPage> {
 
   void _applyFilters() {
     setState(() {
-      _filter = FeeDefaulterFilter(
+      _filter = FeeListFilter(
         academicYearId: _academicYearId,
         classId: _classId,
         sectionId: _sectionId,
-        sourceType: _sourceType,
-        asOf: _blankToNull(_asOfController.text),
+        status: _status,
         query: _blankToNull(_searchController.text),
       );
     });
@@ -318,52 +312,23 @@ class _FeeDefaultersPageState extends ConsumerState<FeeDefaultersPage> {
       _academicYearId = null;
       _classId = null;
       _sectionId = null;
-      _sourceType = null;
-      _asOfController.text = _dateLabel(DateTime.now());
+      _status = null;
       _searchController.clear();
-      _filter = FeeDefaulterFilter(asOf: _asOfController.text);
+      _filter = const FeeListFilter();
     });
-  }
-
-  Future<void> _export(String format) async {
-    setState(() => _exporting = true);
-    final result = await ref
-        .read(feesRepositoryProvider)
-        .exportDefaulters(
-          format,
-          academicYearId: _filter.academicYearId,
-          classId: _filter.classId,
-          sectionId: _filter.sectionId,
-          sourceType: _filter.sourceType,
-          asOf: _filter.asOf,
-        );
-    if (!mounted) {
-      return;
-    }
-    setState(() => _exporting = false);
-    result.when(
-      success: (_) => _snack('Defaulters exported.'),
-      failure: (failure) => _snack(failure.message),
-    );
-  }
-
-  void _snack(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
 class _Header extends StatelessWidget {
   const _Header({
-    required this.exporting,
     required this.onBack,
-    required this.onExport,
+    required this.onNew,
+    required this.onRefresh,
   });
 
-  final bool exporting;
   final VoidCallback onBack;
-  final ValueChanged<String> onExport;
+  final VoidCallback onNew;
+  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -385,7 +350,7 @@ class _Header extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Defaulters',
+                  'Assignments',
                   style: Theme.of(
                     context,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
@@ -397,24 +362,14 @@ class _Header extends StatelessWidget {
               runSpacing: 8,
               children: [
                 OutlinedButton.icon(
-                  onPressed: exporting ? null : () => onExport('csv'),
-                  icon: const Icon(Icons.table_view_outlined),
-                  label: const Text('CSV'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: exporting ? null : () => onExport('xlsx'),
-                  icon: const Icon(Icons.grid_on_outlined),
-                  label: const Text('Excel'),
+                  onPressed: onRefresh,
+                  icon: const Icon(Icons.refresh_outlined),
+                  label: const Text('Refresh'),
                 ),
                 FilledButton.icon(
-                  onPressed: exporting ? null : () => onExport('pdf'),
-                  icon: exporting
-                      ? const SizedBox.square(
-                          dimension: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.picture_as_pdf_outlined),
-                  label: const Text('PDF'),
+                  onPressed: onNew,
+                  icon: const Icon(Icons.add_outlined),
+                  label: const Text('Assign class fee'),
                 ),
               ],
             ),
@@ -425,10 +380,10 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _DefaulterResults extends StatelessWidget {
-  const _DefaulterResults(this.items);
+class _AssignmentsTable extends StatelessWidget {
+  const _AssignmentsTable(this.items);
 
-  final List<FeeDefaulterModel> items;
+  final List<StudentFeeAssignmentModel> items;
 
   @override
   Widget build(BuildContext context) {
@@ -436,108 +391,102 @@ class _DefaulterResults extends StatelessWidget {
       return const Card(
         child: Padding(
           padding: EdgeInsets.all(24),
-          child: Text('No defaulters found.'),
+          child: Text('No fee assignments found.'),
         ),
       );
     }
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 1120 ? 2 : 1;
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            mainAxisExtent: 156,
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: AppDataTable<StudentFeeAssignmentModel>(
+          items: items,
+          onRowTap: (assignment) => context.go(
+            AppRoutes.collectFeePaymentForAssignment(assignment.id),
           ),
-          itemCount: items.length,
-          itemBuilder: (context, index) {
-            final item = items[index];
-            return Card(
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () => context.go(
-                  AppRoutes.collectFeePaymentForAssignment(item.assignmentId),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      SizedBox.square(
-                        dimension: 44,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.errorContainer,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.warning_amber_outlined,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onErrorContainer,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.studentName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w800),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              [
-                                item.admissionNumber,
-                                _classLabel(item),
-                                item.sourceType,
-                                if (item.dueDate != null)
-                                  'Due ${_dateLabel(item.dueDate!)}',
-                                '${item.overdueDays} overdue days',
-                              ].join(' - '),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.outline,
-                                  ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              [
-                                'Total ${_money(item.totalAmount)}',
-                                'Paid ${_money(item.paidAmount)}',
-                                'Pending ${_money(item.pendingAmount)}',
-                                if ((item.contactNumber ?? '').isNotEmpty)
-                                  item.contactNumber!,
-                              ].join(' - '),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      MoneyText(item.pendingAmount, emphasized: true),
-                    ],
-                  ),
-                ),
+          columns: [
+            AppTableColumn(
+              label: 'Student',
+              cellBuilder: (_, item) => _TwoLine(
+                title: item.studentName,
+                subtitle: item.admissionNumber,
               ),
-            );
-          },
-        );
-      },
+            ),
+            AppTableColumn(
+              label: 'Academic year',
+              cellBuilder: (_, item) => Text(item.academicYear),
+            ),
+            AppTableColumn(
+              label: 'Class',
+              cellBuilder: (_, item) => Text(item.className),
+            ),
+            AppTableColumn(
+              label: 'Section',
+              cellBuilder: (_, item) => Text(item.sectionName ?? '-'),
+            ),
+            AppTableColumn(
+              label: 'Fee structure',
+              cellBuilder: (_, item) => _TwoLine(
+                title: item.feeStructureName,
+                subtitle: item.feeCategoryName,
+              ),
+            ),
+            AppTableColumn(
+              label: 'Source',
+              cellBuilder: (_, item) => FeeStatusChip(status: item.sourceType),
+            ),
+            AppTableColumn(
+              label: 'Amount',
+              numeric: true,
+              cellBuilder: (_, item) => MoneyText(item.grossAmount),
+            ),
+            AppTableColumn(
+              label: 'Paid',
+              numeric: true,
+              cellBuilder: (_, item) => MoneyText(item.paidAmount),
+            ),
+            AppTableColumn(
+              label: 'Pending',
+              numeric: true,
+              cellBuilder: (_, item) =>
+                  MoneyText(item.balanceAmount, emphasized: true),
+            ),
+            AppTableColumn(
+              label: 'Status',
+              cellBuilder: (_, item) => FeeStatusChip(status: item.status),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TwoLine extends StatelessWidget {
+  const _TwoLine({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 190,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+          if (subtitle.trim().isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -549,7 +498,7 @@ class _FieldBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(width: 260, child: child);
+    return SizedBox(width: 240, child: child);
   }
 }
 
@@ -562,42 +511,23 @@ class _InlineError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InputDecorator(
-      decoration: const InputDecoration(labelText: 'Unable to load'),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(message, maxLines: 1, overflow: TextOverflow.ellipsis),
-          ),
-          IconButton(
-            tooltip: 'Retry',
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh_outlined),
-          ),
-        ],
+      decoration: InputDecoration(
+        errorText: message,
+        suffixIcon: IconButton(
+          tooltip: 'Retry',
+          icon: const Icon(Icons.refresh),
+          onPressed: onRetry,
+        ),
       ),
+      child: const SizedBox.shrink(),
     );
   }
 }
 
-String _classLabel(FeeDefaulterModel item) {
-  final section = item.sectionName;
-  return section == null || section.isEmpty
-      ? item.className
-      : '${item.className} $section';
-}
-
 String? _blankToNull(String value) {
-  final text = value.trim();
-  return text.isEmpty ? null : text;
+  final trimmed = value.trim();
+  return trimmed.isEmpty ? null : trimmed;
 }
-
-String _dateLabel(DateTime date) {
-  final month = date.month.toString().padLeft(2, '0');
-  final day = date.day.toString().padLeft(2, '0');
-  return '${date.year}-$month-$day';
-}
-
-String _money(double value) => 'INR ${value.toStringAsFixed(2)}';
 
 String _message(Object error) {
   return error.toString().replaceFirst('Exception: ', '');

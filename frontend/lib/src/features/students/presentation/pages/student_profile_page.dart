@@ -538,6 +538,9 @@ class _FeeGroupSection extends StatelessWidget {
               subtitle: Text(
                 [
                   fee.academicYear,
+                  fee.feeCategoryName,
+                  if (fee.installments.isNotEmpty)
+                    'Due ${_dateLabel(fee.installments.first.dueDate)}',
                   _feeScopeLabel(fee),
                   'Paid ${_money(fee.paidAmount)}',
                   'Pending ${_money(fee.balanceAmount)}',

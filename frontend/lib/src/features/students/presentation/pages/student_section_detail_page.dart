@@ -463,9 +463,7 @@ Future<void> _showAdmissionDialog(
   final parentPhone = TextEditingController(text: '+9198');
   final parentEmail = TextEditingController();
   final parentOccupation = TextEditingController();
-  final hostelAllocationDate = TextEditingController(
-    text: admissionDate.text,
-  );
+  final hostelAllocationDate = TextEditingController(text: admissionDate.text);
   final transportAssignmentDate = TextEditingController(
     text: admissionDate.text,
   );
@@ -498,16 +496,16 @@ Future<void> _showAdmissionDialog(
                 data: (items) => selectedHostelId == null
                     ? items
                     : items
-                        .where((room) => room.hostelId == selectedHostelId)
-                        .toList(),
+                          .where((room) => room.hostelId == selectedHostelId)
+                          .toList(),
                 orElse: () => const <HostelRoomSummaryModel>[],
               );
               final selectedRoom = _hostelRoomById(roomItems, selectedRoomId);
               final availableBeds = selectedRoom == null
                   ? const <HostelBedModel>[]
                   : selectedRoom.beds
-                      .where((bed) => bed.active && !bed.occupied)
-                      .toList();
+                        .where((bed) => bed.active && !bed.occupied)
+                        .toList();
               final transportRoutes = filter.academicYearId == null
                   ? const AsyncValue.data(<TransportRouteModel>[])
                   : ref.watch(transportRoutesProvider(filter.academicYearId!));
@@ -522,9 +520,7 @@ Future<void> _showAdmissionDialog(
               final pickupPoints = selectedTransportRouteId == null
                   ? const AsyncValue.data(<TransportPickupPointModel>[])
                   : ref.watch(
-                      transportPickupPointsProvider(
-                        selectedTransportRouteId!,
-                      ),
+                      transportPickupPointsProvider(selectedTransportRouteId!),
                     );
               final pickupPointItems = pickupPoints.maybeWhen(
                 data: (items) => items,
@@ -542,583 +538,655 @@ Future<void> _showAdmissionDialog(
                         spacing: 12,
                         runSpacing: 12,
                         children: [
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: admissionNo,
-                      decoration: const InputDecoration(
-                        labelText: 'Admission number',
-                      ),
-                      validator: _required,
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: firstName,
-                      decoration: const InputDecoration(
-                        labelText: 'First name',
-                      ),
-                      validator: _required,
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: middleName,
-                      decoration: const InputDecoration(
-                        labelText: 'Middle name',
-                      ),
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: lastName,
-                      decoration: const InputDecoration(labelText: 'Last name'),
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: dateOfBirth,
-                      decoration: const InputDecoration(
-                        labelText: 'Date of birth',
-                        hintText: 'YYYY-MM-DD',
-                      ),
-                      validator: _date,
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: gender,
-                      decoration: const InputDecoration(labelText: 'Gender'),
-                      items: const [
-                        DropdownMenuItem(value: 'MALE', child: Text('Male')),
-                        DropdownMenuItem(
-                          value: 'FEMALE',
-                          child: Text('Female'),
-                        ),
-                        DropdownMenuItem(value: 'OTHER', child: Text('Other')),
-                      ],
-                      onChanged: (value) => gender = value ?? gender,
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: status,
-                      decoration: const InputDecoration(labelText: 'Status'),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'ACTIVE',
-                          child: Text('Active'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'INACTIVE',
-                          child: Text('Inactive'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'TRANSFERRED',
-                          child: Text('Transferred'),
-                        ),
-                      ],
-                      onChanged: (value) => status = value ?? status,
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: admissionDate,
-                      decoration: const InputDecoration(
-                        labelText: 'Admission date',
-                        hintText: 'YYYY-MM-DD',
-                      ),
-                      validator: _date,
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: bloodGroup,
-                      decoration: const InputDecoration(
-                        labelText: 'Blood group',
-                      ),
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: email,
-                      decoration: const InputDecoration(labelText: 'E-mail'),
-                      validator: _email,
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: phone,
-                      decoration: const InputDecoration(labelText: 'Mobile'),
-                      validator: _optionalMobile,
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: roll,
-                      decoration: const InputDecoration(
-                        labelText: 'Roll number',
-                      ),
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: parentRelation,
-                      decoration: const InputDecoration(labelText: 'Relation'),
-                      items: const [
-                        DropdownMenuItem(value: 'FATHER', child: Text('Father')),
-                        DropdownMenuItem(value: 'MOTHER', child: Text('Mother')),
-                        DropdownMenuItem(
-                          value: 'GUARDIAN',
-                          child: Text('Guardian'),
-                        ),
-                        DropdownMenuItem(value: 'OTHER', child: Text('Other')),
-                      ],
-                      onChanged: (value) =>
-                          parentRelation = value ?? parentRelation,
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: parentName,
-                      decoration: const InputDecoration(labelText: 'Guardian'),
-                      validator: _required,
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: parentPhone,
-                      decoration: const InputDecoration(
-                        labelText: 'Guardian mobile',
-                      ),
-                      validator: _mobile,
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: parentEmail,
-                      decoration: const InputDecoration(
-                        labelText: 'Guardian email',
-                      ),
-                      validator: _email,
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: parentOccupation,
-                      decoration: const InputDecoration(
-                        labelText: 'Guardian occupation',
-                      ),
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: previousSchool,
-                      decoration: const InputDecoration(
-                        labelText: 'Previous school',
-                      ),
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: addressLine1,
-                      decoration: const InputDecoration(
-                        labelText: 'Address line 1',
-                      ),
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: addressLine2,
-                      decoration: const InputDecoration(
-                        labelText: 'Address line 2',
-                      ),
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: city,
-                      decoration: const InputDecoration(labelText: 'City'),
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: state,
-                      decoration: const InputDecoration(labelText: 'State'),
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: postalCode,
-                      decoration: const InputDecoration(
-                        labelText: 'Postal code',
-                      ),
-                      validator: _optionalPinCode,
-                    ),
-                  ),
-                  _Field(
-                    width: 290,
-                    child: TextFormField(
-                      controller: country,
-                      decoration: const InputDecoration(labelText: 'Country'),
-                    ),
-                  ),
-                  _Field(
-                    width: 592,
-                    child: SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Hostel required'),
-                      value: hostelRequired,
-                      onChanged: (value) => setDialogState(() {
-                        hostelRequired = value;
-                        selectedHostelId = null;
-                        selectedRoomId = null;
-                        selectedBedId = null;
-                        hostelAllocationDate.text = admissionDate.text.trim();
-                      }),
-                    ),
-                  ),
-                  if (hostelRequired) ...[
-                    _Field(
-                      width: 290,
-                      child: hostels.when(
-                        data: (items) => DropdownButtonFormField<String>(
-                          initialValue: selectedHostelId,
-                          decoration: const InputDecoration(labelText: 'Hostel'),
-                          items: [
-                            for (final hostel in items)
-                              DropdownMenuItem(
-                                value: hostel.id,
-                                child: Text(hostel.name),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: admissionNo,
+                              decoration: const InputDecoration(
+                                labelText: 'Admission number',
                               ),
-                          ],
-                          validator: _required,
-                          onChanged: (value) => setDialogState(() {
-                            selectedHostelId = value;
-                            selectedRoomId = null;
-                            selectedBedId = null;
-                          }),
-                        ),
-                        error: (error, _) => Text(_message(error)),
-                        loading: () => const LinearProgressIndicator(),
-                      ),
-                    ),
-                    _Field(
-                      width: 290,
-                      child: rooms.when(
-                        data: (_) => DropdownButtonFormField<String>(
-                          initialValue: selectedRoomId,
-                          decoration: const InputDecoration(labelText: 'Room'),
-                          items: [
-                            for (final room in roomItems)
-                              DropdownMenuItem(
-                                value: room.id,
-                                child: Text(
-                                  '${room.roomNumber} (${room.availableBeds} free)',
+                              validator: _required,
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: firstName,
+                              decoration: const InputDecoration(
+                                labelText: 'First name',
+                              ),
+                              validator: _required,
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: middleName,
+                              decoration: const InputDecoration(
+                                labelText: 'Middle name',
+                              ),
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: lastName,
+                              decoration: const InputDecoration(
+                                labelText: 'Last name',
+                              ),
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: dateOfBirth,
+                              decoration: const InputDecoration(
+                                labelText: 'Date of birth',
+                                hintText: 'YYYY-MM-DD',
+                              ),
+                              validator: _date,
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: DropdownButtonFormField<String>(
+                              initialValue: gender,
+                              decoration: const InputDecoration(
+                                labelText: 'Gender',
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'MALE',
+                                  child: Text('Male'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'FEMALE',
+                                  child: Text('Female'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'OTHER',
+                                  child: Text('Other'),
+                                ),
+                              ],
+                              onChanged: (value) => gender = value ?? gender,
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: DropdownButtonFormField<String>(
+                              initialValue: status,
+                              decoration: const InputDecoration(
+                                labelText: 'Status',
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'ACTIVE',
+                                  child: Text('Active'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'INACTIVE',
+                                  child: Text('Inactive'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'TRANSFERRED',
+                                  child: Text('Transferred'),
+                                ),
+                              ],
+                              onChanged: (value) => status = value ?? status,
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: admissionDate,
+                              decoration: const InputDecoration(
+                                labelText: 'Admission date',
+                                hintText: 'YYYY-MM-DD',
+                              ),
+                              validator: _date,
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: bloodGroup,
+                              decoration: const InputDecoration(
+                                labelText: 'Blood group',
+                              ),
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: email,
+                              decoration: const InputDecoration(
+                                labelText: 'E-mail',
+                              ),
+                              validator: _email,
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: phone,
+                              decoration: const InputDecoration(
+                                labelText: 'Mobile',
+                              ),
+                              validator: _optionalMobile,
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: roll,
+                              decoration: const InputDecoration(
+                                labelText: 'Roll number',
+                              ),
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: DropdownButtonFormField<String>(
+                              initialValue: parentRelation,
+                              decoration: const InputDecoration(
+                                labelText: 'Relation',
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'FATHER',
+                                  child: Text('Father'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'MOTHER',
+                                  child: Text('Mother'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'GUARDIAN',
+                                  child: Text('Guardian'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'OTHER',
+                                  child: Text('Other'),
+                                ),
+                              ],
+                              onChanged: (value) =>
+                                  parentRelation = value ?? parentRelation,
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: parentName,
+                              decoration: const InputDecoration(
+                                labelText: 'Guardian',
+                              ),
+                              validator: _required,
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: parentPhone,
+                              decoration: const InputDecoration(
+                                labelText: 'Guardian mobile',
+                              ),
+                              validator: _mobile,
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: parentEmail,
+                              decoration: const InputDecoration(
+                                labelText: 'Guardian email',
+                              ),
+                              validator: _email,
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: parentOccupation,
+                              decoration: const InputDecoration(
+                                labelText: 'Guardian occupation',
+                              ),
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: previousSchool,
+                              decoration: const InputDecoration(
+                                labelText: 'Previous school',
+                              ),
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: addressLine1,
+                              decoration: const InputDecoration(
+                                labelText: 'Address line 1',
+                              ),
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: addressLine2,
+                              decoration: const InputDecoration(
+                                labelText: 'Address line 2',
+                              ),
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: city,
+                              decoration: const InputDecoration(
+                                labelText: 'City',
+                              ),
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: state,
+                              decoration: const InputDecoration(
+                                labelText: 'State',
+                              ),
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: postalCode,
+                              decoration: const InputDecoration(
+                                labelText: 'Postal code',
+                              ),
+                              validator: _optionalPinCode,
+                            ),
+                          ),
+                          _Field(
+                            width: 290,
+                            child: TextFormField(
+                              controller: country,
+                              decoration: const InputDecoration(
+                                labelText: 'Country',
+                              ),
+                            ),
+                          ),
+                          _Field(
+                            width: 592,
+                            child: SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Hostel required'),
+                              value: hostelRequired,
+                              onChanged: (value) => setDialogState(() {
+                                hostelRequired = value;
+                                selectedHostelId = null;
+                                selectedRoomId = null;
+                                selectedBedId = null;
+                                hostelAllocationDate.text = admissionDate.text
+                                    .trim();
+                              }),
+                            ),
+                          ),
+                          if (hostelRequired) ...[
+                            _Field(
+                              width: 290,
+                              child: hostels.when(
+                                data: (items) =>
+                                    DropdownButtonFormField<String>(
+                                      initialValue: selectedHostelId,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Hostel',
+                                      ),
+                                      items: [
+                                        for (final hostel in items)
+                                          DropdownMenuItem(
+                                            value: hostel.id,
+                                            child: Text(hostel.name),
+                                          ),
+                                      ],
+                                      validator: _required,
+                                      onChanged: (value) => setDialogState(() {
+                                        selectedHostelId = value;
+                                        selectedRoomId = null;
+                                        selectedBedId = null;
+                                      }),
+                                    ),
+                                error: (error, _) => Text(_message(error)),
+                                loading: () => const LinearProgressIndicator(),
+                              ),
+                            ),
+                            _Field(
+                              width: 290,
+                              child: rooms.when(
+                                data: (_) => DropdownButtonFormField<String>(
+                                  initialValue: selectedRoomId,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Room',
+                                  ),
+                                  items: [
+                                    for (final room in roomItems)
+                                      DropdownMenuItem(
+                                        value: room.id,
+                                        child: Text(
+                                          '${room.roomNumber} (${room.availableBeds} free)',
+                                        ),
+                                      ),
+                                  ],
+                                  validator: (value) {
+                                    final required = _required(value);
+                                    if (required != null) {
+                                      return required;
+                                    }
+                                    final room = _hostelRoomById(
+                                      roomItems,
+                                      value,
+                                    );
+                                    if (room != null &&
+                                        room.availableBeds <= 0) {
+                                      return 'Room is full';
+                                    }
+                                    return null;
+                                  },
+                                  onChanged: (value) => setDialogState(() {
+                                    selectedRoomId = value;
+                                    selectedBedId = null;
+                                  }),
+                                ),
+                                error: (error, _) => Text(_message(error)),
+                                loading: () => const LinearProgressIndicator(),
+                              ),
+                            ),
+                            if (selectedRoom != null)
+                              _Field(
+                                width: 592,
+                                child: _HostelAvailabilityLine(
+                                  room: selectedRoom,
                                 ),
                               ),
-                          ],
-                          validator: (value) {
-                            final required = _required(value);
-                            if (required != null) {
-                              return required;
-                            }
-                            final room = _hostelRoomById(roomItems, value);
-                            if (room != null && room.availableBeds <= 0) {
-                              return 'Room is full';
-                            }
-                            return null;
-                          },
-                          onChanged: (value) => setDialogState(() {
-                            selectedRoomId = value;
-                            selectedBedId = null;
-                          }),
-                        ),
-                        error: (error, _) => Text(_message(error)),
-                        loading: () => const LinearProgressIndicator(),
-                      ),
-                    ),
-                    if (selectedRoom != null)
-                      _Field(
-                        width: 592,
-                        child: _HostelAvailabilityLine(room: selectedRoom),
-                      ),
-                    if (selectedRoom?.bedConceptEnabled ?? false)
-                      _Field(
-                        width: 290,
-                        child: DropdownButtonFormField<String>(
-                          initialValue: selectedBedId,
-                          decoration: const InputDecoration(labelText: 'Bed'),
-                          items: [
-                            for (final bed in availableBeds)
-                              DropdownMenuItem(
-                                value: bed.id,
-                                child: Text(bed.bedNumber),
+                            if (selectedRoom?.bedConceptEnabled ?? false)
+                              _Field(
+                                width: 290,
+                                child: DropdownButtonFormField<String>(
+                                  initialValue: selectedBedId,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Bed',
+                                  ),
+                                  items: [
+                                    for (final bed in availableBeds)
+                                      DropdownMenuItem(
+                                        value: bed.id,
+                                        child: Text(bed.bedNumber),
+                                      ),
+                                  ],
+                                  validator: _required,
+                                  onChanged: (value) => setDialogState(
+                                    () => selectedBedId = value,
+                                  ),
+                                ),
                               ),
+                            _Field(
+                              width: 290,
+                              child: TextFormField(
+                                controller: hostelAllocationDate,
+                                decoration: const InputDecoration(
+                                  labelText: 'Allocation date',
+                                  hintText: 'YYYY-MM-DD',
+                                ),
+                                validator: _date,
+                              ),
+                            ),
+                            _Field(
+                              width: 290,
+                              child: SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: const Text('Hostel fee applicable'),
+                                value: hostelFeeApplicable,
+                                onChanged: (value) => setDialogState(
+                                  () => hostelFeeApplicable = value,
+                                ),
+                              ),
+                            ),
                           ],
-                          validator: _required,
-                          onChanged: (value) =>
-                              setDialogState(() => selectedBedId = value),
-                        ),
-                      ),
-                    _Field(
-                      width: 290,
-                      child: TextFormField(
-                        controller: hostelAllocationDate,
-                        decoration: const InputDecoration(
-                          labelText: 'Allocation date',
-                          hintText: 'YYYY-MM-DD',
-                        ),
-                        validator: _date,
-                      ),
-                    ),
-                    _Field(
-                      width: 290,
-                      child: SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Hostel fee applicable'),
-                        value: hostelFeeApplicable,
-                        onChanged: (value) => setDialogState(
-                          () => hostelFeeApplicable = value,
-                        ),
-                      ),
-                    ),
-                  ],
-                  _Field(
-                    width: 592,
-                    child: SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Transport required'),
-                      value: transportRequired,
-                      onChanged: (value) => setDialogState(() {
-                        transportRequired = value;
-                        selectedTransportRouteId = null;
-                        selectedTransportPickupPointId = null;
-                        transportAssignmentDate.text =
-                            admissionDate.text.trim();
-                      }),
-                    ),
-                  ),
-                  if (transportRequired) ...[
-                    _Field(
-                      width: 290,
-                      child: TextFormField(
-                        controller: transportAssignmentDate,
-                        decoration: const InputDecoration(
-                          labelText: 'Transport assignment date',
-                          hintText: 'YYYY-MM-DD',
-                        ),
-                        validator: _date,
-                      ),
-                    ),
-                    _Field(
-                      width: 290,
-                      child: transportRoutes.when(
-                        data: (_) => DropdownButtonFormField<String>(
-                          initialValue: selectedTransportRouteId,
-                          decoration: const InputDecoration(labelText: 'Route'),
-                          isExpanded: true,
-                          items: [
-                            for (final route in transportRouteItems)
-                              DropdownMenuItem(
-                                value: route.id,
+                          _Field(
+                            width: 592,
+                            child: SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Transport required'),
+                              value: transportRequired,
+                              onChanged: (value) => setDialogState(() {
+                                transportRequired = value;
+                                selectedTransportRouteId = null;
+                                selectedTransportPickupPointId = null;
+                                transportAssignmentDate.text = admissionDate
+                                    .text
+                                    .trim();
+                              }),
+                            ),
+                          ),
+                          if (transportRequired) ...[
+                            _Field(
+                              width: 290,
+                              child: TextFormField(
+                                controller: transportAssignmentDate,
+                                decoration: const InputDecoration(
+                                  labelText: 'Transport assignment date',
+                                  hintText: 'YYYY-MM-DD',
+                                ),
+                                validator: _date,
+                              ),
+                            ),
+                            _Field(
+                              width: 290,
+                              child: transportRoutes.when(
+                                data: (_) => DropdownButtonFormField<String>(
+                                  initialValue: selectedTransportRouteId,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Route',
+                                  ),
+                                  isExpanded: true,
+                                  items: [
+                                    for (final route in transportRouteItems)
+                                      DropdownMenuItem(
+                                        value: route.id,
+                                        child: Text(
+                                          '${route.routeName} (${_dash(route.vehicleNumber)})',
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                  ],
+                                  validator: _required,
+                                  onChanged: (value) => setDialogState(() {
+                                    selectedTransportRouteId = value;
+                                    selectedTransportPickupPointId = null;
+                                  }),
+                                ),
+                                error: (error, _) => Text(_message(error)),
+                                loading: () => const LinearProgressIndicator(),
+                              ),
+                            ),
+                            _Field(
+                              width: 290,
+                              child: pickupPoints.when(
+                                data: (_) => DropdownButtonFormField<String>(
+                                  initialValue: selectedTransportPickupPointId,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Pickup point',
+                                  ),
+                                  isExpanded: true,
+                                  items: [
+                                    for (final point in pickupPointItems)
+                                      DropdownMenuItem(
+                                        value: point.id,
+                                        child: Text(
+                                          point.pointName,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                  ],
+                                  validator: _required,
+                                  onChanged: (value) => setDialogState(
+                                    () =>
+                                        selectedTransportPickupPointId = value,
+                                  ),
+                                ),
+                                error: (error, _) => Text(_message(error)),
+                                loading: () => const LinearProgressIndicator(),
+                              ),
+                            ),
+                            _Field(
+                              width: 290,
+                              child: InputDecorator(
+                                decoration: const InputDecoration(
+                                  labelText: 'Vehicle',
+                                ),
                                 child: Text(
-                                  '${route.routeName} (${_dash(route.vehicleNumber)})',
+                                  selectedTransportRoute?.vehicleNumber ?? '-',
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                          ],
-                          validator: _required,
-                          onChanged: (value) => setDialogState(() {
-                            selectedTransportRouteId = value;
-                            selectedTransportPickupPointId = null;
-                          }),
-                        ),
-                        error: (error, _) => Text(_message(error)),
-                        loading: () => const LinearProgressIndicator(),
-                      ),
-                    ),
-                    _Field(
-                      width: 290,
-                      child: pickupPoints.when(
-                        data: (_) => DropdownButtonFormField<String>(
-                          initialValue: selectedTransportPickupPointId,
-                          decoration: const InputDecoration(
-                            labelText: 'Pickup point',
-                          ),
-                          isExpanded: true,
-                          items: [
-                            for (final point in pickupPointItems)
-                              DropdownMenuItem(
-                                value: point.id,
-                                child: Text(
-                                  point.pointName,
-                                  overflow: TextOverflow.ellipsis,
+                            ),
+                            _Field(
+                              width: 290,
+                              child: SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: const Text('Transport fee applicable'),
+                                value: transportFeeApplicable,
+                                onChanged: (value) => setDialogState(
+                                  () => transportFeeApplicable = value,
                                 ),
                               ),
+                            ),
                           ],
-                          validator: _required,
-                          onChanged: (value) => setDialogState(
-                            () => selectedTransportPickupPointId = value,
-                          ),
-                        ),
-                        error: (error, _) => Text(_message(error)),
-                        loading: () => const LinearProgressIndicator(),
+                        ],
                       ),
                     ),
-                    _Field(
-                      width: 290,
-                      child: InputDecorator(
-                        decoration: const InputDecoration(labelText: 'Vehicle'),
-                        child: Text(
-                          selectedTransportRoute?.vehicleNumber ?? '-',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                    _Field(
-                      width: 290,
-                      child: SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Transport fee applicable'),
-                        value: transportFeeApplicable,
-                        onChanged: (value) => setDialogState(
-                          () => transportFeeApplicable = value,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.icon(
-            onPressed: () async {
-              if (!(formKey.currentState?.validate() ?? false)) {
-                return;
-              }
-              final result = await ref.read(studentsRepositoryProvider).admit({
-                'admissionNumber': admissionNo.text.trim(),
-                'profile': {
-                  'firstName': firstName.text.trim(),
-                  'middleName': _blankToNull(middleName.text),
-                  'lastName': _blankToNull(lastName.text),
-                  'dateOfBirth': dateOfBirth.text.trim(),
-                  'gender': gender,
-                  'bloodGroup': _blankToNull(bloodGroup.text),
-                  'email': _blankToNull(email.text),
-                  'phoneNumber': _blankToNull(phone.text),
-                  'admissionDate': admissionDate.text.trim(),
-                  'previousSchool': _blankToNull(previousSchool.text),
-                  'addressLine1': _blankToNull(addressLine1.text),
-                  'addressLine2': _blankToNull(addressLine2.text),
-                  'city': _blankToNull(city.text),
-                  'state': _blankToNull(state.text),
-                  'postalCode': _blankToNull(postalCode.text),
-                  'country': _blankToNull(country.text),
-                },
-                'status': status,
-                'parents': [
-                  {
-                    'relationType': parentRelation,
-                    'primaryContact': true,
-                    'emergencyContact': true,
-                    'pickupAllowed': true,
-                    'parent': {
-                      'firstName': parentName.text.trim(),
-                      'lastName': null,
-                      'email': _blankToNull(parentEmail.text),
-                      'phoneNumber': parentPhone.text.trim(),
-                      'alternatePhoneNumber': null,
-                      'occupation': _blankToNull(parentOccupation.text),
-                      'addressLine1': _blankToNull(addressLine1.text),
-                      'addressLine2': _blankToNull(addressLine2.text),
-                      'city': _blankToNull(city.text),
-                      'state': _blankToNull(state.text),
-                      'postalCode': _blankToNull(postalCode.text),
-                      'country': _blankToNull(country.text),
-                      'userAccountId': null,
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: () async {
+                      if (!(formKey.currentState?.validate() ?? false)) {
+                        return;
+                      }
+                      final result = await ref
+                          .read(studentsRepositoryProvider)
+                          .admit({
+                            'admissionNumber': admissionNo.text.trim(),
+                            'profile': {
+                              'firstName': firstName.text.trim(),
+                              'middleName': _blankToNull(middleName.text),
+                              'lastName': _blankToNull(lastName.text),
+                              'dateOfBirth': dateOfBirth.text.trim(),
+                              'gender': gender,
+                              'bloodGroup': _blankToNull(bloodGroup.text),
+                              'email': _blankToNull(email.text),
+                              'phoneNumber': _blankToNull(phone.text),
+                              'admissionDate': admissionDate.text.trim(),
+                              'previousSchool': _blankToNull(
+                                previousSchool.text,
+                              ),
+                              'addressLine1': _blankToNull(addressLine1.text),
+                              'addressLine2': _blankToNull(addressLine2.text),
+                              'city': _blankToNull(city.text),
+                              'state': _blankToNull(state.text),
+                              'postalCode': _blankToNull(postalCode.text),
+                              'country': _blankToNull(country.text),
+                            },
+                            'status': status,
+                            'parents': [
+                              {
+                                'relationType': parentRelation,
+                                'primaryContact': true,
+                                'emergencyContact': true,
+                                'pickupAllowed': true,
+                                'parent': {
+                                  'firstName': parentName.text.trim(),
+                                  'lastName': null,
+                                  'email': _blankToNull(parentEmail.text),
+                                  'phoneNumber': parentPhone.text.trim(),
+                                  'alternatePhoneNumber': null,
+                                  'occupation': _blankToNull(
+                                    parentOccupation.text,
+                                  ),
+                                  'addressLine1': _blankToNull(
+                                    addressLine1.text,
+                                  ),
+                                  'addressLine2': _blankToNull(
+                                    addressLine2.text,
+                                  ),
+                                  'city': _blankToNull(city.text),
+                                  'state': _blankToNull(state.text),
+                                  'postalCode': _blankToNull(postalCode.text),
+                                  'country': _blankToNull(country.text),
+                                  'userAccountId': null,
+                                },
+                              },
+                            ],
+                            'classAssignment': {
+                              'academicYearId': filter.academicYearId,
+                              'classId': filter.classId,
+                              'sectionId': filter.sectionId,
+                              'academicYear': academicYearName ?? '2026-2027',
+                              'className': details.className,
+                              'sectionName': details.sectionName,
+                              'rollNumber': _blankToNull(roll.text),
+                              'effectiveFrom': admissionDate.text.trim(),
+                            },
+                            'documents': [],
+                            'hostelAssignment': hostelRequired
+                                ? {
+                                    'hostelRequired': true,
+                                    'academicYearId': filter.academicYearId,
+                                    'hostelId': selectedHostelId,
+                                    'roomId': selectedRoomId,
+                                    'bedId': selectedBedId,
+                                    'allocationDate': hostelAllocationDate.text
+                                        .trim(),
+                                    'hostelFeeApplicable': hostelFeeApplicable,
+                                  }
+                                : null,
+                            'transportAssignment': transportRequired
+                                ? {
+                                    'transportRequired': true,
+                                    'academicYearId': filter.academicYearId,
+                                    'vehicleId':
+                                        selectedTransportRoute?.vehicleId,
+                                    'routeId': selectedTransportRouteId,
+                                    'pickupPointId':
+                                        selectedTransportPickupPointId,
+                                    'assignmentDate': transportAssignmentDate
+                                        .text
+                                        .trim(),
+                                    'transportFeeApplicable':
+                                        transportFeeApplicable,
+                                  }
+                                : null,
+                          });
+                      if (!context.mounted) {
+                        return;
+                      }
+                      result.when(
+                        success: (student) {
+                          ref.invalidate(sectionStudentsProvider(filter));
+                          _snack(context, _studentSavedMessage(student));
+                          Navigator.of(context).pop();
+                        },
+                        failure: (failure) => _snack(context, failure.message),
+                      );
                     },
-                  },
+                    icon: const Icon(Icons.save_outlined),
+                    label: const Text('Save'),
+                  ),
                 ],
-                'classAssignment': {
-                  'academicYearId': filter.academicYearId,
-                  'classId': filter.classId,
-                  'sectionId': filter.sectionId,
-                  'academicYear': academicYearName ?? '2026-2027',
-                  'className': details.className,
-                  'sectionName': details.sectionName,
-                  'rollNumber': _blankToNull(roll.text),
-                  'effectiveFrom': admissionDate.text.trim(),
-                },
-                'documents': [],
-                'hostelAssignment': hostelRequired
-                    ? {
-                        'hostelRequired': true,
-                        'academicYearId': filter.academicYearId,
-                        'hostelId': selectedHostelId,
-                        'roomId': selectedRoomId,
-                        'bedId': selectedBedId,
-                        'allocationDate': hostelAllocationDate.text.trim(),
-                        'hostelFeeApplicable': hostelFeeApplicable,
-                      }
-                    : null,
-                'transportAssignment': transportRequired
-                    ? {
-                        'transportRequired': true,
-                        'academicYearId': filter.academicYearId,
-                        'vehicleId': selectedTransportRoute?.vehicleId,
-                        'routeId': selectedTransportRouteId,
-                        'pickupPointId': selectedTransportPickupPointId,
-                        'assignmentDate': transportAssignmentDate.text.trim(),
-                        'transportFeeApplicable': transportFeeApplicable,
-                      }
-                    : null,
-              });
-              if (!context.mounted) {
-                return;
-              }
-              result.when(
-                success: (_) {
-                  ref.invalidate(sectionStudentsProvider(filter));
-                  _snack(context, 'Student saved successfully.');
-                  Navigator.of(context).pop();
-                },
-                failure: (failure) => _snack(context, failure.message),
-              );
-            },
-            icon: const Icon(Icons.save_outlined),
-            label: const Text('Save'),
-          ),
-        ],
               );
             },
           );
@@ -1369,6 +1437,21 @@ String _dash(String? value) {
 
 String _message(Object error) {
   return error.toString().replaceFirst('Exception: ', '');
+}
+
+String _studentSavedMessage(StudentProfileModel student) {
+  final summary = student.feeAssignmentSummary;
+  if (summary == null) {
+    return 'Student saved successfully.';
+  }
+  final base =
+      'Student added successfully. Class fees assigned: ${summary.classFeesAssignedCount}, '
+      'Hostel fees assigned: ${summary.hostelFeesAssignedCount}, '
+      'Transport fees assigned: ${summary.transportFeesAssignedCount}.';
+  if (summary.warnings.isEmpty) {
+    return base;
+  }
+  return '$base ${summary.warnings.join(' ')}';
 }
 
 void _snack(BuildContext context, String message) {

@@ -13,6 +13,7 @@ import '../../features/dashboard/domain/menu_policy.dart';
 import '../../features/dashboard/presentation/dashboard_page.dart';
 import '../../features/dashboard/presentation/module_placeholder_page.dart';
 import '../../features/fees/presentation/pages/fee_structure_form_page.dart';
+import '../../features/fees/presentation/pages/fee_assignments_page.dart';
 import '../../features/fees/presentation/pages/fee_defaulters_page.dart';
 import '../../features/fees/presentation/pages/fees_management_page.dart';
 import '../../features/fees/presentation/pages/payment_collection_page.dart';
@@ -308,7 +309,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.feeAssignments,
         name: AppRouteName.feeAssignments,
-        builder: (context, state) => const StudentFeeAssignmentPage(),
+        builder: (context, state) => const FeeAssignmentsPage(),
       ),
       GoRoute(
         path: AppRoutes.feeDefaulters,
@@ -327,7 +328,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.legacyNewFeeAssignment,
-        redirect: (context, state) => AppRoutes.feeAssignments,
+        name: AppRouteName.newFeeAssignment,
+        builder: (context, state) => const StudentFeeAssignmentPage(),
       ),
       GoRoute(
         path: AppRoutes.feePayments,

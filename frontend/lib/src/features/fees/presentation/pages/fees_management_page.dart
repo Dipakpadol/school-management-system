@@ -69,7 +69,7 @@ class _FeesHeader extends ConsumerWidget {
               runSpacing: 10,
               children: [
                 OutlinedButton.icon(
-                  onPressed: () => context.go(AppRoutes.feeAssignments),
+                  onPressed: () => context.go(AppRoutes.newFeeAssignment),
                   icon: const Icon(Icons.groups_outlined),
                   label: const Text('Assign class fee'),
                 ),
@@ -463,7 +463,7 @@ class _StructureList extends ConsumerWidget {
                         ],
                         onSelected: (value) {
                           if (value == 'assign') {
-                            context.go(AppRoutes.feeAssignments);
+                            context.go(AppRoutes.newFeeAssignment);
                           } else if (value == 'edit') {
                             context.go(
                               AppRoutes.editFeeStructure(structure.id),
@@ -532,7 +532,7 @@ class _AssignmentList extends ConsumerWidget {
           runSpacing: 8,
           children: [
             OutlinedButton.icon(
-              onPressed: () => context.go(AppRoutes.feeAssignments),
+              onPressed: () => context.go(AppRoutes.newFeeAssignment),
               icon: const Icon(Icons.groups_outlined),
               label: const Text('Assign class fee'),
             ),

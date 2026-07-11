@@ -489,6 +489,15 @@ public class TransportService {
 			Student student,
 			AcademicYear fallbackAcademicYear,
 			TransportAssignmentRequest request) {
+		return assignStudentDuringAdmission(student, fallbackAcademicYear, request, true);
+	}
+
+	@Transactional
+	public Optional<StudentTransportAssignmentResponse> assignStudentDuringAdmission(
+			Student student,
+			AcademicYear fallbackAcademicYear,
+			TransportAssignmentRequest request,
+			boolean assignFees) {
 		if (!transportRequested(request)) {
 			return Optional.empty();
 		}
@@ -500,7 +509,7 @@ public class TransportService {
 				resolved.route(),
 				resolved.pickupPoint(),
 				defaultDate(request.assignmentDate(), student.getAdmissionDate()));
-		if (request.appliesTransportFee()) {
+		if (assignFees && request.appliesTransportFee()) {
 			List<StudentFeeAssignmentResponse> fees = assignApplicableTransportFees(assignment);
 			assignment.markFeeAssigned(!fees.isEmpty());
 		}

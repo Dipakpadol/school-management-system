@@ -6,6 +6,7 @@ import java.util.List;
 import com.school.erp.modules.fees.api.dto.FeeAssignmentSearchRequest;
 import com.school.erp.modules.fees.domain.StudentFeeAssignment;
 import com.school.erp.modules.students.domain.Student;
+import com.school.erp.modules.students.domain.StudentClassAssignment;
 
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -35,6 +36,10 @@ public final class FeeAssignmentSpecifications {
 			if (request.classId() != null) {
 				predicates.add(criteriaBuilder.equal(root.get("classEntity").get("id"), request.classId()));
 			}
+			if (request.sectionId() != null) {
+				Join<Student, StudentClassAssignment> classAssignment = student.join("classAssignments", JoinType.LEFT);
+				predicates.add(criteriaBuilder.equal(classAssignment.get("sectionEntity").get("id"), request.sectionId()));
+			}
 			if (StringUtils.hasText(request.admissionNumber())) {
 				predicates.add(criteriaBuilder.equal(
 						criteriaBuilder.lower(student.get("admissionNumber")),
@@ -43,6 +48,7 @@ public final class FeeAssignmentSpecifications {
 			if (StringUtils.hasText(request.studentName())) {
 				String name = contains(request.studentName());
 				predicates.add(criteriaBuilder.or(
+						criteriaBuilder.like(criteriaBuilder.lower(student.get("admissionNumber")), name),
 						criteriaBuilder.like(criteriaBuilder.lower(student.get("firstName")), name),
 						criteriaBuilder.like(criteriaBuilder.lower(student.get("middleName")), name),
 						criteriaBuilder.like(criteriaBuilder.lower(student.get("lastName")), name)));

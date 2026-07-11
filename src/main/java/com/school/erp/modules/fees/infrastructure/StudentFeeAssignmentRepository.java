@@ -114,7 +114,15 @@ public interface StudentFeeAssignmentRepository
 	@Query("select distinct assignment from StudentFeeAssignment assignment where assignment.id = :id and assignment.deleted = false")
 	Optional<StudentFeeAssignment> findDetailedByIdAndDeletedFalse(@Param("id") UUID id);
 
-	@EntityGraph(attributePaths = { "student", "installments" })
+	@EntityGraph(attributePaths = {
+			"student",
+			"student.parents",
+			"student.parents.parent",
+			"feeStructure",
+			"feeStructure.items",
+			"feeStructure.items.category",
+			"installments"
+	})
 	@Query(
 			value = """
 					select distinct assignment
@@ -123,11 +131,13 @@ public interface StudentFeeAssignmentRepository
 					join assignment.student student
 					where assignment.deleted = false
 					  and installment.deleted = false
+					  and assignment.status not in (:paidAssignmentStatus, :cancelledAssignmentStatus)
 					  and installment.status not in (:paidStatus, :cancelledStatus)
-					  and installment.dueDate < :asOf
+					  and installment.dueDate <= :asOf
 					  and assignment.balanceAmount >= :minimumBalance
 					  and (:academicYearId is null or assignment.academicYearEntity.id = :academicYearId)
 					  and (:classId is null or assignment.classEntity.id = :classId)
+					  and (:sourceType is null or assignment.sourceType = :sourceType)
 					  and (:academicYear is null or lower(assignment.academicYear) = lower(:academicYear))
 					  and (:className is null or lower(assignment.className) = lower(:className))
 					  and (:sectionName is null or lower(assignment.sectionName) = lower(:sectionName))
@@ -143,11 +153,13 @@ public interface StudentFeeAssignmentRepository
 					join assignment.student student
 					where assignment.deleted = false
 					  and installment.deleted = false
+					  and assignment.status not in (:paidAssignmentStatus, :cancelledAssignmentStatus)
 					  and installment.status not in (:paidStatus, :cancelledStatus)
-					  and installment.dueDate < :asOf
+					  and installment.dueDate <= :asOf
 					  and assignment.balanceAmount >= :minimumBalance
 					  and (:academicYearId is null or assignment.academicYearEntity.id = :academicYearId)
 					  and (:classId is null or assignment.classEntity.id = :classId)
+					  and (:sourceType is null or assignment.sourceType = :sourceType)
 					  and (:academicYear is null or lower(assignment.academicYear) = lower(:academicYear))
 					  and (:className is null or lower(assignment.className) = lower(:className))
 					  and (:sectionName is null or lower(assignment.sectionName) = lower(:sectionName))
@@ -163,8 +175,11 @@ public interface StudentFeeAssignmentRepository
 			@Param("academicYear") String academicYear,
 			@Param("className") String className,
 			@Param("sectionName") String sectionName,
+			@Param("sourceType") FeeScope sourceType,
 			@Param("studentName") String studentName,
 			@Param("minimumBalance") BigDecimal minimumBalance,
+			@Param("paidAssignmentStatus") FeeAssignmentStatus paidAssignmentStatus,
+			@Param("cancelledAssignmentStatus") FeeAssignmentStatus cancelledAssignmentStatus,
 			@Param("paidStatus") FeeInstallmentStatus paidStatus,
 			@Param("cancelledStatus") FeeInstallmentStatus cancelledStatus,
 			Pageable pageable);

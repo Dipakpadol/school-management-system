@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import com.school.erp.modules.fees.api.dto.FeeAutoAssignmentResult;
 import com.school.erp.modules.students.domain.Gender;
 import com.school.erp.modules.students.domain.StudentStatus;
 
@@ -41,6 +42,7 @@ public record StudentResponse(
 		List<StudentDocumentResponse> documents,
 		ClassSectionAssignmentResponse currentAssignment,
 		List<ClassSectionAssignmentResponse> classAssignments,
+		FeeAutoAssignmentResult feeAssignmentSummary,
 		Instant createdAt,
 		Instant updatedAt) {
 }

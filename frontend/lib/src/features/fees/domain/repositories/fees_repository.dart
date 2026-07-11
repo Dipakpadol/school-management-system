@@ -34,6 +34,9 @@ abstract interface class FeesRepository {
   Future<Result<List<StudentFeeAssignmentModel>>> assignments({
     String? academicYearId,
     String? classId,
+    String? sectionId,
+    String? status,
+    String? query,
   });
 
   Future<Result<StudentFeeAssignmentModel>> assignment(String id);
@@ -69,6 +72,7 @@ abstract interface class FeesRepository {
     String? academicYearId,
     String? classId,
     String? sectionId,
+    String? sourceType,
     String? asOf,
     String? query,
   });
@@ -95,6 +99,8 @@ abstract interface class FeesRepository {
     String format, {
     String? academicYearId,
     String? classId,
+    String? sectionId,
+    String? sourceType,
     String? asOf,
   });
 

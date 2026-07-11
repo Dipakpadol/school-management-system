@@ -42,6 +42,9 @@ final feeAssignmentsProvider =
             .assignments(
               academicYearId: filter.academicYearId,
               classId: filter.classId,
+              sectionId: filter.sectionId,
+              status: filter.status,
+              query: filter.query,
             ),
       );
     });
@@ -82,6 +85,7 @@ final feeDefaultersProvider =
               academicYearId: filter.academicYearId,
               classId: filter.classId,
               sectionId: filter.sectionId,
+              sourceType: filter.sourceType,
               asOf: filter.asOf,
               query: filter.query,
             ),
@@ -119,20 +123,33 @@ class FeeClassKey {
 }
 
 class FeeListFilter {
-  const FeeListFilter({this.academicYearId, this.classId});
+  const FeeListFilter({
+    this.academicYearId,
+    this.classId,
+    this.sectionId,
+    this.status,
+    this.query,
+  });
 
   final String? academicYearId;
   final String? classId;
+  final String? sectionId;
+  final String? status;
+  final String? query;
 
   @override
   bool operator ==(Object other) {
     return other is FeeListFilter &&
         other.academicYearId == academicYearId &&
-        other.classId == classId;
+        other.classId == classId &&
+        other.sectionId == sectionId &&
+        other.status == status &&
+        other.query == query;
   }
 
   @override
-  int get hashCode => Object.hash(academicYearId, classId);
+  int get hashCode =>
+      Object.hash(academicYearId, classId, sectionId, status, query);
 }
 
 class FeeDefaulterFilter {
@@ -140,6 +157,7 @@ class FeeDefaulterFilter {
     this.academicYearId,
     this.classId,
     this.sectionId,
+    this.sourceType,
     this.asOf,
     this.query,
   });
@@ -147,6 +165,7 @@ class FeeDefaulterFilter {
   final String? academicYearId;
   final String? classId;
   final String? sectionId;
+  final String? sourceType;
   final String? asOf;
   final String? query;
 
@@ -156,16 +175,12 @@ class FeeDefaulterFilter {
         other.academicYearId == academicYearId &&
         other.classId == classId &&
         other.sectionId == sectionId &&
+        other.sourceType == sourceType &&
         other.asOf == asOf &&
         other.query == query;
   }
 
   @override
-  int get hashCode => Object.hash(
-    academicYearId,
-    classId,
-    sectionId,
-    asOf,
-    query,
-  );
+  int get hashCode =>
+      Object.hash(academicYearId, classId, sectionId, sourceType, asOf, query);
 }

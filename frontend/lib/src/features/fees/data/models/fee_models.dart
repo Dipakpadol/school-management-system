@@ -184,6 +184,7 @@ class StudentFeeAssignmentModel {
     required this.studentName,
     required this.feeStructureId,
     required this.feeStructureName,
+    required this.feeCategoryName,
     required this.academicYear,
     required this.className,
     required this.status,
@@ -196,6 +197,7 @@ class StudentFeeAssignmentModel {
     required this.payments,
     this.academicYearId,
     this.classId,
+    this.sectionId,
     this.feeScope = 'CLASS',
     this.sourceType = 'CLASS',
     this.sourceReferenceId,
@@ -209,19 +211,26 @@ class StudentFeeAssignmentModel {
 
   factory StudentFeeAssignmentModel.fromJson(Map<String, dynamic> json) {
     return StudentFeeAssignmentModel(
-      id: json['id'] as String,
+      id: json['id'] as String? ?? json['assignmentId'] as String? ?? '',
       studentId: json['studentId'] as String,
       admissionNumber: json['admissionNumber'] as String? ?? '',
       studentName: json['studentName'] as String? ?? '',
       feeStructureId: json['feeStructureId'] as String,
       feeStructureName: json['feeStructureName'] as String? ?? '',
+      feeCategoryName: json['feeCategoryName'] as String? ?? '',
       academicYearId: json['academicYearId'] as String?,
       classId: json['classId'] as String?,
+      sectionId: json['sectionId'] as String?,
       feeScope: json['feeScope'] as String? ?? 'CLASS',
       sourceType:
-          json['sourceType'] as String? ?? json['feeScope'] as String? ?? 'CLASS',
+          json['sourceType'] as String? ??
+          json['feeScope'] as String? ??
+          'CLASS',
       sourceReferenceId: json['sourceReferenceId'] as String?,
-      academicYear: json['academicYear'] as String? ?? '',
+      academicYear:
+          json['academicYearName'] as String? ??
+          json['academicYear'] as String? ??
+          '',
       className: json['className'] as String? ?? '',
       sectionName: json['sectionName'] as String?,
       hostelName: json['hostelName'] as String?,
@@ -230,11 +239,11 @@ class StudentFeeAssignmentModel {
       transportRouteName: json['transportRouteName'] as String?,
       transportPickupPointName: json['transportPickupPointName'] as String?,
       status: json['status'] as String? ?? 'PENDING',
-      grossAmount: _money(json['grossAmount']),
+      grossAmount: _money(json['grossAmount'] ?? json['amount']),
       discountAmount: _money(json['discountAmount']),
       lateFeeAmount: _money(json['lateFeeAmount']),
       paidAmount: _money(json['paidAmount']),
-      balanceAmount: _money(json['balanceAmount']),
+      balanceAmount: _money(json['balanceAmount'] ?? json['pendingAmount']),
       installments: _list(json['installments'], FeeInstallmentModel.fromJson),
       payments: _list(json['payments'], FeePaymentModel.fromJson),
     );
@@ -246,8 +255,10 @@ class StudentFeeAssignmentModel {
   final String studentName;
   final String feeStructureId;
   final String feeStructureName;
+  final String feeCategoryName;
   final String? academicYearId;
   final String? classId;
+  final String? sectionId;
   final String feeScope;
   final String sourceType;
   final String? sourceReferenceId;
@@ -310,11 +321,15 @@ class StudentFeeGroupModel {
         0.0,
         (sum, item) => sum + item.discountAmount,
       ),
-      lateFeeAmount:
-          assignments.fold(0.0, (sum, item) => sum + item.lateFeeAmount),
+      lateFeeAmount: assignments.fold(
+        0.0,
+        (sum, item) => sum + item.lateFeeAmount,
+      ),
       paidAmount: assignments.fold(0.0, (sum, item) => sum + item.paidAmount),
-      balanceAmount:
-          assignments.fold(0.0, (sum, item) => sum + item.balanceAmount),
+      balanceAmount: assignments.fold(
+        0.0,
+        (sum, item) => sum + item.balanceAmount,
+      ),
       assignments: assignments,
     );
   }
@@ -540,40 +555,74 @@ class FeeReceiptModel {
 class FeeDefaulterModel {
   const FeeDefaulterModel({
     required this.assignmentId,
+    required this.studentId,
     required this.studentName,
     required this.admissionNumber,
     required this.academicYear,
     required this.className,
+    required this.sourceType,
+    required this.totalAmount,
+    required this.paidAmount,
     required this.balanceAmount,
+    required this.pendingAmount,
+    required this.overdueDays,
     required this.overdueInstallments,
     this.sectionName,
     this.oldestDueDate,
+    this.dueDate,
+    this.contactNumber,
+    this.parentName,
   });
 
   factory FeeDefaulterModel.fromJson(Map<String, dynamic> json) {
-    final dueDate = json['oldestDueDate'] as String?;
+    final dueDate =
+        json['dueDate'] as String? ?? json['oldestDueDate'] as String?;
+    final pendingAmount = _money(
+      json['pendingAmount'] ?? json['balanceAmount'],
+    );
     return FeeDefaulterModel(
       assignmentId: json['assignmentId'] as String,
+      studentId: json['studentId'] as String? ?? '',
       studentName: json['studentName'] as String? ?? '',
       admissionNumber: json['admissionNumber'] as String? ?? '',
       academicYear: json['academicYear'] as String? ?? '',
       className: json['className'] as String? ?? '',
       sectionName: json['sectionName'] as String?,
-      balanceAmount: _money(json['balanceAmount']),
+      sourceType: json['sourceType'] as String? ?? 'CLASS',
+      totalAmount: _money(json['totalAmount']),
+      paidAmount: _money(json['paidAmount']),
+      balanceAmount: pendingAmount,
+      pendingAmount: pendingAmount,
       oldestDueDate: dueDate == null ? null : DateTime.parse(dueDate),
+      dueDate: dueDate == null ? null : DateTime.parse(dueDate),
+      overdueDays:
+          (json['overdueDays'] as num?)?.toInt() ??
+          (json['overdueInstallments'] as num?)?.toInt() ??
+          0,
       overdueInstallments: json['overdueInstallments'] as int? ?? 0,
+      contactNumber: json['contactNumber'] as String?,
+      parentName: json['parentName'] as String?,
     );
   }
 
   final String assignmentId;
+  final String studentId;
   final String studentName;
   final String admissionNumber;
   final String academicYear;
   final String className;
   final String? sectionName;
+  final String sourceType;
+  final double totalAmount;
+  final double paidAmount;
   final double balanceAmount;
+  final double pendingAmount;
   final DateTime? oldestDueDate;
+  final DateTime? dueDate;
+  final int overdueDays;
   final int overdueInstallments;
+  final String? contactNumber;
+  final String? parentName;
 }
 
 class ClassStudentFeeModel {

@@ -49,6 +49,7 @@ import com.school.erp.modules.fees.api.dto.StudentFeeSummaryResponse;
 import com.school.erp.modules.fees.domain.DiscountCalculationType;
 import com.school.erp.modules.fees.domain.FeeCategory;
 import com.school.erp.modules.fees.domain.FeeDiscount;
+import com.school.erp.modules.fees.domain.FeeAssignmentStatus;
 import com.school.erp.modules.fees.domain.FeeInstallmentStatus;
 import com.school.erp.modules.fees.domain.FeePayment;
 import com.school.erp.modules.fees.domain.FeePaymentStatus;
@@ -282,12 +283,36 @@ public class FeeService {
 			UUID studentId,
 			UUID classId,
 			LocalDate assignedDate) {
+		ClassEntity classEntity = academicHierarchyService.loadClass(classId);
+		return assignActiveClassFeesToStudent(
+				studentId,
+				classEntity.getAcademicYear().getId(),
+				classEntity.getId(),
+				assignedDate);
+	}
+
+	@Transactional
+	public List<StudentFeeAssignmentResponse> assignActiveClassFeesToStudent(
+			UUID studentId,
+			UUID academicYearId,
+			UUID classId,
+			LocalDate assignedDate) {
 		Student student = studentRepository.findByIdAndDeletedFalse(studentId)
 				.orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
-		academicHierarchyService.loadClass(classId);
+		AcademicYear academicYear = academicHierarchyService.loadAcademicYear(academicYearId);
+		ClassEntity classEntity = academicHierarchyService.loadClass(classId);
+		if (!classEntity.getAcademicYear().getId().equals(academicYear.getId())) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Class does not belong to the selected academic year.");
+		}
 		List<StudentFeeAssignmentResponse> created = new java.util.ArrayList<>();
 		for (FeeStructure structure : feeStructureRepository
-				.findByClassEntityIdAndStatusAndDeletedFalseOrderByCreatedAtAsc(classId, FeeStructureStatus.ACTIVE)) {
+				.findByAcademicYearEntityIdAndClassEntityIdAndFeeScopeAndStatusAndDeletedFalseOrderByCreatedAtAsc(
+						academicYearId,
+						classId,
+						FeeScope.CLASS,
+						FeeStructureStatus.ACTIVE)) {
 			if (assignmentRepository.existsByStudentIdAndFeeStructureIdAndDeletedFalse(studentId, structure.getId())) {
 				continue;
 			}
@@ -877,7 +902,7 @@ public class FeeService {
 
 	@Transactional(readOnly = true)
 	public PageResponse<FeeDefaulterResponse> findDefaulters(DefaulterSearchRequest request, PageRequestDto pageRequest) {
-		LocalDate asOf = defaultDate(request.asOf());
+		LocalDate asOf = request.dueDate() == null ? defaultDate(request.asOf()) : request.dueDate();
 		BigDecimal minimumBalance = request.minimumBalance() == null ? BigDecimal.valueOf(0.01) : money(request.minimumBalance());
 		String sectionName = request.sectionId() == null
 				? request.sectionName()
@@ -890,8 +915,11 @@ public class FeeService {
 						blankToNull(request.academicYear()),
 						blankToNull(request.className()),
 						blankToNull(sectionName),
+						request.sourceType(),
 						blankToNull(request.studentName()),
 						minimumBalance,
+						FeeAssignmentStatus.PAID,
+						FeeAssignmentStatus.CANCELLED,
 						FeeInstallmentStatus.PAID,
 						FeeInstallmentStatus.CANCELLED,
 						pageRequest.toPageable("balanceAmount")),

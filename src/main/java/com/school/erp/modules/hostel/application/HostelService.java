@@ -323,6 +323,15 @@ public class HostelService {
 			Student student,
 			AcademicYear fallbackAcademicYear,
 			HostelAssignmentRequest request) {
+		return assignStudentDuringAdmission(student, fallbackAcademicYear, request, true);
+	}
+
+	@Transactional
+	public Optional<HostelAllocationResponse> assignStudentDuringAdmission(
+			Student student,
+			AcademicYear fallbackAcademicYear,
+			HostelAssignmentRequest request,
+			boolean assignFees) {
 		if (!hostelRequested(request)) {
 			return Optional.empty();
 		}
@@ -341,7 +350,7 @@ public class HostelService {
 				bed,
 				defaultDate(request.allocationDate(), student.getAdmissionDate()),
 				true);
-		if (request.appliesHostelFee()) {
+		if (assignFees && request.appliesHostelFee()) {
 			assignApplicableHostelFees(student, academicYear, room, allocation.getAllocationDate());
 		}
 		HostelAllocationResponse response = toAllocationResponse(allocation);

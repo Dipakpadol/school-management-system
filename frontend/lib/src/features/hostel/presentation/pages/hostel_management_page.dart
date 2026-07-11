@@ -29,6 +29,8 @@ class HostelManagementPage extends ConsumerStatefulWidget {
 class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
   String? _selectedAcademicYearId;
   String? _selectedHostelId;
+  String? _selectedFeeAcademicYearId;
+  String? _selectedFeeHostelId;
   String _feeRoomType = '';
 
   @override
@@ -125,8 +127,8 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                     ref.invalidate(
                       hostelFeeStructuresProvider(
                         HostelFeeStructureFilter(
-                          academicYearId: effectiveYearId,
-                          hostelId: effectiveHostelId,
+                          academicYearId: _selectedFeeAcademicYearId,
+                          hostelId: _selectedFeeHostelId,
                           roomType: _feeRoomType,
                         ),
                       ),
@@ -176,24 +178,24 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
           onEditHostel: effectiveHostelId == null
               ? null
               : () => _showHostelDialog(
-                    hostel: hostels.firstWhere(
-                      (hostel) => hostel.id == effectiveHostelId,
-                    ),
+                  hostel: hostels.firstWhere(
+                    (hostel) => hostel.id == effectiveHostelId,
                   ),
+                ),
           onDeleteHostel: effectiveHostelId == null
               ? null
               : () => _deleteHostel(
-                    hostels.firstWhere(
-                      (hostel) => hostel.id == effectiveHostelId,
-                    ),
+                  hostels.firstWhere(
+                    (hostel) => hostel.id == effectiveHostelId,
                   ),
+                ),
           onAddRoom: hostels.isEmpty
               ? null
               : () => _showRoomDialog(
-                    hostels: hostels,
-                    initialHostelId: effectiveHostelId ?? hostels.first.id,
-                    academicYearId: effectiveYearId,
-                  ),
+                  hostels: hostels,
+                  initialHostelId: effectiveHostelId ?? hostels.first.id,
+                  academicYearId: effectiveYearId,
+                ),
           onEditRoom: (room) => _showRoomDialog(
             hostels: hostels,
             initialHostelId: room.hostelId,
@@ -235,9 +237,31 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
     String? effectiveYearId,
     String? effectiveHostelId,
   ) {
+    final selectedFeeYearId = _validOptionalId(
+      _selectedFeeAcademicYearId,
+      years.map((year) => year.id),
+    );
+    if (_selectedFeeAcademicYearId != selectedFeeYearId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() => _selectedFeeAcademicYearId = selectedFeeYearId);
+        }
+      });
+    }
+    final selectedFeeHostelId = _validOptionalId(
+      _selectedFeeHostelId,
+      hostels.map((hostel) => hostel.id),
+    );
+    if (_selectedFeeHostelId != selectedFeeHostelId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() => _selectedFeeHostelId = selectedFeeHostelId);
+        }
+      });
+    }
     final filter = HostelFeeStructureFilter(
-      academicYearId: effectiveYearId,
-      hostelId: effectiveHostelId,
+      academicYearId: selectedFeeYearId,
+      hostelId: selectedFeeHostelId,
       roomType: _feeRoomType,
     );
     final structures = ref.watch(hostelFeeStructuresProvider(filter));
@@ -254,23 +278,31 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
             children: [
               SizedBox(
                 width: 260,
-                child: DropdownButtonFormField<String>(
-                  initialValue: effectiveYearId,
+                child: DropdownButtonFormField<String?>(
+                  initialValue: selectedFeeYearId,
                   decoration: const InputDecoration(labelText: 'Academic year'),
                   items: [
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('All academic years'),
+                    ),
                     for (final year in years)
                       DropdownMenuItem(value: year.id, child: Text(year.name)),
                   ],
                   onChanged: (value) =>
-                      setState(() => _selectedAcademicYearId = value),
+                      setState(() => _selectedFeeAcademicYearId = value),
                 ),
               ),
               SizedBox(
                 width: 260,
-                child: DropdownButtonFormField<String>(
-                  initialValue: effectiveHostelId,
+                child: DropdownButtonFormField<String?>(
+                  initialValue: selectedFeeHostelId,
                   decoration: const InputDecoration(labelText: 'Hostel'),
                   items: [
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('All hostels'),
+                    ),
                     for (final hostel in hostels)
                       DropdownMenuItem(
                         value: hostel.id,
@@ -278,7 +310,7 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                       ),
                   ],
                   onChanged: (value) =>
-                      setState(() => _selectedHostelId = value),
+                      setState(() => _selectedFeeHostelId = value),
                 ),
               ),
               SizedBox(
@@ -291,13 +323,14 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
               AppButton(
                 label: 'Add fee',
                 icon: Icons.add_outlined,
-                onPressed: effectiveYearId == null || effectiveHostelId == null
+                onPressed:
+                    selectedFeeYearId == null || selectedFeeHostelId == null
                     ? null
                     : () => _showFeeStructureDialog(
                         years: years,
                         hostels: hostels,
-                        initialAcademicYearId: effectiveYearId,
-                        initialHostelId: effectiveHostelId,
+                        initialAcademicYearId: selectedFeeYearId,
+                        initialHostelId: selectedFeeHostelId,
                       ),
               ),
             ],
@@ -515,9 +548,9 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
     if (confirmed != true || !mounted) {
       return;
     }
-    final result = await ref.read(hostelRepositoryProvider).deleteHostel(
-          hostel.id,
-        );
+    final result = await ref
+        .read(hostelRepositoryProvider)
+        .deleteHostel(hostel.id);
     if (!mounted) {
       return;
     }
@@ -576,9 +609,9 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                         ],
                         onChanged: room == null
                             ? (value) => setDialogState(
-                                  () => selectedHostelId =
-                                      value ?? selectedHostelId,
-                                )
+                                () => selectedHostelId =
+                                    value ?? selectedHostelId,
+                              )
                             : null,
                       ),
                       const SizedBox(height: 12),
@@ -611,9 +644,8 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Bed-wise allocation'),
                         value: bedConceptEnabled,
-                        onChanged: (value) => setDialogState(
-                          () => bedConceptEnabled = value,
-                        ),
+                        onChanged: (value) =>
+                            setDialogState(() => bedConceptEnabled = value),
                       ),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
@@ -1412,8 +1444,8 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                         ref.invalidate(
                           hostelFeeStructuresProvider(
                             HostelFeeStructureFilter(
-                              academicYearId: _selectedAcademicYearId,
-                              hostelId: _selectedHostelId,
+                              academicYearId: _selectedFeeAcademicYearId,
+                              hostelId: _selectedFeeHostelId,
                               roomType: _feeRoomType,
                             ),
                           ),
@@ -1767,8 +1799,9 @@ class _RoomsPanel extends ConsumerWidget {
                     ),
                     AppTableColumn(
                       label: 'Status',
-                      cellBuilder: (_, room) =>
-                          _StatusBadge(label: room.active ? 'ACTIVE' : 'INACTIVE'),
+                      cellBuilder: (_, room) => _StatusBadge(
+                        label: room.active ? 'ACTIVE' : 'INACTIVE',
+                      ),
                     ),
                     AppTableColumn(
                       label: 'Actions',
@@ -2013,6 +2046,14 @@ String? _validId(String? current, Iterable<String> ids) {
     return current;
   }
   return values.isEmpty ? null : values.first;
+}
+
+String? _validOptionalId(String? current, Iterable<String> ids) {
+  final values = ids.toList();
+  if (current != null && values.contains(current)) {
+    return current;
+  }
+  return null;
 }
 
 HostelRoomSummaryModel? _roomById(

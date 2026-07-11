@@ -39,7 +39,7 @@ abstract final class AppRoutes {
   static const feeAssignments = '/fees/assignments';
   static const feeDefaulters = '/fees/defaulters';
   static const legacyNewFeeAssignment = '/fees/assignments/new';
-  static const newFeeAssignment = feeAssignments;
+  static const newFeeAssignment = legacyNewFeeAssignment;
   static const feePayments = '/fees/payments';
   static const collectFeePayment = '/fees/payments/collect';
   static const moduleDetail = '/modules/:moduleId';
