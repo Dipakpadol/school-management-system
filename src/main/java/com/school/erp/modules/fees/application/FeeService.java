@@ -24,6 +24,7 @@ import com.school.erp.modules.academic.application.AcademicHierarchyService;
 import com.school.erp.modules.academic.domain.AcademicYear;
 import com.school.erp.modules.academic.domain.ClassEntity;
 import com.school.erp.modules.fees.api.dto.AssessLateFeeRequest;
+import com.school.erp.modules.fees.api.dto.ClassFeeAssignmentDetailResponse;
 import com.school.erp.modules.fees.api.dto.ClassFeeAssignmentRequest;
 import com.school.erp.modules.fees.api.dto.ClassFeeAssignmentResponse;
 import com.school.erp.modules.fees.api.dto.ClassStudentFeeResponse;
@@ -47,6 +48,8 @@ import com.school.erp.modules.fees.api.dto.StudentFeeAssignmentResponse;
 import com.school.erp.modules.fees.api.dto.StudentFeeGroupResponse;
 import com.school.erp.modules.fees.api.dto.StudentFeeSummaryResponse;
 import com.school.erp.modules.fees.domain.DiscountCalculationType;
+import com.school.erp.modules.fees.domain.ClassFeeAssignment;
+import com.school.erp.modules.fees.domain.ClassFeeAssignmentStatus;
 import com.school.erp.modules.fees.domain.FeeCategory;
 import com.school.erp.modules.fees.domain.FeeDiscount;
 import com.school.erp.modules.fees.domain.FeeAssignmentStatus;
@@ -63,6 +66,7 @@ import com.school.erp.modules.fees.domain.PaymentMode;
 import com.school.erp.modules.fees.domain.StudentFeeAssignment;
 import com.school.erp.modules.fees.domain.StudentFeeInstallment;
 import com.school.erp.modules.fees.infrastructure.FeeAssignmentSpecifications;
+import com.school.erp.modules.fees.infrastructure.ClassFeeAssignmentRepository;
 import com.school.erp.modules.fees.infrastructure.FeeCategoryRepository;
 import com.school.erp.modules.fees.infrastructure.FeePaymentRepository;
 import com.school.erp.modules.fees.infrastructure.FeeReceiptRepository;
@@ -89,6 +93,7 @@ public class FeeService {
 
 	private final FeeCategoryRepository feeCategoryRepository;
 	private final FeeStructureRepository feeStructureRepository;
+	private final ClassFeeAssignmentRepository classFeeAssignmentRepository;
 	private final StudentFeeAssignmentRepository assignmentRepository;
 	private final LateFeeRuleRepository lateFeeRuleRepository;
 	private final FeeReceiptRepository feeReceiptRepository;
@@ -145,10 +150,12 @@ public class FeeService {
 		if (feeStructureRepository.existsActiveStructureForClass(
 				request.academicYear(),
 				request.className(),
-				blankToNull(request.sectionName()))) {
+				blankToNull(request.sectionName()),
+				request.name(),
+				FeeStructureStatus.ACTIVE)) {
 			throw new BusinessException(
 					ErrorCode.CONFLICT,
-					"Fee structure already exists for academic year, class, and section.");
+					"Active fee structure already exists for academic year, class, section, and structure name.");
 		}
 
 		FeeStructure structure = new FeeStructure(
@@ -182,10 +189,12 @@ public class FeeService {
 				structureId,
 				request.academicYear(),
 				request.className(),
-				blankToNull(request.sectionName()))) {
+				blankToNull(request.sectionName()),
+				request.name(),
+				FeeStructureStatus.ACTIVE)) {
 			throw new BusinessException(
 					ErrorCode.CONFLICT,
-					"Fee structure already exists for academic year, class, and section.");
+					"Active fee structure already exists for academic year, class, section, and structure name.");
 		}
 
 		structure.updateDetails(
@@ -227,9 +236,17 @@ public class FeeService {
 	public PageResponse<FeeStructureResponse> listFeeStructures(
 			UUID academicYearId,
 			UUID classId,
+			FeeStructureStatus status,
 			PageRequestDto pageRequest) {
 		if (academicYearId == null && classId == null) {
-			return listFeeStructures(pageRequest);
+			if (status == null) {
+				return listFeeStructures(pageRequest);
+			}
+			return PageResponse.from(
+					feeStructureRepository.findAll(
+							(root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("status"), status),
+							pageRequest.toPageable("academicYear")),
+					feeMapper::toStructureResponse);
 		}
 		AcademicYear academicYear = academicYearId == null
 				? null
@@ -247,16 +264,21 @@ public class FeeService {
 							classId,
 							classEntity.getName(),
 							classEntity.getCode(),
+							status,
 							pageable),
 					feeMapper::toStructureResponse);
 		}
 		if (academicYearId != null) {
 			return PageResponse.from(
-					feeStructureRepository.findByAcademicYearEntityIdAndDeletedFalse(academicYearId, pageable),
+					status == null
+							? feeStructureRepository.findByAcademicYearEntityIdAndDeletedFalse(academicYearId, pageable)
+							: feeStructureRepository.findByAcademicYearEntityIdAndStatusAndDeletedFalse(academicYearId, status, pageable),
 					feeMapper::toStructureResponse);
 		}
 		return PageResponse.from(
-				feeStructureRepository.findByClassEntityIdAndDeletedFalse(classId, pageable),
+				status == null
+						? feeStructureRepository.findByClassEntityIdAndDeletedFalse(classId, pageable)
+						: feeStructureRepository.findByClassEntityIdAndStatusAndDeletedFalse(classId, status, pageable),
 				feeMapper::toStructureResponse);
 	}
 
@@ -307,12 +329,12 @@ public class FeeService {
 					"Class does not belong to the selected academic year.");
 		}
 		List<StudentFeeAssignmentResponse> created = new java.util.ArrayList<>();
-		for (FeeStructure structure : feeStructureRepository
-				.findByAcademicYearEntityIdAndClassEntityIdAndFeeScopeAndStatusAndDeletedFalseOrderByCreatedAtAsc(
+		for (ClassFeeAssignment classAssignment : classFeeAssignmentRepository
+				.findActiveByAcademicYearAndClass(
 						academicYearId,
 						classId,
-						FeeScope.CLASS,
-						FeeStructureStatus.ACTIVE)) {
+						ClassFeeAssignmentStatus.ACTIVE)) {
+			FeeStructure structure = classAssignment.getFeeStructure();
 			if (assignmentRepository.existsByStudentIdAndFeeStructureIdAndDeletedFalse(studentId, structure.getId())) {
 				continue;
 			}
@@ -423,8 +445,13 @@ public class FeeService {
 	}
 
 	@Transactional(readOnly = true)
-	public List<ClassStudentFeeResponse> studentsForClass(UUID classId) {
+	public List<ClassStudentFeeResponse> studentsForClass(UUID classId, UUID academicYearId) {
 		ClassEntity classEntity = academicHierarchyService.loadClass(classId);
+		if (academicYearId != null && !classEntity.getAcademicYear().getId().equals(academicYearId)) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Class does not belong to the selected academic year.");
+		}
 		return studentRepository.findActiveStudentsByClassId(classId).stream()
 				.map(student -> toClassStudentFeeResponse(student, classEntity))
 				.toList();
@@ -438,8 +465,11 @@ public class FeeService {
 					ErrorCode.BUSINESS_RULE_VIOLATION,
 					"Class in request does not match the selected class.");
 		}
-		if (request.academicYearId() != null
-				&& !request.academicYearId().equals(classEntity.getAcademicYear().getId())) {
+		UUID academicYearId = request.academicYearId() == null
+				? classEntity.getAcademicYear().getId()
+				: request.academicYearId();
+		AcademicYear academicYear = academicHierarchyService.loadAcademicYear(academicYearId);
+		if (!academicYear.getId().equals(classEntity.getAcademicYear().getId())) {
 			throw new BusinessException(
 					ErrorCode.BUSINESS_RULE_VIOLATION,
 					"Academic year in request does not match the selected class.");
@@ -448,7 +478,11 @@ public class FeeService {
 		List<Student> students = studentRepository.findActiveStudentsByClassId(classId);
 		List<StudentFeeAssignmentResponse> created = new ArrayList<>();
 		List<UUID> assignedFeeStructures = new ArrayList<>();
+		List<String> warnings = new ArrayList<>();
 		int skipped = 0;
+		int duplicateClassAssignments = 0;
+		LocalDate assignedDate = defaultDate(request.assignedDate());
+		String actor = currentActor();
 		for (UUID feeStructureId : feeStructureIds) {
 			FeeStructure structure = loadStructure(feeStructureId);
 			validateClassFeeStructure(classId, classEntity, structure);
@@ -456,6 +490,21 @@ public class FeeService {
 				structure.updateAcademicMapping(classEntity.getAcademicYear(), classEntity);
 			}
 			assignedFeeStructures.add(structure.getId());
+			ClassFeeAssignment classAssignment = classFeeAssignmentRepository
+					.findActive(academicYear.getId(), classId, structure.getId(), ClassFeeAssignmentStatus.ACTIVE)
+					.orElse(null);
+			if (classAssignment == null) {
+				classAssignment = classFeeAssignmentRepository.save(new ClassFeeAssignment(
+						academicYear,
+						classEntity,
+						structure,
+						assignedDate,
+						actor));
+				audit("ClassFeeAssignment", classAssignment.getId(), "CREATE", null, toClassFeeAssignmentDetail(classAssignment));
+			}
+			else {
+				duplicateClassAssignments++;
+			}
 			for (Student student : students) {
 				if (assignmentRepository.existsByStudentIdAndFeeStructureIdAndDeletedFalse(student.getId(), structure.getId())) {
 					if (!request.skipExisting()) {
@@ -466,9 +515,10 @@ public class FeeService {
 					skipped++;
 					continue;
 				}
-				StudentFeeAssignment assignment = buildAssignment(student, structure, request.assignedDate(), request.notes());
+				StudentFeeAssignment assignment = buildAssignment(student, structure, assignedDate, request.notes());
 				StudentFeeAssignmentResponse response = feeMapper.toAssignmentResponse(assignmentRepository.save(assignment));
 				created.add(response);
+				audit("StudentFeeAssignment", response.id(), "CLASS_FEE_STUDENT_ASSIGNED", null, response);
 			}
 		}
 		if (assignedFeeStructures.isEmpty()) {
@@ -476,11 +526,17 @@ public class FeeService {
 					ErrorCode.VALIDATION_ERROR,
 					"No fee structure available. Please create a fee structure first.");
 		}
+		if (duplicateClassAssignments > 0) {
+			warnings.add("Duplicate class fee assignments skipped: " + duplicateClassAssignments);
+		}
+		if (students.isEmpty()) {
+			warnings.add("Fee assigned to class. No students are currently available.");
+		}
 		String message = students.isEmpty()
-				? "Fee assigned to class. No students found currently."
+				? "Fee assigned to class. No students are currently available."
 				: "Class fee assigned successfully.";
 		ClassFeeAssignmentResponse response = new ClassFeeAssignmentResponse(
-				classEntity.getAcademicYear().getId(),
+				academicYear.getId(),
 				classId,
 				assignedFeeStructures.get(0),
 				assignedFeeStructures,
@@ -490,6 +546,10 @@ public class FeeService {
 				created.size(),
 				skipped,
 				created,
+				assignedFeeStructures.size(),
+				created.size(),
+				skipped,
+				warnings,
 				message);
 		audit(
 				"ClassFeeAssignment",
@@ -498,6 +558,22 @@ public class FeeService {
 				null,
 				response);
 		return response;
+	}
+
+	@Transactional(readOnly = true)
+	public List<ClassFeeAssignmentDetailResponse> classFeeAssignments(UUID classId, UUID academicYearId) {
+		ClassEntity classEntity = academicHierarchyService.loadClass(classId);
+		if (academicYearId != null) {
+			AcademicYear academicYear = academicHierarchyService.loadAcademicYear(academicYearId);
+			if (!classEntity.getAcademicYear().getId().equals(academicYear.getId())) {
+				throw new BusinessException(
+						ErrorCode.BUSINESS_RULE_VIOLATION,
+						"Class does not belong to the selected academic year.");
+			}
+		}
+		return classFeeAssignmentRepository.findByClassAndOptionalAcademicYear(classId, academicYearId).stream()
+				.map(this::toClassFeeAssignmentDetail)
+				.toList();
 	}
 
 	private void validateClassFeeStructure(UUID classId, ClassEntity classEntity, FeeStructure structure) {
@@ -581,11 +657,17 @@ public class FeeService {
 
 	@Transactional(readOnly = true)
 	public StudentFeeSummaryResponse studentFeeSummary(UUID studentId) {
+		return studentFeeSummary(studentId, null);
+	}
+
+	@Transactional(readOnly = true)
+	public StudentFeeSummaryResponse studentFeeSummary(UUID studentId, UUID academicYearId) {
 		Student student = studentRepository.findByIdAndDeletedFalse(studentId)
 				.orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
 		List<StudentFeeAssignmentResponse> assignments = assignmentRepository
 				.findByStudentIdAndDeletedFalseOrderByAssignedDateDesc(studentId)
 				.stream()
+				.filter(assignment -> matchesAssignmentAcademicYear(assignment, academicYearId))
 				.map(feeMapper::toAssignmentResponse)
 				.toList();
 		BigDecimal gross = assignments.stream().map(StudentFeeAssignmentResponse::grossAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -657,6 +739,7 @@ public class FeeService {
 		StudentFeeAssignment assignment = request.assignmentId() == null
 				? assignmentRepository.findByStudentIdAndDeletedFalseOrderByAssignedDateDesc(studentId).stream()
 						.filter(existing -> existing.getBalanceAmount().signum() > 0)
+						.filter(existing -> matchesAssignmentAcademicYear(existing, request.academicYearId()))
 						.findFirst()
 						.orElseThrow(() -> new ResourceNotFoundException("Open fee assignment for student", studentId))
 				: loadAssignment(request.assignmentId());
@@ -664,6 +747,11 @@ public class FeeService {
 			throw new BusinessException(
 					ErrorCode.BUSINESS_RULE_VIOLATION,
 					"Fee assignment does not belong to the selected student.");
+		}
+		if (!matchesAssignmentAcademicYear(assignment, request.academicYearId())) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Fee assignment does not belong to the selected academic year.");
 		}
 		return collectPayment(assignment.getId(), request);
 	}
@@ -975,11 +1063,26 @@ public class FeeService {
 	}
 
 	private ClassStudentFeeResponse toClassStudentFeeResponse(Student student, ClassEntity classEntity) {
-		StudentFeeAssignment assignment = assignmentRepository.findByStudentIdAndDeletedFalseOrderByAssignedDateDesc(student.getId()).stream()
+		List<StudentFeeAssignment> assignments = assignmentRepository.findByStudentIdAndDeletedFalseOrderByAssignedDateDesc(student.getId()).stream()
 				.filter(existing -> assignmentBelongsToClass(existing, classEntity))
+				.toList();
+		StudentFeeAssignment assignment = assignments.stream()
+				.filter(existing -> existing.getBalanceAmount().signum() > 0)
 				.findFirst()
-				.orElse(null);
+				.orElse(assignments.isEmpty() ? null : assignments.getFirst());
 		String rollNumber = student.getCurrentAssignment().map(current -> current.getRollNumber()).orElse(null);
+		BigDecimal grossAmount = assignments.stream()
+				.map(StudentFeeAssignment::getGrossAmount)
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+		BigDecimal discountAmount = assignments.stream()
+				.map(StudentFeeAssignment::getDiscountAmount)
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+		BigDecimal paidAmount = assignments.stream()
+				.map(StudentFeeAssignment::getPaidAmount)
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+		BigDecimal balanceAmount = assignments.stream()
+				.map(StudentFeeAssignment::getBalanceAmount)
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
 		return new ClassStudentFeeResponse(
 				student.getId(),
 				student.getAdmissionNumber(),
@@ -987,12 +1090,28 @@ public class FeeService {
 				rollNumber,
 				assignment == null ? null : assignment.getId(),
 				assignment == null ? null : assignment.getFeeStructure().getId(),
-				assignment == null ? null : assignment.getFeeStructure().getName(),
-				assignment == null ? BigDecimal.ZERO : assignment.getGrossAmount(),
-				assignment == null ? BigDecimal.ZERO : assignment.getDiscountAmount(),
-				assignment == null ? BigDecimal.ZERO : assignment.getPaidAmount(),
-				assignment == null ? BigDecimal.ZERO : assignment.getBalanceAmount(),
-				assignment == null ? null : assignment.getStatus());
+				assignments.size() > 1 ? assignments.size() + " fee structures" : assignment == null ? null : assignment.getFeeStructure().getName(),
+				grossAmount,
+				discountAmount,
+				paidAmount,
+				balanceAmount,
+				aggregateStatus(assignments));
+	}
+
+	private FeeAssignmentStatus aggregateStatus(List<StudentFeeAssignment> assignments) {
+		if (assignments.isEmpty()) {
+			return null;
+		}
+		if (assignments.stream().allMatch(assignment -> assignment.getStatus() == FeeAssignmentStatus.PAID)) {
+			return FeeAssignmentStatus.PAID;
+		}
+		if (assignments.stream().anyMatch(assignment -> assignment.getStatus() == FeeAssignmentStatus.OVERDUE)) {
+			return FeeAssignmentStatus.OVERDUE;
+		}
+		if (assignments.stream().anyMatch(assignment -> assignment.getStatus() == FeeAssignmentStatus.PARTIALLY_PAID)) {
+			return FeeAssignmentStatus.PARTIALLY_PAID;
+		}
+		return FeeAssignmentStatus.PENDING;
 	}
 
 	private boolean assignmentBelongsToClass(StudentFeeAssignment assignment, ClassEntity classEntity) {
@@ -1000,6 +1119,26 @@ public class FeeService {
 			return assignment.getClassEntity().getId().equals(classEntity.getId());
 		}
 		return matchesIgnoringCase(assignment.getClassName(), classEntity.getName(), classEntity.getCode());
+	}
+
+	private ClassFeeAssignmentDetailResponse toClassFeeAssignmentDetail(ClassFeeAssignment assignment) {
+		return new ClassFeeAssignmentDetailResponse(
+				assignment.getId(),
+				assignment.getAcademicYear().getId(),
+				assignment.getAcademicYear().getName(),
+				assignment.getClassEntity().getId(),
+				assignment.getClassEntity().getName(),
+				assignment.getFeeStructure().getId(),
+				assignment.getFeeStructure().getName(),
+				assignment.getAssignedDate(),
+				assignment.getStatus(),
+				assignment.getAssignedBy());
+	}
+
+	private boolean matchesAssignmentAcademicYear(StudentFeeAssignment assignment, UUID academicYearId) {
+		return academicYearId == null
+				|| (assignment.getAcademicYearEntity() != null
+						&& academicYearId.equals(assignment.getAcademicYearEntity().getId()));
 	}
 
 	private boolean matchesIgnoringCase(String candidate, String... expectedValues) {

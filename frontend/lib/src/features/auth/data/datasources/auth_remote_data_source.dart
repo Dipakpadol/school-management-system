@@ -20,10 +20,7 @@ class AuthRemoteDataSource {
   }) async {
     final response = await _apiClient.post<Map<String, dynamic>>(
       ApiPaths.login,
-      data: {
-        'email': email,
-        'password': password,
-      },
+      data: {'email': email, 'password': password},
       options: Options(extra: {'skipAuth': true}),
     );
     final data = _unwrapData(response.data);

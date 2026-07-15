@@ -141,7 +141,9 @@ class StudentsRepositoryImpl implements StudentsRepository {
     String studentId,
     String documentId,
   ) {
-    return _guard(() => _remoteDataSource.deleteDocument(studentId, documentId));
+    return _guard(
+      () => _remoteDataSource.deleteDocument(studentId, documentId),
+    );
   }
 
   @override

@@ -296,8 +296,9 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
   }
 
   Future<void> _loadSections(String classId) async {
-    final result =
-        await ref.read(attendanceRepositoryProvider).sections(classId);
+    final result = await ref
+        .read(attendanceRepositoryProvider)
+        .sections(classId);
     result.when(
       success: (sections) => setState(() => _sections = sections),
       failure: (failure) => _snack(failure.message),
@@ -424,9 +425,9 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 

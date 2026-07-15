@@ -196,7 +196,10 @@ class _FilterDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = options.maybeWhen(data: (data) => data, orElse: () => const []);
+    final items = options.maybeWhen(
+      data: (data) => data,
+      orElse: () => const [],
+    );
     final selected = value.isEmpty || !items.contains(value) ? null : value;
     return DropdownButtonFormField<String>(
       initialValue: selected,

@@ -109,7 +109,10 @@ class ExamsRepositoryImpl implements ExamsRepository {
   }
 
   @override
-  Future<Result<List<int>>> reportCard(String studentId, String academicYearId) {
+  Future<Result<List<int>>> reportCard(
+    String studentId,
+    String academicYearId,
+  ) {
     return _guard(() => _remote.reportCard(studentId, academicYearId));
   }
 

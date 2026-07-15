@@ -20,6 +20,7 @@ final feeStructuresByClassProvider =
             .structures(
               academicYearId: key.academicYearId,
               classId: key.classId,
+              status: 'ACTIVE',
             ),
       );
     });
@@ -93,8 +94,30 @@ final feeDefaultersProvider =
     });
 
 final classFeeStudentsProvider =
-    FutureProvider.family<List<ClassStudentFeeModel>, String>((ref, classId) {
-      return _resolve(ref.watch(feesRepositoryProvider).classStudents(classId));
+    FutureProvider.family<List<ClassStudentFeeModel>, FeeClassKey>((ref, key) {
+      return _resolve(
+        ref
+            .watch(feesRepositoryProvider)
+            .classStudents(
+              key.classId,
+              academicYearId: key.academicYearId,
+            ),
+      );
+    });
+
+final classFeeAssignmentsProvider =
+    FutureProvider.family<List<ClassFeeAssignmentDetailModel>, FeeClassKey>((
+      ref,
+      key,
+    ) {
+      return _resolve(
+        ref
+            .watch(feesRepositoryProvider)
+            .classFeeAssignments(
+              key.classId,
+              academicYearId: key.academicYearId,
+            ),
+      );
     });
 
 Future<T> _resolve<T>(Future<Result<T>> resultFuture) async {

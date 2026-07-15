@@ -24,6 +24,7 @@ public record PaymentCollectionRequest(
 		@Size(max = 500) @Schema(example = "First installment payment.") String remarks,
 		@Schema(description = "When true, active late fee rules are assessed before allocation.", example = "true")
 		boolean assessLateFee,
+		@Schema(description = "Academic year context for student-level payment collection.") UUID academicYearId,
 		@Schema(description = "Specific student fee assignment to collect against.") UUID assignmentId) {
 
 	public PaymentCollectionRequest(
@@ -44,6 +45,30 @@ public record PaymentCollectionRequest(
 				collectedBy,
 				remarks,
 				assessLateFee,
+				null,
 				null);
+	}
+
+	public PaymentCollectionRequest(
+			BigDecimal amount,
+			LocalDate paymentDate,
+			PaymentMode paymentMode,
+			String referenceNumber,
+			String payerName,
+			String collectedBy,
+			String remarks,
+			boolean assessLateFee,
+			UUID assignmentId) {
+		this(
+				amount,
+				paymentDate,
+				paymentMode,
+				referenceNumber,
+				payerName,
+				collectedBy,
+				remarks,
+				assessLateFee,
+				null,
+				assignmentId);
 	}
 }

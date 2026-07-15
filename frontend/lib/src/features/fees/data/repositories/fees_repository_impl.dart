@@ -46,11 +46,13 @@ class FeesRepositoryImpl implements FeesRepository {
   Future<Result<List<FeeStructureModel>>> structures({
     String? academicYearId,
     String? classId,
+    String? status,
   }) {
     return _guard(
       () async => (await _remoteDataSource.structures(
         academicYearId: academicYearId,
         classId: classId,
+        status: status,
       )).content,
     );
   }
@@ -112,8 +114,29 @@ class FeesRepositoryImpl implements FeesRepository {
   }
 
   @override
-  Future<Result<List<ClassStudentFeeModel>>> classStudents(String classId) {
-    return _guard(() => _remoteDataSource.classStudents(classId));
+  Future<Result<List<ClassStudentFeeModel>>> classStudents(
+    String classId, {
+    String? academicYearId,
+  }) {
+    return _guard(
+      () => _remoteDataSource.classStudents(
+        classId,
+        academicYearId: academicYearId,
+      ),
+    );
+  }
+
+  @override
+  Future<Result<List<ClassFeeAssignmentDetailModel>>> classFeeAssignments(
+    String classId, {
+    String? academicYearId,
+  }) {
+    return _guard(
+      () => _remoteDataSource.classFeeAssignments(
+        classId,
+        academicYearId: academicYearId,
+      ),
+    );
   }
 
   @override
@@ -135,8 +158,16 @@ class FeesRepositoryImpl implements FeesRepository {
   }
 
   @override
-  Future<Result<StudentFeeSummaryModel>> studentSummary(String studentId) {
-    return _guard(() => _remoteDataSource.studentSummary(studentId));
+  Future<Result<StudentFeeSummaryModel>> studentSummary(
+    String studentId, {
+    String? academicYearId,
+  }) {
+    return _guard(
+      () => _remoteDataSource.studentSummary(
+        studentId,
+        academicYearId: academicYearId,
+      ),
+    );
   }
 
   @override

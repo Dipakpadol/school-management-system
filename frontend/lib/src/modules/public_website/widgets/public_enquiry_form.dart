@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/public_website_data.dart';
 import '../models/public_website_models.dart';
@@ -8,14 +7,16 @@ import '../services/public_enquiry_service.dart';
 import 'public_site_theme.dart';
 import 'public_site_widgets.dart';
 
-class PublicEnquiryForm extends ConsumerStatefulWidget {
-  const PublicEnquiryForm({super.key});
+class PublicEnquiryForm extends StatefulWidget {
+  const PublicEnquiryForm({super.key, required this.enquiryService});
+
+  final PublicEnquiryService enquiryService;
 
   @override
-  ConsumerState<PublicEnquiryForm> createState() => _PublicEnquiryFormState();
+  State<PublicEnquiryForm> createState() => _PublicEnquiryFormState();
 }
 
-class _PublicEnquiryFormState extends ConsumerState<PublicEnquiryForm> {
+class _PublicEnquiryFormState extends State<PublicEnquiryForm> {
   final _formKey = GlobalKey<FormState>();
   final _studentNameController = TextEditingController();
   final _parentNameController = TextEditingController();
@@ -147,10 +148,19 @@ class _PublicEnquiryFormState extends ConsumerState<PublicEnquiryForm> {
               ),
               const SizedBox(height: 18),
               PublicActionButton(
-                label: _submitting ? 'Submitting...' : 'Submit Enquiry',
+                label: _submitting ? 'Sending...' : 'Submit Enquiry',
                 icon: Icons.send_outlined,
+                leading: _submitting
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : null,
                 expand: true,
-                onPressed: _submitting ? null : _submit,
+                onPressed: _submitting ? null : _submitEnquiry,
               ),
             ],
           ),
@@ -173,7 +183,7 @@ class _PublicEnquiryFormState extends ConsumerState<PublicEnquiryForm> {
     if (normalized.isEmpty) {
       return 'Mobile number is required';
     }
-    if (normalized.length < 10 || normalized.length > 15) {
+    if (normalized.length < 10 || normalized.length > 13) {
       return 'Enter a valid mobile number';
     }
     return null;
@@ -182,7 +192,7 @@ class _PublicEnquiryFormState extends ConsumerState<PublicEnquiryForm> {
   String? _validateEmail(String? value) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) {
-      return null;
+      return 'Email is required';
     }
     final valid = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(text);
     if (!valid) {
@@ -191,9 +201,13 @@ class _PublicEnquiryFormState extends ConsumerState<PublicEnquiryForm> {
     return null;
   }
 
-  Future<void> _submit() async {
+  Future<void> _submitEnquiry() async {
+    if (_submitting) {
+      return;
+    }
+
     final valid = _formKey.currentState?.validate() ?? false;
-    if (!valid || _submitting) {
+    if (!valid) {
       return;
     }
 
@@ -211,7 +225,29 @@ class _PublicEnquiryFormState extends ConsumerState<PublicEnquiryForm> {
       message: _messageController.text.trim(),
     );
 
-    await ref.read(publicEnquiryServiceProvider).submit(request);
+    try {
+      await widget.enquiryService.submit(request);
+    } on PublicEnquiryException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+      return;
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to submit the enquiry. Please try again.'),
+        ),
+      );
+      return;
+    }
 
     if (!mounted) {
       return;
@@ -275,10 +311,7 @@ class _PublicTextField extends StatelessWidget {
       textInputAction: textInputAction,
       inputFormatters: inputFormatters,
       validator: validator,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon),
-      ),
+      decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
     );
   }
 }
@@ -298,7 +331,9 @@ class _SuccessBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: PublicSiteColors.green.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: PublicSiteColors.green.withValues(alpha: 0.3)),
+        border: Border.all(
+          color: PublicSiteColors.green.withValues(alpha: 0.3),
+        ),
       ),
       child: Row(
         children: [

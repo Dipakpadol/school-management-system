@@ -143,9 +143,21 @@ class _StudentFeeAssignmentPageState
     final structures = key == null
         ? null
         : ref.watch(feeStructuresByClassProvider(key));
-    final students = selectedClass == null
+    final classAssignments = key == null
         ? null
-        : ref.watch(classFeeStudentsProvider(selectedClass));
+        : ref.watch(classFeeAssignmentsProvider(key));
+    final students = key == null
+        ? null
+        : ref.watch(classFeeStudentsProvider(key));
+    final assignedStructureIds =
+        classAssignments?.maybeWhen(
+          data: (items) => items
+              .where((item) => item.status == 'ACTIVE')
+              .map((item) => item.feeStructureId)
+              .toSet(),
+          orElse: () => <String>{},
+        ) ??
+        <String>{};
 
     return Form(
       key: _formKey,
@@ -236,7 +248,10 @@ class _StudentFeeAssignmentPageState
                           structures == null
                               ? const SizedBox.shrink()
                               : structures.when(
-                                  data: _structureSelection,
+                                  data: (items) => _structureSelection(
+                                    items,
+                                    assignedStructureIds,
+                                  ),
                                   error: (error, _) => AppErrorState(
                                     message:
                                         'Unable to load fee structures. Please try again.\n${_message(error)}',
@@ -247,6 +262,11 @@ class _StudentFeeAssignmentPageState
                                   loading: () =>
                                       const LinearProgressIndicator(),
                                 ),
+                          if (classAssignments?.isLoading ?? false)
+                            const Padding(
+                              padding: EdgeInsets.only(top: 8),
+                              child: LinearProgressIndicator(),
+                            ),
                           const SizedBox(height: 12),
                           _ResponsiveFields(
                             children: [
@@ -282,10 +302,10 @@ class _StudentFeeAssignmentPageState
                       students: items,
                     ),
                     error: (error, _) => AppErrorState(
-                      message:
-                          'Unable to load class students. Please try again.\n${_message(error)}',
+                        message:
+                            'Unable to load class students. Please try again.\n${_message(error)}',
                       onRetry: () => ref.invalidate(
-                        classFeeStudentsProvider(selectedClass!),
+                        classFeeStudentsProvider(key!),
                       ),
                     ),
                     loading: () =>
@@ -299,7 +319,10 @@ class _StudentFeeAssignmentPageState
     );
   }
 
-  Widget _structureSelection(List<FeeStructureModel> structures) {
+  Widget _structureSelection(
+    List<FeeStructureModel> structures,
+    Set<String> assignedStructureIds,
+  ) {
     if (structures.isEmpty) {
       return const _InlineEmptyMessage(
         icon: Icons.account_tree_outlined,
@@ -348,7 +371,16 @@ class _StudentFeeAssignmentPageState
                       }
                     });
                   },
-            title: Text(structure.name),
+            title: Row(
+              children: [
+                Expanded(child: Text(structure.name)),
+                FeeStatusChip(
+                  status: assignedStructureIds.contains(structure.id)
+                      ? 'ASSIGNED'
+                      : 'UNASSIGNED',
+                ),
+              ],
+            ),
             subtitle: Text(
               '${structure.status} - INR ${structure.totalAmount.toStringAsFixed(2)}',
             ),
@@ -362,14 +394,15 @@ class _StudentFeeAssignmentPageState
       return;
     }
     final classId = _classId;
+    final academicYearId = _academicYearId;
     final feeStructureIds = _selectedFeeStructureIds.toList(growable: false);
-    if (classId == null || feeStructureIds.isEmpty) {
+    if (classId == null || academicYearId == null || feeStructureIds.isEmpty) {
       return;
     }
     setState(() => _saving = true);
     final repository = ref.read(feesRepositoryProvider);
     final result = await repository.assignClassFee(classId, {
-      'academicYearId': _academicYearId,
+      'academicYearId': academicYearId,
       'classId': classId,
       'feeStructureIds': feeStructureIds,
       'assignedDate': _assignedDateController.text.trim(),
@@ -383,7 +416,12 @@ class _StudentFeeAssignmentPageState
     result.when<void>(
       success: (summary) {
         ref.invalidate(feeAssignmentsProvider(const FeeListFilter()));
-        ref.invalidate(classFeeStudentsProvider(classId));
+        final key = FeeClassKey(
+          academicYearId: academicYearId,
+          classId: classId,
+        );
+        ref.invalidate(classFeeStudentsProvider(key));
+        ref.invalidate(classFeeAssignmentsProvider(key));
         _showSnack(
           summary.message ??
               'Created ${summary.createdAssignments}, skipped ${summary.skippedAssignments}.',

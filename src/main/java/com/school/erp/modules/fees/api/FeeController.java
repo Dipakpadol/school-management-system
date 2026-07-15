@@ -8,6 +8,7 @@ import com.school.erp.common.api.PageResponse;
 import com.school.erp.common.importexport.ImportResultDto;
 import com.school.erp.common.web.CorrelationIdFilter;
 import com.school.erp.modules.fees.api.dto.AssessLateFeeRequest;
+import com.school.erp.modules.fees.api.dto.ClassFeeAssignmentDetailResponse;
 import com.school.erp.modules.fees.api.dto.ClassFeeAssignmentRequest;
 import com.school.erp.modules.fees.api.dto.ClassFeeAssignmentResponse;
 import com.school.erp.modules.fees.api.dto.ClassStudentFeeResponse;
@@ -31,6 +32,7 @@ import com.school.erp.modules.fees.api.dto.StudentFeeAssignmentResponse;
 import com.school.erp.modules.fees.api.dto.StudentFeeSummaryResponse;
 import com.school.erp.modules.fees.application.FeeImportExportService;
 import com.school.erp.modules.fees.application.FeeService;
+import com.school.erp.modules.fees.domain.FeeStructureStatus;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -130,9 +132,10 @@ public class FeeController {
 	public ResponseEntity<ApiResponse<PageResponse<FeeStructureResponse>>> listFeeStructures(
 			@RequestParam(required = false) UUID academicYearId,
 			@RequestParam(required = false) UUID classId,
+			@RequestParam(required = false) FeeStructureStatus status,
 			@Valid @ParameterObject PageRequestDto pageRequest,
 			HttpServletRequest httpRequest) {
-		return ok(feeService.listFeeStructures(academicYearId, classId, pageRequest), "Fee structures fetched successfully", httpRequest);
+		return ok(feeService.listFeeStructures(academicYearId, classId, status, pageRequest), "Fee structures fetched successfully", httpRequest);
 	}
 
 	@GetMapping("/structures/{structureId}")
@@ -285,8 +288,19 @@ public class FeeController {
 	@Operation(summary = "Get class students with fee status")
 	public ResponseEntity<ApiResponse<java.util.List<ClassStudentFeeResponse>>> classStudents(
 			@PathVariable UUID classId,
+			@RequestParam(required = false) UUID academicYearId,
 			HttpServletRequest httpRequest) {
-		return ok(feeService.studentsForClass(classId), "Class fee students fetched successfully", httpRequest);
+		return ok(feeService.studentsForClass(classId, academicYearId), "Class fee students fetched successfully", httpRequest);
+	}
+
+	@GetMapping("/classes/{classId}/assignments")
+	@PreAuthorize("hasAuthority('FEES_READ')")
+	@Operation(summary = "Get class fee assignments")
+	public ResponseEntity<ApiResponse<java.util.List<ClassFeeAssignmentDetailResponse>>> classFeeAssignments(
+			@PathVariable UUID classId,
+			@RequestParam(required = false) UUID academicYearId,
+			HttpServletRequest httpRequest) {
+		return ok(feeService.classFeeAssignments(classId, academicYearId), "Class fee assignments fetched successfully", httpRequest);
 	}
 
 	@PostMapping("/classes/{classId}/assign")
@@ -304,8 +318,9 @@ public class FeeController {
 	@Operation(summary = "Get student fee summary")
 	public ResponseEntity<ApiResponse<StudentFeeSummaryResponse>> studentFeeSummary(
 			@PathVariable UUID studentId,
+			@RequestParam(required = false) UUID academicYearId,
 			HttpServletRequest httpRequest) {
-		return ok(feeService.studentFeeSummary(studentId), "Student fee summary fetched successfully", httpRequest);
+		return ok(feeService.studentFeeSummary(studentId, academicYearId), "Student fee summary fetched successfully", httpRequest);
 	}
 
 	@GetMapping("/students/{studentId}/payment-history")

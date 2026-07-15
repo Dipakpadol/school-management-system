@@ -14,10 +14,7 @@ abstract interface class TokenStorage {
 
   Future<String?> readRefreshToken();
 
-  Future<void> saveTokens({
-    required String accessToken,
-    String? refreshToken,
-  });
+  Future<void> saveTokens({required String accessToken, String? refreshToken});
 
   Future<void> clear();
 }

@@ -681,6 +681,10 @@ class ClassFeeAssignmentModel {
     required this.totalStudents,
     required this.createdAssignments,
     required this.skippedAssignments,
+    required this.feeStructureCount,
+    required this.newAssignmentsCreated,
+    required this.duplicateAssignmentsSkipped,
+    required this.warnings,
     this.message,
   });
 
@@ -702,12 +706,25 @@ class ClassFeeAssignmentModel {
       totalStudents: json['totalStudents'] as int? ?? 0,
       createdAssignments:
           (json['createdAssignments'] as int?) ??
+          (json['newAssignmentsCreated'] as int?) ??
           (json['assignedStudents'] as int?) ??
           0,
       skippedAssignments:
           (json['skippedAssignments'] as int?) ??
+          (json['duplicateAssignmentsSkipped'] as int?) ??
           (json['skippedStudents'] as int?) ??
           0,
+      feeStructureCount:
+          (json['feeStructureCount'] as int?) ?? assignedIds.length,
+      newAssignmentsCreated:
+          (json['newAssignmentsCreated'] as int?) ??
+          (json['createdAssignments'] as int?) ??
+          0,
+      duplicateAssignmentsSkipped:
+          (json['duplicateAssignmentsSkipped'] as int?) ??
+          (json['skippedAssignments'] as int?) ??
+          0,
+      warnings: _stringList(json['warnings']),
       message: json['message'] as String?,
     );
   }
@@ -719,7 +736,52 @@ class ClassFeeAssignmentModel {
   final int totalStudents;
   final int createdAssignments;
   final int skippedAssignments;
+  final int feeStructureCount;
+  final int newAssignmentsCreated;
+  final int duplicateAssignmentsSkipped;
+  final List<String> warnings;
   final String? message;
+}
+
+class ClassFeeAssignmentDetailModel {
+  const ClassFeeAssignmentDetailModel({
+    required this.id,
+    required this.academicYearId,
+    required this.academicYear,
+    required this.classId,
+    required this.className,
+    required this.feeStructureId,
+    required this.feeStructureName,
+    required this.assignedDate,
+    required this.status,
+    this.assignedBy,
+  });
+
+  factory ClassFeeAssignmentDetailModel.fromJson(Map<String, dynamic> json) {
+    return ClassFeeAssignmentDetailModel(
+      id: json['id'] as String? ?? '',
+      academicYearId: json['academicYearId'] as String? ?? '',
+      academicYear: json['academicYear'] as String? ?? '',
+      classId: json['classId'] as String? ?? '',
+      className: json['className'] as String? ?? '',
+      feeStructureId: json['feeStructureId'] as String? ?? '',
+      feeStructureName: json['feeStructureName'] as String? ?? '',
+      assignedDate: DateTime.parse(json['assignedDate'] as String),
+      status: json['status'] as String? ?? 'ACTIVE',
+      assignedBy: json['assignedBy'] as String?,
+    );
+  }
+
+  final String id;
+  final String academicYearId;
+  final String academicYear;
+  final String classId;
+  final String className;
+  final String feeStructureId;
+  final String feeStructureName;
+  final DateTime assignedDate;
+  final String status;
+  final String? assignedBy;
 }
 
 List<T> _list<T>(Object? value, T Function(Map<String, dynamic>) mapper) {
@@ -727,6 +789,13 @@ List<T> _list<T>(Object? value, T Function(Map<String, dynamic>) mapper) {
     return const [];
   }
   return value.whereType<Map<String, dynamic>>().map(mapper).toList();
+}
+
+List<String> _stringList(Object? value) {
+  if (value is! List) {
+    return const [];
+  }
+  return value.whereType<String>().toList(growable: false);
 }
 
 List<StudentFeeAssignmentModel> _assignmentsBySource(

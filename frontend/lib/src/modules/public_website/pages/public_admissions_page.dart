@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/router/app_routes.dart';
 import '../data/public_website_data.dart';
+import '../services/public_enquiry_service.dart';
 import '../widgets/public_enquiry_form.dart';
 import '../widgets/public_site_layout.dart';
 import '../widgets/public_site_theme.dart';
 import '../widgets/public_site_widgets.dart';
 
-class PublicAdmissionsPage extends StatelessWidget {
+class PublicAdmissionsPage extends ConsumerWidget {
   const PublicAdmissionsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final enquiryService = ref.watch(publicEnquiryServiceProvider);
+
     return PublicWebsiteLayout(
       currentPath: AppRoutes.publicAdmissions,
       child: Column(
@@ -74,9 +78,9 @@ class PublicAdmissionsPage extends StatelessWidget {
             eyebrow: 'Enquiry form',
             title: 'Send an admission enquiry.',
             subtitle:
-                'The form currently uses a mock local service. It is structured for a future POST /api/v1/public/enquiries integration.',
+                'The admission office will receive your enquiry and follow up.',
             backgroundColor: Colors.white,
-            child: const PublicEnquiryForm(),
+            child: PublicEnquiryForm(enquiryService: enquiryService),
           ),
         ],
       ),
@@ -85,10 +89,7 @@ class PublicAdmissionsPage extends StatelessWidget {
 }
 
 class _StepCard extends StatelessWidget {
-  const _StepCard({
-    required this.stepNumber,
-    required this.description,
-  });
+  const _StepCard({required this.stepNumber, required this.description});
 
   final int stepNumber;
   final String description;

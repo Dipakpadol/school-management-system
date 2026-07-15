@@ -13,6 +13,7 @@ import com.school.erp.common.security.RestAuthenticationEntryPoint;
 import com.school.erp.common.security.SchoolJwtGrantedAuthoritiesConverter;
 import com.school.erp.common.web.CorsProperties;
 
+import org.springframework.security.config.Customizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -58,10 +59,11 @@ public class SecurityConfig {
 	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		return http
 				.csrf(AbstractHttpConfigurer::disable)
-				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+				.cors(Customizer.withDefaults())
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+						.requestMatchers(HttpMethod.POST, "/v1/public/enquiries").permitAll()
 						.requestMatchers(
 								"/actuator/health/**",
 								"/swagger-ui.html",

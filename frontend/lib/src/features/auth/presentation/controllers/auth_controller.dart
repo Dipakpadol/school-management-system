@@ -12,11 +12,7 @@ final authControllerProvider = NotifierProvider<AuthController, AuthState>(
   AuthController.new,
 );
 
-enum AuthStatus {
-  checking,
-  authenticated,
-  unauthenticated,
-}
+enum AuthStatus { checking, authenticated, unauthenticated }
 
 class AuthState {
   const AuthState({
@@ -30,10 +26,7 @@ class AuthState {
   const AuthState.checking() : this(status: AuthStatus.checking);
 
   const AuthState.unauthenticated({String? errorMessage})
-      : this(
-          status: AuthStatus.unauthenticated,
-          errorMessage: errorMessage,
-        );
+    : this(status: AuthStatus.unauthenticated, errorMessage: errorMessage);
 
   factory AuthState.authenticated(AuthSession? session, {AuthUser? user}) {
     return AuthState(

@@ -9,10 +9,7 @@ abstract final class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: primary,
-        surface: surface,
-      ),
+      colorScheme: ColorScheme.fromSeed(seedColor: primary, surface: surface),
       scaffoldBackgroundColor: surface,
       fontFamily: 'Roboto',
       cardTheme: const CardThemeData(

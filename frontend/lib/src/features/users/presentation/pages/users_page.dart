@@ -186,11 +186,8 @@ class _UserHeader extends ConsumerWidget {
                 PopupMenuItem(value: 'excel', child: Text('Import Excel')),
                 PopupMenuItem(value: 'csv', child: Text('Import CSV')),
               ],
-              onSelected: (format) => _runPickedUserImport(
-                context,
-                ref,
-                format,
-              ),
+              onSelected: (format) =>
+                  _runPickedUserImport(context, ref, format),
             ),
             OutlinedButton.icon(
               onPressed: () => ref.invalidate(usersProvider),
@@ -288,7 +285,9 @@ class _UserCard extends ConsumerWidget {
                       _SoftChip(label: _sourceLabel(user.source)),
                       _SoftChip(label: roleText.isEmpty ? 'No role' : roleText),
                       if (user.createdAt != null)
-                        _SoftChip(label: 'Created ${_dateLabel(user.createdAt!)}'),
+                        _SoftChip(
+                          label: 'Created ${_dateLabel(user.createdAt!)}',
+                        ),
                     ],
                   ),
                 ],
@@ -385,7 +384,9 @@ Future<void> _showUserDialog(
   final phone = TextEditingController(text: user?.phoneNumber ?? '');
   final password = TextEditingController(text: 'Demo@12345678');
   final formKey = GlobalKey<FormState>();
-  final fallbackRole = availableRoles.isEmpty ? 'ADMIN' : availableRoles.first.name;
+  final fallbackRole = availableRoles.isEmpty
+      ? 'ADMIN'
+      : availableRoles.first.name;
   String role = user != null && user.roles.isNotEmpty
       ? user.roles.first.name
       : fallbackRole;

@@ -20,8 +20,8 @@ class AuthRepositoryImpl implements AuthRepository {
   const AuthRepositoryImpl({
     required AuthRemoteDataSource remoteDataSource,
     required TokenStorage tokenStorage,
-  })  : _remoteDataSource = remoteDataSource,
-        _tokenStorage = tokenStorage;
+  }) : _remoteDataSource = remoteDataSource,
+       _tokenStorage = tokenStorage;
 
   final AuthRemoteDataSource _remoteDataSource;
   final TokenStorage _tokenStorage;
@@ -35,8 +35,7 @@ class AuthRepositoryImpl implements AuthRepository {
       final session = (await _remoteDataSource.login(
         email: email,
         password: password,
-      ))
-          .toDomain();
+      )).toDomain();
       await _tokenStorage.saveTokens(
         accessToken: session.accessToken,
         refreshToken: session.refreshToken,
@@ -134,7 +133,9 @@ class AuthRepositoryImpl implements AuthRepository {
   Failure _failureFromDio(DioException error) {
     final statusCode = error.response?.statusCode;
     if (statusCode == 401) {
-      return ValidationFailure(_serverMessage(error) ?? 'Invalid email or password.');
+      return ValidationFailure(
+        _serverMessage(error) ?? 'Invalid email or password.',
+      );
     }
     if (statusCode == 400 || statusCode == 422) {
       return ValidationFailure(_serverMessage(error) ?? 'Request is invalid.');

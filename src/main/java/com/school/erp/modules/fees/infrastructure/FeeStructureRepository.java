@@ -21,8 +21,10 @@ public interface FeeStructureRepository extends BaseRepository<FeeStructure, UUI
 			select count(structure) > 0
 			from FeeStructure structure
 			where structure.deleted = false
+			  and structure.status = :status
 			  and lower(structure.academicYear) = lower(:academicYear)
 			  and lower(structure.className) = lower(:className)
+			  and lower(structure.name) = lower(:structureName)
 			  and (
 			    (:sectionName is null and structure.sectionName is null)
 			    or lower(structure.sectionName) = lower(:sectionName)
@@ -31,15 +33,19 @@ public interface FeeStructureRepository extends BaseRepository<FeeStructure, UUI
 	boolean existsActiveStructureForClass(
 			@Param("academicYear") String academicYear,
 			@Param("className") String className,
-			@Param("sectionName") String sectionName);
+			@Param("sectionName") String sectionName,
+			@Param("structureName") String structureName,
+			@Param("status") com.school.erp.modules.fees.domain.FeeStructureStatus status);
 
 	@Query("""
 			select count(structure) > 0
 			from FeeStructure structure
 			where structure.deleted = false
 			  and structure.id <> :structureId
+			  and structure.status = :status
 			  and lower(structure.academicYear) = lower(:academicYear)
 			  and lower(structure.className) = lower(:className)
+			  and lower(structure.name) = lower(:structureName)
 			  and (
 			    (:sectionName is null and structure.sectionName is null)
 			    or lower(structure.sectionName) = lower(:sectionName)
@@ -49,7 +55,9 @@ public interface FeeStructureRepository extends BaseRepository<FeeStructure, UUI
 			@Param("structureId") UUID structureId,
 			@Param("academicYear") String academicYear,
 			@Param("className") String className,
-			@Param("sectionName") String sectionName);
+			@Param("sectionName") String sectionName,
+			@Param("structureName") String structureName,
+			@Param("status") com.school.erp.modules.fees.domain.FeeStructureStatus status);
 
 	@Query("""
 			select count(structure) > 0
@@ -85,10 +93,17 @@ public interface FeeStructureRepository extends BaseRepository<FeeStructure, UUI
 			UUID classId,
 			Pageable pageable);
 
+	Page<FeeStructure> findByAcademicYearEntityIdAndClassEntityIdAndStatusAndDeletedFalse(
+			UUID academicYearId,
+			UUID classId,
+			com.school.erp.modules.fees.domain.FeeStructureStatus status,
+			Pageable pageable);
+
 	@Query("""
 			select structure
 			from FeeStructure structure
 			where structure.deleted = false
+			  and (:status is null or structure.status = :status)
 			  and (
 			    (structure.academicYearEntity is not null and structure.academicYearEntity.id = :academicYearId)
 			    or (structure.academicYearEntity is null and lower(structure.academicYear) = lower(:academicYearName))
@@ -107,11 +122,22 @@ public interface FeeStructureRepository extends BaseRepository<FeeStructure, UUI
 			@Param("classId") UUID classId,
 			@Param("className") String className,
 			@Param("classCode") String classCode,
+			@Param("status") com.school.erp.modules.fees.domain.FeeStructureStatus status,
 			Pageable pageable);
 
 	Page<FeeStructure> findByAcademicYearEntityIdAndDeletedFalse(UUID academicYearId, Pageable pageable);
 
+	Page<FeeStructure> findByAcademicYearEntityIdAndStatusAndDeletedFalse(
+			UUID academicYearId,
+			com.school.erp.modules.fees.domain.FeeStructureStatus status,
+			Pageable pageable);
+
 	Page<FeeStructure> findByClassEntityIdAndDeletedFalse(UUID classId, Pageable pageable);
+
+	Page<FeeStructure> findByClassEntityIdAndStatusAndDeletedFalse(
+			UUID classId,
+			com.school.erp.modules.fees.domain.FeeStructureStatus status,
+			Pageable pageable);
 
 	@EntityGraph(attributePaths = { "items", "items.category", "installments" })
 	@Query("select distinct structure from FeeStructure structure where structure.id = :id and structure.deleted = false")

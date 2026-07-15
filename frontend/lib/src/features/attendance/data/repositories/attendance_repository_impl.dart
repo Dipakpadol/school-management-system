@@ -9,7 +9,9 @@ import '../datasources/attendance_remote_data_source.dart';
 import '../models/attendance_models.dart';
 
 final attendanceRepositoryProvider = Provider<AttendanceRepository>((ref) {
-  return AttendanceRepositoryImpl(ref.watch(attendanceRemoteDataSourceProvider));
+  return AttendanceRepositoryImpl(
+    ref.watch(attendanceRemoteDataSourceProvider),
+  );
 });
 
 class AttendanceRepositoryImpl implements AttendanceRepository {

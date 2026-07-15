@@ -38,10 +38,13 @@ import com.school.erp.modules.fees.domain.FeeAssignmentStatus;
 import com.school.erp.modules.fees.domain.FeeCategory;
 import com.school.erp.modules.fees.domain.FeeReceipt;
 import com.school.erp.modules.fees.domain.FeeStructure;
+import com.school.erp.modules.fees.domain.FeeStructureStatus;
+import com.school.erp.modules.fees.domain.ClassFeeAssignment;
 import com.school.erp.modules.fees.domain.LateFeeCalculationType;
 import com.school.erp.modules.fees.domain.LateFeeRule;
 import com.school.erp.modules.fees.domain.PaymentMode;
 import com.school.erp.modules.fees.domain.StudentFeeAssignment;
+import com.school.erp.modules.fees.infrastructure.ClassFeeAssignmentRepository;
 import com.school.erp.modules.fees.infrastructure.FeeCategoryRepository;
 import com.school.erp.modules.fees.infrastructure.FeePaymentRepository;
 import com.school.erp.modules.fees.infrastructure.FeeReceiptRepository;
@@ -68,6 +71,9 @@ class FeeServiceTest {
 
 	@Mock
 	private FeeStructureRepository feeStructureRepository;
+
+	@Mock
+	private ClassFeeAssignmentRepository classFeeAssignmentRepository;
 
 	@Mock
 	private StudentFeeAssignmentRepository assignmentRepository;
@@ -97,6 +103,7 @@ class FeeServiceTest {
 		feeService = new FeeService(
 				feeCategoryRepository,
 				feeStructureRepository,
+				classFeeAssignmentRepository,
 				assignmentRepository,
 				lateFeeRuleRepository,
 				feeReceiptRepository,
@@ -110,7 +117,12 @@ class FeeServiceTest {
 	@Test
 	void createFeeStructureBuildsItemsInstallmentsAndActivatesStructure() {
 		FeeCategory tuition = category("TUITION");
-		when(feeStructureRepository.existsActiveStructureForClass("2026-2027", "Class 6", "A")).thenReturn(false);
+		when(feeStructureRepository.existsActiveStructureForClass(
+				"2026-2027",
+				"Class 6",
+				"A",
+				"Class 6 Annual Fee",
+				FeeStructureStatus.ACTIVE)).thenReturn(false);
 		when(feeCategoryRepository.findByIdAndDeletedFalse(tuition.getId())).thenReturn(Optional.of(tuition));
 		when(feeStructureRepository.save(any(FeeStructure.class))).thenAnswer(invocation -> {
 			FeeStructure structure = invocation.getArgument(0);
@@ -152,7 +164,12 @@ class FeeServiceTest {
 	@Test
 	void createFeeStructureRejectsDuplicateActiveClassSectionStructure() {
 		FeeCategory tuition = category("TUITION");
-		when(feeStructureRepository.existsActiveStructureForClass("2026-2027", "Class 6", "A")).thenReturn(true);
+		when(feeStructureRepository.existsActiveStructureForClass(
+				"2026-2027",
+				"Class 6",
+				"A",
+				"Class 6 Annual Fee",
+				FeeStructureStatus.ACTIVE)).thenReturn(true);
 
 		assertThatThrownBy(() -> feeService.createFeeStructure(structureRequest(tuition.getId(), true)))
 				.isInstanceOf(BusinessException.class)
@@ -182,7 +199,9 @@ class FeeServiceTest {
 				structure.getId(),
 				"2026-2027",
 				"Class 7",
-				"B")).thenReturn(false);
+				"B",
+				"Class 7 Fee",
+				FeeStructureStatus.ACTIVE)).thenReturn(false);
 		when(feeCategoryRepository.findByIdAndDeletedFalse(transport.getId())).thenReturn(Optional.of(transport));
 
 		FeeStructureResponse response = feeService.updateFeeStructure(structure.getId(), request);
@@ -280,8 +299,18 @@ class FeeServiceTest {
 		tuition.updateAcademicMapping(academicYear, classEntity);
 		transport.updateAcademicMapping(academicYear, classEntity);
 		when(academicHierarchyService.loadClass(classEntity.getId())).thenReturn(classEntity);
+		when(academicHierarchyService.loadAcademicYear(academicYear.getId())).thenReturn(academicYear);
 		when(feeStructureRepository.findDetailedByIdAndDeletedFalse(tuition.getId())).thenReturn(Optional.of(tuition));
 		when(feeStructureRepository.findDetailedByIdAndDeletedFalse(transport.getId())).thenReturn(Optional.of(transport));
+		when(classFeeAssignmentRepository.findActive(academicYear.getId(), classEntity.getId(), tuition.getId(), com.school.erp.modules.fees.domain.ClassFeeAssignmentStatus.ACTIVE))
+				.thenReturn(Optional.empty());
+		when(classFeeAssignmentRepository.findActive(academicYear.getId(), classEntity.getId(), transport.getId(), com.school.erp.modules.fees.domain.ClassFeeAssignmentStatus.ACTIVE))
+				.thenReturn(Optional.empty());
+		when(classFeeAssignmentRepository.save(any(ClassFeeAssignment.class))).thenAnswer(invocation -> {
+			ClassFeeAssignment assignment = invocation.getArgument(0);
+			setId(assignment);
+			return assignment;
+		});
 		when(studentRepository.findActiveStudentsByClassId(classEntity.getId())).thenReturn(List.of(student));
 		when(assignmentRepository.existsByStudentIdAndFeeStructureIdAndDeletedFalse(student.getId(), tuition.getId()))
 				.thenReturn(true);
@@ -309,7 +338,11 @@ class FeeServiceTest {
 		assertThat(response.assignedFeeStructures()).containsExactly(tuition.getId(), transport.getId());
 		assertThat(response.createdAssignments()).isEqualTo(1);
 		assertThat(response.skippedAssignments()).isEqualTo(1);
+		assertThat(response.feeStructureCount()).isEqualTo(2);
+		assertThat(response.newAssignmentsCreated()).isEqualTo(1);
+		assertThat(response.duplicateAssignmentsSkipped()).isEqualTo(1);
 		assertThat(response.message()).isEqualTo("Class fee assigned successfully.");
+		verify(classFeeAssignmentRepository, org.mockito.Mockito.times(2)).save(any(ClassFeeAssignment.class));
 	}
 
 	@Test
@@ -319,7 +352,15 @@ class FeeServiceTest {
 		FeeStructure tuition = activeStructure(category("TUITION"));
 		tuition.updateAcademicMapping(academicYear, classEntity);
 		when(academicHierarchyService.loadClass(classEntity.getId())).thenReturn(classEntity);
+		when(academicHierarchyService.loadAcademicYear(academicYear.getId())).thenReturn(academicYear);
 		when(feeStructureRepository.findDetailedByIdAndDeletedFalse(tuition.getId())).thenReturn(Optional.of(tuition));
+		when(classFeeAssignmentRepository.findActive(academicYear.getId(), classEntity.getId(), tuition.getId(), com.school.erp.modules.fees.domain.ClassFeeAssignmentStatus.ACTIVE))
+				.thenReturn(Optional.empty());
+		when(classFeeAssignmentRepository.save(any(ClassFeeAssignment.class))).thenAnswer(invocation -> {
+			ClassFeeAssignment assignment = invocation.getArgument(0);
+			setId(assignment);
+			return assignment;
+		});
 		when(studentRepository.findActiveStudentsByClassId(classEntity.getId())).thenReturn(List.of());
 
 		ClassFeeAssignmentResponse response = feeService.assignFeeToClass(
@@ -335,7 +376,49 @@ class FeeServiceTest {
 
 		assertThat(response.totalStudents()).isZero();
 		assertThat(response.createdAssignments()).isZero();
-		assertThat(response.message()).isEqualTo("Fee assigned to class. No students found currently.");
+		assertThat(response.message()).isEqualTo("Fee assigned to class. No students are currently available.");
+		assertThat(response.warnings()).contains("Fee assigned to class. No students are currently available.");
+		verify(classFeeAssignmentRepository).save(any(ClassFeeAssignment.class));
+	}
+
+	@Test
+	void assignActiveClassFeesToStudentUsesPersistedClassAssignments() {
+		AcademicYear academicYear = academicYear();
+		ClassEntity classEntity = classEntity(academicYear);
+		Student student = student();
+		FeeStructure tuition = activeStructure(category("TUITION"));
+		tuition.updateAcademicMapping(academicYear, classEntity);
+		ClassFeeAssignment classAssignment = new ClassFeeAssignment(
+				academicYear,
+				classEntity,
+				tuition,
+				LocalDate.of(2026, 4, 1),
+				"admin@school.test");
+		setId(classAssignment);
+		when(studentRepository.findByIdAndDeletedFalse(student.getId())).thenReturn(Optional.of(student));
+		when(academicHierarchyService.loadAcademicYear(academicYear.getId())).thenReturn(academicYear);
+		when(academicHierarchyService.loadClass(classEntity.getId())).thenReturn(classEntity);
+		when(classFeeAssignmentRepository.findActiveByAcademicYearAndClass(
+				academicYear.getId(),
+				classEntity.getId(),
+				com.school.erp.modules.fees.domain.ClassFeeAssignmentStatus.ACTIVE))
+				.thenReturn(List.of(classAssignment));
+		when(assignmentRepository.existsByStudentIdAndFeeStructureIdAndDeletedFalse(student.getId(), tuition.getId()))
+				.thenReturn(false);
+		when(assignmentRepository.save(any(StudentFeeAssignment.class))).thenAnswer(invocation -> {
+			StudentFeeAssignment assignment = invocation.getArgument(0);
+			setIds(assignment);
+			return assignment;
+		});
+
+		List<StudentFeeAssignmentResponse> created = feeService.assignActiveClassFeesToStudent(
+				student.getId(),
+				academicYear.getId(),
+				classEntity.getId(),
+				LocalDate.of(2026, 4, 2));
+
+		assertThat(created).hasSize(1);
+		assertThat(created.getFirst().feeStructureId()).isEqualTo(tuition.getId());
 	}
 
 	@Test

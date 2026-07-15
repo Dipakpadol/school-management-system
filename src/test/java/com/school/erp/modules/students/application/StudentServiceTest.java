@@ -22,6 +22,7 @@ import com.school.erp.modules.academic.domain.AcademicYear;
 import com.school.erp.modules.academic.domain.ClassEntity;
 import com.school.erp.modules.academic.domain.SectionEntity;
 import com.school.erp.modules.fees.application.FeeService;
+import com.school.erp.modules.fees.application.StudentFeeAutoAssignmentService;
 import com.school.erp.modules.hostel.application.HostelService;
 import com.school.erp.modules.transport.application.TransportService;
 import com.school.erp.modules.students.api.dto.ClassSectionAssignmentRequest;
@@ -76,6 +77,9 @@ class StudentServiceTest {
 	private FeeService feeService;
 
 	@Mock
+	private StudentFeeAutoAssignmentService feeAutoAssignmentService;
+
+	@Mock
 	private HostelService hostelService;
 
 	@Mock
@@ -98,6 +102,7 @@ class StudentServiceTest {
 				studentClassAssignmentRepository,
 				academicHierarchyService,
 				feeService,
+				feeAutoAssignmentService,
 				hostelService,
 				transportService,
 				new StudentMapper(),

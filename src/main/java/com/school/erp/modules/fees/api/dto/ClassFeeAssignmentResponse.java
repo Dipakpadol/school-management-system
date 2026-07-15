@@ -17,5 +17,9 @@ public record ClassFeeAssignmentResponse(
 		int createdAssignments,
 		int skippedAssignments,
 		List<StudentFeeAssignmentResponse> assignments,
+		int feeStructureCount,
+		int newAssignmentsCreated,
+		int duplicateAssignmentsSkipped,
+		List<String> warnings,
 		String message) {
 }

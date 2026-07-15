@@ -31,9 +31,9 @@ class PublicAboutPage extends StatelessWidget {
                 final text = Text(
                   'Start International School is a progressive campus for students from pre-primary to senior secondary classes. The school focuses on academic discipline, curiosity, confidence, and responsible citizenship. Facilities such as digital classrooms, transport, hostel, library, labs, sports spaces, and ERP-enabled communication support a complete school experience.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: PublicSiteColors.text,
-                        height: 1.65,
-                      ),
+                    color: PublicSiteColors.text,
+                    height: 1.65,
+                  ),
                 );
 
                 if (stacked) {
@@ -116,17 +116,17 @@ class PublicAboutPage extends StatelessWidget {
                     Text(
                       'Our school believes that every child can grow when learning is structured, joyful, and humane. We work with parents to help students build knowledge, habits, courage, and respect for others.',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: PublicSiteColors.text,
-                            height: 1.6,
-                          ),
+                        color: PublicSiteColors.text,
+                        height: 1.6,
+                      ),
                     ),
                     const SizedBox(height: 18),
                     Text(
                       'Principal, ${schoolProfile.name}',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: PublicSiteColors.ink,
-                            fontWeight: FontWeight.w900,
-                          ),
+                        color: PublicSiteColors.ink,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ],
                 ),

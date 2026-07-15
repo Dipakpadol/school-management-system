@@ -139,7 +139,9 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
       _message = null;
       _hasError = false;
     });
-    final result = await ref.read(authRepositoryProvider).resetPassword(
+    final result = await ref
+        .read(authRepositoryProvider)
+        .resetPassword(
           token: _token.text.trim(),
           newPassword: _password.text,
           confirmPassword: _confirmPassword.text,
@@ -149,8 +151,9 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
     }
     result.when(
       success: (message) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
         context.go(AppRoutes.login);
       },
       failure: (failure) => setState(() {

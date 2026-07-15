@@ -7,7 +7,7 @@ spring:
   application:
     name: school-erp-api
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/school_erp}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/school_erp_one}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:root}
   mail:
@@ -80,6 +80,11 @@ app:
       access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:60m}
       refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:7d}
       password-reset-token-ttl: ${JWT_PASSWORD_RESET_TOKEN_TTL:30m}
+
+school:
+  public-site:
+    name: ${SCHOOL_PUBLIC_SITE_NAME:Star International School}
+    enquiry-email: ${SCHOOL_PUBLIC_SITE_ENQUIRY_EMAIL:info@starinternationalschool.com}
 
 notifications:
   school-name: ${NOTIFICATIONS_SCHOOL_NAME:School ERP}

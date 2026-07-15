@@ -53,6 +53,7 @@ class FeesRemoteDataSource {
   Future<PagePayload<FeeStructureModel>> structures({
     String? academicYearId,
     String? classId,
+    String? status,
   }) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.feeStructures,
@@ -60,6 +61,7 @@ class FeesRemoteDataSource {
         if (academicYearId != null && academicYearId.isNotEmpty)
           'academicYearId': academicYearId,
         if (classId != null && classId.isNotEmpty) 'classId': classId,
+        if (status != null && status.isNotEmpty) 'status': status,
       },
     );
     return PagePayload.fromJson(
@@ -146,11 +148,32 @@ class FeesRemoteDataSource {
     return StudentFeeAssignmentModel.fromJson(_unwrapData(response.data));
   }
 
-  Future<List<ClassStudentFeeModel>> classStudents(String classId) async {
+  Future<List<ClassStudentFeeModel>> classStudents(
+    String classId, {
+    String? academicYearId,
+  }) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.feeClassStudents(classId),
+      queryParameters: {
+        if (academicYearId != null && academicYearId.isNotEmpty)
+          'academicYearId': academicYearId,
+      },
     );
     return _unwrapList(response.data, ClassStudentFeeModel.fromJson);
+  }
+
+  Future<List<ClassFeeAssignmentDetailModel>> classFeeAssignments(
+    String classId, {
+    String? academicYearId,
+  }) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.feeClassAssignments(classId),
+      queryParameters: {
+        if (academicYearId != null && academicYearId.isNotEmpty)
+          'academicYearId': academicYearId,
+      },
+    );
+    return _unwrapList(response.data, ClassFeeAssignmentDetailModel.fromJson);
   }
 
   Future<ClassFeeAssignmentModel> assignClassFee(
@@ -175,9 +198,16 @@ class FeesRemoteDataSource {
     return FeeReceiptModel.fromJson(_unwrapData(response.data));
   }
 
-  Future<StudentFeeSummaryModel> studentSummary(String studentId) async {
+  Future<StudentFeeSummaryModel> studentSummary(
+    String studentId, {
+    String? academicYearId,
+  }) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.feeStudentSummary(studentId),
+      queryParameters: {
+        if (academicYearId != null && academicYearId.isNotEmpty)
+          'academicYearId': academicYearId,
+      },
     );
     return StudentFeeSummaryModel.fromJson(_unwrapData(response.data));
   }

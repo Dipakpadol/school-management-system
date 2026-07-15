@@ -139,9 +139,8 @@ class TransportRepositoryImpl implements TransportRepository {
   Future<Result<StudentTransportAssignmentModel?>> currentStudentAssignment(
     String studentId,
     String academicYearId,
-  ) => _guard(
-    () => _remote.currentStudentAssignment(studentId, academicYearId),
-  );
+  ) =>
+      _guard(() => _remote.currentStudentAssignment(studentId, academicYearId));
 
   @override
   Future<Result<StudentTransportAssignmentModel>> assignStudentTransport(

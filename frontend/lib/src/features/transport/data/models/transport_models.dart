@@ -266,7 +266,8 @@ class TransportStudentAssignmentModel {
 
   factory TransportStudentAssignmentModel.fromJson(Map<String, dynamic> json) {
     return TransportStudentAssignmentModel(
-      assignmentId: json['assignmentId'] as String? ?? json['id'] as String? ?? '',
+      assignmentId:
+          json['assignmentId'] as String? ?? json['id'] as String? ?? '',
       studentId: json['studentId'] as String? ?? '',
       studentName: json['studentName'] as String? ?? '',
       admissionNumber: json['admissionNumber'] as String? ?? '',
@@ -399,7 +400,9 @@ class TransportVehicleDetailsModel {
         json['vehicle'] as Map<String, dynamic>? ?? const {},
       ),
       driver: json['driver'] is Map<String, dynamic>
-          ? TransportDriverModel.fromJson(json['driver'] as Map<String, dynamic>)
+          ? TransportDriverModel.fromJson(
+              json['driver'] as Map<String, dynamic>,
+            )
           : null,
       routes: _list(json['routes'], TransportRouteModel.fromJson),
       pickupPoints: _list(

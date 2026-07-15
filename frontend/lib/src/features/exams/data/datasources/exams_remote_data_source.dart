@@ -15,8 +15,9 @@ class ExamsRemoteDataSource {
   final ApiClient _apiClient;
 
   Future<List<AcademicYearModel>> years() async {
-    final response =
-        await _apiClient.get<Map<String, dynamic>>(ApiPaths.examAcademicYears);
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.examAcademicYears,
+    );
     return _unwrapList(response.data, AcademicYearModel.fromJson);
   }
 
@@ -61,8 +62,9 @@ class ExamsRemoteDataSource {
   }
 
   Future<List<ExamTypeModel>> types() async {
-    final response =
-        await _apiClient.get<Map<String, dynamic>>(ApiPaths.examTypes);
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.examTypes,
+    );
     return _unwrapList(response.data, ExamTypeModel.fromJson);
   }
 

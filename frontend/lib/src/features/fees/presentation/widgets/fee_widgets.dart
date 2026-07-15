@@ -11,9 +11,10 @@ class FeeStatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (status) {
-      'ACTIVE' || 'PAID' || 'COMPLETED' || 'ISSUED' => const Color(0xFF16A34A),
+      'ACTIVE' || 'PAID' || 'COMPLETED' || 'ISSUED' || 'ASSIGNED' => const Color(0xFF16A34A),
       'OVERDUE' || 'CANCELLED' || 'REJECTED' => const Color(0xFFDC2626),
       'PARTIALLY_PAID' => const Color(0xFFF59E0B),
+      'UNASSIGNED' => const Color(0xFF2563EB),
       _ => const Color(0xFF64748B),
     };
 

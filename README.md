@@ -66,6 +66,29 @@ flutter pub get
 flutter run -d chrome --web-port=8081 --dart-define=API_BASE_URL=http://localhost:8080/api
 ```
 
+### Public Admission Enquiry Email
+
+The Flutter Web public admission enquiry form posts to the Spring Boot backend:
+
+```text
+POST /api/v1/public/enquiries
+```
+
+The backend reuses the existing notification email provider. Configure the
+school copy recipient with:
+
+```yaml
+school:
+  public-site:
+    enquiry-email: info@starinternationalschool.com
+```
+
+Run the frontend against the local backend:
+
+```bash
+flutter run -d chrome --web-port=8081 --dart-define=API_BASE_URL=http://localhost:8080/api
+```
+
 ## Local QA
 
 For a disposable demo backend with seeded auth, student, and fee data:

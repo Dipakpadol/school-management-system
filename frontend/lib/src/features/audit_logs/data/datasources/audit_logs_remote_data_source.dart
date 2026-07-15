@@ -107,17 +107,14 @@ class AuditLogsRemoteDataSource {
     );
   }
 
-  Future<List<String>> filterModules() => _filterOptions(
-    ApiPaths.auditLogFilterModules,
-  );
+  Future<List<String>> filterModules() =>
+      _filterOptions(ApiPaths.auditLogFilterModules);
 
-  Future<List<String>> filterActions() => _filterOptions(
-    ApiPaths.auditLogFilterActions,
-  );
+  Future<List<String>> filterActions() =>
+      _filterOptions(ApiPaths.auditLogFilterActions);
 
-  Future<List<String>> filterUsers() => _filterOptions(
-    ApiPaths.auditLogFilterUsers,
-  );
+  Future<List<String>> filterUsers() =>
+      _filterOptions(ApiPaths.auditLogFilterUsers);
 
   Map<String, dynamic> _filterParams({
     String? moduleName,

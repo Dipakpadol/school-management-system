@@ -30,7 +30,8 @@ class ProtectedEndpointAuthorizationTest {
 			"com.school.erp.modules.auth.api.AuthController#login",
 			"com.school.erp.modules.auth.api.AuthController#refresh",
 			"com.school.erp.modules.auth.api.AuthController#forgotPassword",
-			"com.school.erp.modules.auth.api.AuthController#resetPassword");
+			"com.school.erp.modules.auth.api.AuthController#resetPassword",
+			"com.school.erp.modules.notifications.api.PublicEnquiryController#submit");
 
 	@Test
 	void everyProtectedControllerEndpointDeclaresMethodAuthorization() {

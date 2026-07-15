@@ -37,11 +37,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
           return Row(
             children: [
-              if (wide)
-                const Expanded(
-                  flex: 5,
-                  child: _LoginVisualPanel(),
-                ),
+              if (wide) const Expanded(flex: 5, child: _LoginVisualPanel()),
               Expanded(
                 flex: 4,
                 child: Center(
@@ -74,7 +70,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       return;
     }
 
-    final result = await ref.read(authControllerProvider.notifier).login(
+    final result = await ref
+        .read(authControllerProvider.notifier)
+        .login(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
@@ -89,6 +87,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 }
+
 class _LoginForm extends StatelessWidget {
   const _LoginForm({
     required this.formKey,
@@ -125,10 +124,7 @@ class _LoginForm extends StatelessWidget {
                     color: theme.colorScheme.primary,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(
-                    Icons.school_outlined,
-                    color: Colors.white,
-                  ),
+                  child: const Icon(Icons.school_outlined, color: Colors.white),
                 ),
               ),
               const SizedBox(width: 12),
@@ -244,10 +240,7 @@ class _ErrorBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.error_outline,
-            color: theme.colorScheme.onErrorContainer,
-          ),
+          Icon(Icons.error_outline, color: theme.colorScheme.onErrorContainer),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

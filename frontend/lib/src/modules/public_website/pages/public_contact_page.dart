@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/router/app_routes.dart';
+import '../services/public_enquiry_service.dart';
 import '../widgets/public_enquiry_form.dart';
 import '../widgets/public_site_layout.dart';
 import '../widgets/public_site_widgets.dart';
 
-class PublicContactPage extends StatelessWidget {
+class PublicContactPage extends ConsumerWidget {
   const PublicContactPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final enquiryService = ref.watch(publicEnquiryServiceProvider);
+
     return PublicWebsiteLayout(
       currentPath: AppRoutes.publicContact,
       child: Column(
@@ -34,15 +38,11 @@ class PublicContactPage extends StatelessWidget {
                     MapPlaceholder(),
                   ],
                 );
-                const form = PublicEnquiryForm();
+                final form = PublicEnquiryForm(enquiryService: enquiryService);
 
                 if (stacked) {
                   return Column(
-                    children: [
-                      info,
-                      const SizedBox(height: 24),
-                      form,
-                    ],
+                    children: [info, const SizedBox(height: 24), form],
                   );
                 }
 

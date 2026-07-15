@@ -9,7 +9,7 @@ const schoolProfile = SchoolProfile(
   admissionText:
       'Admissions are open for Nursery to Class X for the 2026-27 academic year.',
   address:
-      'Waghrul pati, Waghrul, Taluka: Badnapur, District: Jalna, Maharashtra, India, 431202',
+      'Kandari pati, Waghrul, Taluka: Badnapur, District: Jalna, Maharashtra, India, 431202',
   phone: '+91 XXXXXXXXXX',
   email: 'info@starinternationalschool.com',
   officeHours: 'Monday to Saturday, 8:30 AM - 4:30 PM',

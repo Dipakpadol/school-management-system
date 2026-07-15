@@ -71,7 +71,9 @@ class _TeacherAttendancePageState extends ConsumerState<TeacherAttendancePage> {
                 onMarkAllPresent: effectiveYearId == null
                     ? null
                     : () => _markAllPresent(effectiveYearId),
-                onSave: effectiveYearId == null ? null : () => _save(effectiveYearId),
+                onSave: effectiveYearId == null
+                    ? null
+                    : () => _save(effectiveYearId),
               ),
               const Divider(height: 1),
               Expanded(
@@ -136,7 +138,9 @@ class _TeacherAttendancePageState extends ConsumerState<TeacherAttendancePage> {
   }
 
   Future<void> _save(String academicYearId) async {
-    final teachers = ref.read(teacherAttendanceTeachersProvider(academicYearId));
+    final teachers = ref.read(
+      teacherAttendanceTeachersProvider(academicYearId),
+    );
     final dailyKey = TeacherDailyAttendanceKey(
       academicYearId: academicYearId,
       date: _attendanceDate,
@@ -165,10 +169,9 @@ class _TeacherAttendancePageState extends ConsumerState<TeacherAttendancePage> {
                 _statuses[teacher.id] ??
                 _existingRecord(dailyRecord, teacher.id)?.status ??
                 'PRESENT',
-            'remarks':
-                _remarks.containsKey(teacher.id)
-                    ? _remarks[teacher.id]
-                    : _existingRecord(dailyRecord, teacher.id)?.remarks ?? '',
+            'remarks': _remarks.containsKey(teacher.id)
+                ? _remarks[teacher.id]
+                : _existingRecord(dailyRecord, teacher.id)?.remarks ?? '',
           },
       ],
     };
@@ -187,9 +190,9 @@ class _TeacherAttendancePageState extends ConsumerState<TeacherAttendancePage> {
         ref.invalidate(teacherDailyAttendanceProvider(dailyKey));
       },
       failure: (failure) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(failure.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(failure.message)));
       },
     );
   }
@@ -294,7 +297,9 @@ class _TeacherAttendanceBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final teachers = ref.watch(teacherAttendanceTeachersProvider(academicYearId));
+    final teachers = ref.watch(
+      teacherAttendanceTeachersProvider(academicYearId),
+    );
     final dailyKey = TeacherDailyAttendanceKey(
       academicYearId: academicYearId,
       date: attendanceDate,
@@ -340,14 +345,18 @@ class _TeacherAttendanceBody extends ConsumerWidget {
                           existing: _existingRecord(dailyRecord, teacher.id),
                           selectedStatus:
                               statuses[teacher.id] ??
-                              _existingRecord(dailyRecord, teacher.id)?.status ??
+                              _existingRecord(
+                                dailyRecord,
+                                teacher.id,
+                              )?.status ??
                               'PRESENT',
-                          remarks:
-                              remarks.containsKey(teacher.id)
-                                  ? remarks[teacher.id] ?? ''
-                                  : _existingRecord(dailyRecord, teacher.id)
-                                          ?.remarks ??
-                                      '',
+                          remarks: remarks.containsKey(teacher.id)
+                              ? remarks[teacher.id] ?? ''
+                              : _existingRecord(
+                                      dailyRecord,
+                                      teacher.id,
+                                    )?.remarks ??
+                                    '',
                           onStatusChanged: (status) =>
                               onStatusChanged(teacher.id, status),
                           onRemarksChanged: (value) =>
@@ -361,16 +370,16 @@ class _TeacherAttendanceBody extends ConsumerWidget {
           },
           error: (error, _) => AppErrorState(
             message: _message(error),
-            onRetry: () => ref.invalidate(teacherDailyAttendanceProvider(dailyKey)),
+            onRetry: () =>
+                ref.invalidate(teacherDailyAttendanceProvider(dailyKey)),
           ),
           loading: () => const AppLoadingState(label: 'Loading attendance'),
         );
       },
       error: (error, _) => AppErrorState(
         message: _message(error),
-        onRetry: () => ref.invalidate(
-          teacherAttendanceTeachersProvider(academicYearId),
-        ),
+        onRetry: () =>
+            ref.invalidate(teacherAttendanceTeachersProvider(academicYearId)),
       ),
       loading: () => const AppLoadingState(label: 'Loading teachers'),
     );
@@ -407,9 +416,9 @@ class _TeacherAttendanceRow extends StatelessWidget {
             children: [
               Text(
                 teacher.displayName,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 2),
               Text(
@@ -499,7 +508,8 @@ TeacherAttendanceRecordModel? _existingRecord(
   return null;
 }
 
-DateTime _dateOnly(DateTime value) => DateTime(value.year, value.month, value.day);
+DateTime _dateOnly(DateTime value) =>
+    DateTime(value.year, value.month, value.day);
 
 String _dateParam(DateTime value) {
   return '${value.year.toString().padLeft(4, '0')}-'

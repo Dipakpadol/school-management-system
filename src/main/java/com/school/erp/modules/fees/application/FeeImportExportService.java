@@ -225,13 +225,13 @@ public class FeeImportExportService {
 
 	@Transactional(readOnly = true)
 	public byte[] defaulterReport(String format) {
-		return defaulterReport(format, new DefaulterSearchRequest(null, null, null, null, null, null, null, null, null));
+		return defaulterReport(format, emptyDefaulterSearch());
 	}
 
 	@Transactional(readOnly = true)
 	public byte[] defaulterReport(String format, DefaulterSearchRequest request) {
 		List<FeeDefaulterResponse> defaulters = feeService.findDefaulters(
-				request == null ? new DefaulterSearchRequest(null, null, null, null, null, null, null, null, null) : request,
+				request == null ? emptyDefaulterSearch() : request,
 				new com.school.erp.common.api.PageRequestDto(0, 200, null, null)).content();
 		List<String> headers = List.of("assignmentId", "admissionNumber", "studentName", "className", "sectionName", "balanceAmount", "oldestDueDate", "overdueInstallments");
 		List<Map<String, Object>> rows = defaulters.stream().map(defaulter -> {
@@ -252,6 +252,10 @@ public class FeeImportExportService {
 			case "csv" -> csvExportService.export(headers, rows);
 			default -> excelExportService.export("fee-defaulters", headers, rows);
 		};
+	}
+
+	private DefaulterSearchRequest emptyDefaulterSearch() {
+		return new DefaulterSearchRequest(null, null, null, null, null, null, null, null, null, null, null);
 	}
 
 	private ImportResultDto importStructures(List<ImportRow> rows) {

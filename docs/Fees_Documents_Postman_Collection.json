@@ -1,0 +1,151 @@
+{
+  "info": {
+    "name": "School ERP Fees and Documents Workflow",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Fees",
+      "item": [
+        {
+          "name": "Create Fee Category",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/v1/fees/categories",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tuition Fee\",\n  \"code\": \"TUITION_QA\",\n  \"description\": \"QA tuition category\",\n  \"mandatory\": true,\n  \"active\": true,\n  \"sortOrder\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "List Fee Structures By Class",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/v1/fees/structures?academicYearId={{academicYearId}}&classId={{classId}}&status=ACTIVE"
+          }
+        },
+        {
+          "name": "Assign Fee Structures To Class",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/v1/fees/classes/{{classId}}/assign",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"academicYearId\": \"{{academicYearId}}\",\n  \"feeStructureIds\": [\n    \"{{feeStructureId}}\"\n  ],\n  \"assignedDate\": \"2026-07-15\",\n  \"skipExisting\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Class Fee Assignments",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/v1/fees/classes/{{classId}}/assignments?academicYearId={{academicYearId}}"
+          }
+        },
+        {
+          "name": "Get Class Students Fee Summary",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/v1/fees/classes/{{classId}}/students?academicYearId={{academicYearId}}"
+          }
+        },
+        {
+          "name": "Student Fee Summary",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/v1/fees/students/{{studentId}}/summary?academicYearId={{academicYearId}}"
+          }
+        },
+        {
+          "name": "Collect Student Payment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/v1/fees/students/{{studentId}}/payments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"academicYearId\": \"{{academicYearId}}\",\n  \"assignmentId\": \"{{assignmentId}}\",\n  \"amount\": 2500,\n  \"paymentMode\": \"UPI\",\n  \"referenceNumber\": \"UPI-20260715-0001\",\n  \"paymentDate\": \"2026-07-15\",\n  \"payerName\": \"Parent Name\",\n  \"remarks\": \"QA payment\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Defaulters",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/v1/fees/defaulters?academicYearId={{academicYearId}}&classId={{classId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Documents",
+      "item": [
+        {
+          "name": "Preview Bonafide",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/v1/documents/certificates/preview",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"academicYearId\": \"{{academicYearId}}\",\n  \"documentType\": \"BONAFIDE_CERTIFICATE\",\n  \"issueDate\": \"2026-07-15\",\n  \"purpose\": \"Scholarship application\",\n  \"remarks\": \"\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Generate Bonafide",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/v1/documents/certificates/generate",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"academicYearId\": \"{{academicYearId}}\",\n  \"documentType\": \"BONAFIDE_CERTIFICATE\",\n  \"issueDate\": \"2026-07-15\",\n  \"purpose\": \"Scholarship application\",\n  \"remarks\": \"\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Generated History",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/v1/students/{{studentId}}/documents/generated"
+          }
+        },
+        {
+          "name": "Get Generated Document",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/v1/documents/{{documentId}}"
+          }
+        },
+        {
+          "name": "Download Generated Document",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/v1/documents/{{documentId}}/download"
+          }
+        },
+        {
+          "name": "Reprint Generated Document",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/v1/documents/{{documentId}}/reprint"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -27,14 +27,20 @@ Future<PickedUploadFile?> pickUploadFile({String accept = ''}) {
         complete(null);
         return;
       }
-      file.arrayBuffer().toDart.then((buffer) {
-        complete(PickedUploadFile(
-          name: file.name,
-          bytes: Uint8List.view(buffer.toDart),
-        ));
-      }).catchError((Object _) {
-        complete(null);
-      });
+      file
+          .arrayBuffer()
+          .toDart
+          .then((buffer) {
+            complete(
+              PickedUploadFile(
+                name: file.name,
+                bytes: Uint8List.view(buffer.toDart),
+              ),
+            );
+          })
+          .catchError((Object _) {
+            complete(null);
+          });
     }).toJS,
   );
 

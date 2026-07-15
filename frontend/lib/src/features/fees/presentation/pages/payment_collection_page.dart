@@ -50,6 +50,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
   final _remarksController = TextEditingController();
 
   String? _assignmentId;
+  String? _academicYearId;
   String? _defaultsAppliedAssignmentId;
   String _paymentMode = 'CASH';
   double _selectedBalanceAmount = 0;
@@ -225,6 +226,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
                             setState(() {
                               if (assignment == null) {
                                 _assignmentId = value;
+                                _academicYearId = null;
                                 _receipt = null;
                               } else {
                                 _applySelectedAssignment(assignment);
@@ -372,6 +374,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
 
   void _applySelectedAssignment(StudentFeeAssignmentModel assignment) {
     _assignmentId = assignment.id;
+    _academicYearId = assignment.academicYearId;
     _defaultsAppliedAssignmentId = assignment.id;
     if (assignment.balanceAmount > 0) {
       _amountController.text = assignment.balanceAmount.toStringAsFixed(2);
@@ -406,6 +409,8 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
       'collectedBy': _blankToNull(_collectedByController.text),
       'remarks': _blankToNull(_remarksController.text),
       'assessLateFee': _assessLateFee,
+      if (_academicYearId != null && _academicYearId!.isNotEmpty)
+        'academicYearId': _academicYearId,
       'assignmentId': assignmentId,
     };
     final repository = ref.read(feesRepositoryProvider);

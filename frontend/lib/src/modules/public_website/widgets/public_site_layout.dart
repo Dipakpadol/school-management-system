@@ -30,12 +30,7 @@ class PublicWebsiteLayout extends StatelessWidget {
               ),
               Expanded(
                 child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      child,
-                      const _PublicFooter(),
-                    ],
-                  ),
+                  child: Column(children: [child, const _PublicFooter()]),
                 ),
               ),
             ],
@@ -47,10 +42,7 @@ class PublicWebsiteLayout extends StatelessWidget {
 }
 
 class _PublicHeader extends StatelessWidget {
-  const _PublicHeader({
-    required this.currentPath,
-    required this.onMenuPressed,
-  });
+  const _PublicHeader({required this.currentPath, required this.onMenuPressed});
 
   final String currentPath;
   final VoidCallback onMenuPressed;
@@ -68,9 +60,7 @@ class _PublicHeader extends StatelessWidget {
         child: Container(
           height: 74,
           decoration: const BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: PublicSiteColors.border),
-            ),
+            border: Border(bottom: BorderSide(color: PublicSiteColors.border)),
           ),
           padding: EdgeInsets.symmetric(horizontal: desktop ? 32 : 16),
           child: Row(
@@ -247,10 +237,7 @@ class _PublicSiteDrawer extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: _PublicBrand(),
-            ),
+            const Padding(padding: EdgeInsets.all(16), child: _PublicBrand()),
             const Divider(height: 1),
             Expanded(
               child: ListView(
@@ -378,7 +365,11 @@ class _PublicFooter extends StatelessWidget {
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        for (var index = 0; index < columns.length; index++) ...[
+                        for (
+                          var index = 0;
+                          index < columns.length;
+                          index++
+                        ) ...[
                           columns[index],
                           if (index != columns.length - 1)
                             const SizedBox(width: 40),
@@ -537,20 +528,14 @@ class _FooterContact extends StatelessWidget {
           icon: Icons.call_outlined,
           text: schoolProfile.phone,
         ),
-        _FooterContactLine(
-          icon: Icons.mail_outline,
-          text: schoolProfile.email,
-        ),
+        _FooterContactLine(icon: Icons.mail_outline, text: schoolProfile.email),
       ],
     );
   }
 }
 
 class _FooterContactLine extends StatelessWidget {
-  const _FooterContactLine({
-    required this.icon,
-    required this.text,
-  });
+  const _FooterContactLine({required this.icon, required this.text});
 
   final IconData icon;
   final String text;
@@ -568,9 +553,9 @@ class _FooterContactLine extends StatelessWidget {
             child: Text(
               text,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFFCBD5E1),
-                    height: 1.4,
-                  ),
+                color: const Color(0xFFCBD5E1),
+                height: 1.4,
+              ),
             ),
           ),
         ],

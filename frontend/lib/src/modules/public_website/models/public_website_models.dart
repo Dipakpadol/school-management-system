@@ -37,10 +37,7 @@ class SchoolProfile {
 }
 
 class SocialLink {
-  const SocialLink({
-    required this.label,
-    required this.icon,
-  });
+  const SocialLink({required this.label, required this.icon});
 
   final String label;
   final IconData icon;

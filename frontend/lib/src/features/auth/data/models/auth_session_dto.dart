@@ -58,7 +58,8 @@ class AuthUserDto {
     return AuthUserDto(
       id: json['id'] as String,
       email: json['email'] as String,
-      displayName: json['displayName'] as String? ??
+      displayName:
+          json['displayName'] as String? ??
           json['username'] as String? ??
           json['email'] as String,
       roles: _strings(json['roles']),

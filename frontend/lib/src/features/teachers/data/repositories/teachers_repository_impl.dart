@@ -95,9 +95,7 @@ class TeachersRepositoryImpl implements TeachersRepository {
     String teacherId,
     String assignmentId,
     Map<String, dynamic> payload,
-  ) => _guard(
-    () => _remote.updateAssignment(teacherId, assignmentId, payload),
-  );
+  ) => _guard(() => _remote.updateAssignment(teacherId, assignmentId, payload));
 
   @override
   Future<Result<TeacherAssignmentModel>> deleteAssignment(

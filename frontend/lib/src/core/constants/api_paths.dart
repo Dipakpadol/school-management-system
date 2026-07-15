@@ -11,6 +11,7 @@ abstract final class ApiPaths {
   static const logout = '/v1/auth/logout';
   static const refresh = '/v1/auth/refresh';
   static const me = '/v1/auth/me';
+  static const publicEnquiries = '/v1/public/enquiries';
 
   static const students = '/v1/students';
   static const studentAdmissions = '/v1/students/admissions';
@@ -184,6 +185,9 @@ abstract final class ApiPaths {
 
   static String feeClassAssign(String classId) =>
       '/v1/fees/classes/$classId/assign';
+
+  static String feeClassAssignments(String classId) =>
+      '/v1/fees/classes/$classId/assignments';
 
   static String feeReceipt(String receiptNumber) =>
       '/v1/fees/receipts/$receiptNumber';

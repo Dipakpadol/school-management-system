@@ -22,7 +22,9 @@ class DashboardPage extends ConsumerWidget {
     final overview = ref.watch(dashboardOverviewProvider);
     final user = ref.watch(authControllerProvider).user;
     final fallbackModules = visibleErpModules(user);
-    final modules = ref.watch(currentMenuProvider).maybeWhen(
+    final modules = ref
+        .watch(currentMenuProvider)
+        .maybeWhen(
           data: (items) => visibleErpModulesFromMenuIds(
             user,
             items.map((item) => item.moduleId),
@@ -99,9 +101,9 @@ class _DashboardContent extends StatelessWidget {
           sliver: SliverToBoxAdapter(
             child: Text(
               'Live activity',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
           ),
         ),
@@ -115,17 +117,13 @@ class _DashboardContent extends StatelessWidget {
             ),
           ),
         ),
-        
       ],
     );
   }
 }
 
 class _DashboardHeader extends StatelessWidget {
-  const _DashboardHeader({
-    required this.systemStatus,
-    required this.onRefresh,
-  });
+  const _DashboardHeader({required this.systemStatus, required this.onRefresh});
 
   final String systemStatus;
   final VoidCallback onRefresh;
@@ -489,8 +487,8 @@ class _MetricGrid extends StatelessWidget {
     final columns = width >= 1200
         ? 4
         : width >= 820
-            ? 2
-            : 1;
+        ? 2
+        : 1;
 
     return SliverGrid.builder(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -575,8 +573,8 @@ class _ModuleGrid extends StatelessWidget {
     final columns = width >= 1280
         ? 3
         : width >= 840
-            ? 2
-            : 1;
+        ? 2
+        : 1;
 
     return SliverGrid.builder(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -598,10 +596,7 @@ class _ModuleGrid extends StatelessWidget {
 }
 
 class _ModuleCard extends StatelessWidget {
-  const _ModuleCard({
-    required this.module,
-    required this.onTap,
-  });
+  const _ModuleCard({required this.module, required this.onTap});
 
   final ErpModule module;
   final VoidCallback onTap;

@@ -121,10 +121,7 @@ class PublicResponsiveGrid extends StatelessWidget {
           runSpacing: runSpacing,
           children: [
             for (final child in children)
-              SizedBox(
-                width: itemWidth,
-                child: child,
-              ),
+              SizedBox(width: itemWidth, child: child),
           ],
         );
       },
@@ -192,11 +189,7 @@ class PublicFeatureCard extends StatelessWidget {
 }
 
 class PublicEventCard extends StatelessWidget {
-  const PublicEventCard({
-    required this.event,
-    this.compact = false,
-    super.key,
-  });
+  const PublicEventCard({required this.event, this.compact = false, super.key});
 
   final PublicEventItem event;
   final bool compact;
@@ -254,10 +247,7 @@ class PublicEventCard extends StatelessWidget {
 }
 
 class PublicGalleryTile extends StatelessWidget {
-  const PublicGalleryTile({
-    required this.item,
-    super.key,
-  });
+  const PublicGalleryTile({required this.item, super.key});
 
   final GalleryItem item;
 
@@ -397,10 +387,7 @@ class PublicPageHero extends StatelessWidget {
                   height: 1.55,
                 ),
               ),
-              if (action != null) ...[
-                const SizedBox(height: 24),
-                action!,
-              ],
+              if (action != null) ...[const SizedBox(height: 24), action!],
             ],
           );
 
@@ -416,11 +403,7 @@ class PublicPageHero extends StatelessWidget {
           if (stacked) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                intro,
-                const SizedBox(height: 32),
-                image,
-              ],
+              children: [intro, const SizedBox(height: 32), image],
             );
           }
 
@@ -509,10 +492,7 @@ class PublicInfoBand extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 content,
-                if (action != null) ...[
-                  const SizedBox(height: 20),
-                  action!,
-                ],
+                if (action != null) ...[const SizedBox(height: 20), action!],
               ],
             );
           }
@@ -531,11 +511,7 @@ class PublicInfoBand extends StatelessWidget {
 }
 
 class PublicOutlineList extends StatelessWidget {
-  const PublicOutlineList({
-    required this.items,
-    required this.icon,
-    super.key,
-  });
+  const PublicOutlineList({required this.items, required this.icon, super.key});
 
   final List<String> items;
   final IconData icon;
@@ -576,6 +552,7 @@ class PublicActionButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.icon = Icons.arrow_forward,
+    this.leading,
     this.expand = false,
     super.key,
   });
@@ -583,6 +560,7 @@ class PublicActionButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final IconData icon;
+  final Widget? leading;
   final bool expand;
 
   @override
@@ -592,7 +570,7 @@ class PublicActionButton extends StatelessWidget {
       height: 48,
       child: FilledButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon, size: 20),
+        icon: leading ?? Icon(icon, size: 20),
         label: Text(label, overflow: TextOverflow.ellipsis),
         style: FilledButton.styleFrom(
           backgroundColor: PublicSiteColors.primary,
@@ -788,19 +766,16 @@ class _Tag extends StatelessWidget {
       child: Text(
         label,
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: PublicSiteColors.green,
-              fontWeight: FontWeight.w800,
-            ),
+          color: PublicSiteColors.green,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
 }
 
 class _ImageFallback extends StatelessWidget {
-  const _ImageFallback({
-    required this.label,
-    this.loading = false,
-  });
+  const _ImageFallback({required this.label, this.loading = false});
 
   final String label;
   final bool loading;

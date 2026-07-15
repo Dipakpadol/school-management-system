@@ -788,7 +788,9 @@ Future<void> _runPickedModuleImport(
   if (file == null || !context.mounted) {
     return;
   }
-  final result = await ref.read(moduleRecordsRepositoryProvider).importFile(
+  final result = await ref
+      .read(moduleRecordsRepositoryProvider)
+      .importFile(
         moduleId: moduleId,
         recordType: recordType,
         format: format,

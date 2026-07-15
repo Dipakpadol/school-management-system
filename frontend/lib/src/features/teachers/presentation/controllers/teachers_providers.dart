@@ -5,20 +5,23 @@ import '../../../students/data/models/student_models.dart';
 import '../../data/models/teacher_models.dart';
 import '../../data/repositories/teachers_repository_impl.dart';
 
-final teacherAcademicYearsProvider =
-    FutureProvider<List<AcademicYearModel>>((ref) {
+final teacherAcademicYearsProvider = FutureProvider<List<AcademicYearModel>>((
+  ref,
+) {
   return _resolve(ref.watch(teachersRepositoryProvider).academicYears());
 });
 
 final teacherAttendanceAcademicYearsProvider =
     FutureProvider<List<AcademicYearModel>>((ref) {
-  return _resolve(
-    ref.watch(teachersRepositoryProvider).attendanceAcademicYears(),
-  );
-});
+      return _resolve(
+        ref.watch(teachersRepositoryProvider).attendanceAcademicYears(),
+      );
+    });
 
-final teachersProvider =
-    FutureProvider.family<List<TeacherModel>, String?>((ref, academicYearId) {
+final teachersProvider = FutureProvider.family<List<TeacherModel>, String?>((
+  ref,
+  academicYearId,
+) {
   return _resolve(
     ref
         .watch(teachersRepositoryProvider)
@@ -28,12 +31,12 @@ final teachersProvider =
 
 final teacherProfileProvider =
     FutureProvider.family<TeacherProfileModel, TeacherProfileKey>((ref, key) {
-  return _resolve(
-    ref
-        .watch(teachersRepositoryProvider)
-        .profile(key.teacherId, academicYearId: key.academicYearId),
-  );
-});
+      return _resolve(
+        ref
+            .watch(teachersRepositoryProvider)
+            .profile(key.teacherId, academicYearId: key.academicYearId),
+      );
+    });
 
 final teacherAttendanceTeachersProvider =
     FutureProvider.family<List<TeacherAttendanceTeacherModel>, String>((
@@ -41,20 +44,26 @@ final teacherAttendanceTeachersProvider =
       academicYearId,
     ) {
       return _resolve(
-        ref.watch(teachersRepositoryProvider).attendanceTeachers(academicYearId),
+        ref
+            .watch(teachersRepositoryProvider)
+            .attendanceTeachers(academicYearId),
       );
     });
 
 final teacherDailyAttendanceProvider =
-    FutureProvider.family<TeacherDailyAttendanceModel, TeacherDailyAttendanceKey>(
-      (ref, key) {
-        return _resolve(
-          ref
-              .watch(teachersRepositoryProvider)
-              .dailyAttendance(academicYearId: key.academicYearId, date: key.date),
-        );
-      },
-    );
+    FutureProvider.family<
+      TeacherDailyAttendanceModel,
+      TeacherDailyAttendanceKey
+    >((ref, key) {
+      return _resolve(
+        ref
+            .watch(teachersRepositoryProvider)
+            .dailyAttendance(
+              academicYearId: key.academicYearId,
+              date: key.date,
+            ),
+      );
+    });
 
 final teacherAttendanceHistoryProvider =
     FutureProvider.family<
@@ -62,13 +71,15 @@ final teacherAttendanceHistoryProvider =
       TeacherAttendanceHistoryKey
     >((ref, key) {
       return _resolve(
-        ref.watch(teachersRepositoryProvider).attendanceHistory(
-          teacherId: key.teacherId,
-          academicYearId: key.academicYearId,
-          fromDate: key.fromDate,
-          toDate: key.toDate,
-          status: key.status,
-        ),
+        ref
+            .watch(teachersRepositoryProvider)
+            .attendanceHistory(
+              teacherId: key.teacherId,
+              academicYearId: key.academicYearId,
+              fromDate: key.fromDate,
+              toDate: key.toDate,
+              status: key.status,
+            ),
       );
     });
 

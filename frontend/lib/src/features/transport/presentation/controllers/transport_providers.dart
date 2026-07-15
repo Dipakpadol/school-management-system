@@ -5,25 +5,27 @@ import '../../../students/data/models/student_models.dart';
 import '../../data/models/transport_models.dart';
 import '../../data/repositories/transport_repository_impl.dart';
 
-final transportAcademicYearsProvider =
-    FutureProvider<List<AcademicYearModel>>((ref) {
+final transportAcademicYearsProvider = FutureProvider<List<AcademicYearModel>>((
+  ref,
+) {
   return _resolve(ref.watch(transportRepositoryProvider).academicYears());
 });
 
-final transportDriversProvider =
-    FutureProvider<List<TransportDriverModel>>((ref) {
+final transportDriversProvider = FutureProvider<List<TransportDriverModel>>((
+  ref,
+) {
   return _resolve(ref.watch(transportRepositoryProvider).drivers());
 });
 
 final transportVehiclesProvider =
     FutureProvider.family<List<TransportVehicleModel>, String>((ref, yearId) {
-  return _resolve(ref.watch(transportRepositoryProvider).vehicles(yearId));
-});
+      return _resolve(ref.watch(transportRepositoryProvider).vehicles(yearId));
+    });
 
 final transportRoutesProvider =
     FutureProvider.family<List<TransportRouteModel>, String>((ref, yearId) {
-  return _resolve(ref.watch(transportRepositoryProvider).routes(yearId));
-});
+      return _resolve(ref.watch(transportRepositoryProvider).routes(yearId));
+    });
 
 final transportPickupPointsProvider =
     FutureProvider.family<List<TransportPickupPointModel>, String>((
@@ -99,12 +101,8 @@ class TransportFeeStructuresKey {
   }
 
   @override
-  int get hashCode => Object.hash(
-    academicYearId,
-    routeId,
-    pickupPointId,
-    status,
-  );
+  int get hashCode =>
+      Object.hash(academicYearId, routeId, pickupPointId, status);
 }
 
 Future<T> _resolve<T>(Future<Result<T>> resultFuture) async {

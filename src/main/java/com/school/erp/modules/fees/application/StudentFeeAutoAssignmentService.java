@@ -15,9 +15,11 @@ import com.school.erp.modules.academic.domain.ClassEntity;
 import com.school.erp.modules.fees.api.dto.FeeAutoAssignmentResult;
 import com.school.erp.modules.fees.api.dto.StudentFeeAssignmentResponse;
 import com.school.erp.modules.fees.domain.FeeScope;
+import com.school.erp.modules.fees.domain.ClassFeeAssignment;
+import com.school.erp.modules.fees.domain.ClassFeeAssignmentStatus;
 import com.school.erp.modules.fees.domain.FeeStructure;
 import com.school.erp.modules.fees.domain.FeeStructureStatus;
-import com.school.erp.modules.fees.infrastructure.FeeStructureRepository;
+import com.school.erp.modules.fees.infrastructure.ClassFeeAssignmentRepository;
 import com.school.erp.modules.fees.infrastructure.StudentFeeAssignmentRepository;
 import com.school.erp.modules.hostel.domain.HostelAllocationStatus;
 import com.school.erp.modules.hostel.domain.HostelFeeStructure;
@@ -42,7 +44,7 @@ public class StudentFeeAutoAssignmentService {
 	private static final String ENTITY_NAME = "StudentFeeAssignment";
 
 	private final AcademicHierarchyService academicHierarchyService;
-	private final FeeStructureRepository feeStructureRepository;
+	private final ClassFeeAssignmentRepository classFeeAssignmentRepository;
 	private final HostelFeeStructureRepository hostelFeeStructureRepository;
 	private final TransportFeeStructureRepository transportFeeStructureRepository;
 	private final HostelAllocationRepository hostelAllocationRepository;
@@ -70,17 +72,17 @@ public class StudentFeeAutoAssignmentService {
 					"Class does not belong to the selected academic year.");
 		}
 
-		List<UUID> feeStructureIds = feeStructureRepository
-				.findByAcademicYearEntityIdAndClassEntityIdAndFeeScopeAndStatusAndDeletedFalseOrderByCreatedAtAsc(
+		List<UUID> feeStructureIds = classFeeAssignmentRepository
+				.findActiveByAcademicYearAndClass(
 						academicYearId,
 						classId,
-						FeeScope.CLASS,
-						FeeStructureStatus.ACTIVE)
+						ClassFeeAssignmentStatus.ACTIVE)
 				.stream()
+				.map(ClassFeeAssignment::getFeeStructure)
 				.map(FeeStructure::getId)
 				.toList();
 		if (feeStructureIds.isEmpty()) {
-			return warning(studentId, FeeScope.CLASS, "No class fee structure found.");
+			return warning(studentId, FeeScope.CLASS, "No active class fee assignment found.");
 		}
 
 		int skippedDuplicates = auditDuplicateSkips(studentId, feeStructureIds, FeeScope.CLASS);

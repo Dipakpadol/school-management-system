@@ -16,6 +16,7 @@ abstract interface class FeesRepository {
   Future<Result<List<FeeStructureModel>>> structures({
     String? academicYearId,
     String? classId,
+    String? status,
   });
 
   Future<Result<FeeStructureModel>> structure(String id);
@@ -45,7 +46,15 @@ abstract interface class FeesRepository {
     Map<String, dynamic> payload,
   );
 
-  Future<Result<List<ClassStudentFeeModel>>> classStudents(String classId);
+  Future<Result<List<ClassStudentFeeModel>>> classStudents(
+    String classId, {
+    String? academicYearId,
+  });
+
+  Future<Result<List<ClassFeeAssignmentDetailModel>>> classFeeAssignments(
+    String classId, {
+    String? academicYearId,
+  });
 
   Future<Result<ClassFeeAssignmentModel>> assignClassFee(
     String classId,
@@ -57,7 +66,10 @@ abstract interface class FeesRepository {
     Map<String, dynamic> payload,
   );
 
-  Future<Result<StudentFeeSummaryModel>> studentSummary(String studentId);
+  Future<Result<StudentFeeSummaryModel>> studentSummary(
+    String studentId, {
+    String? academicYearId,
+  });
 
   Future<Result<List<FeePaymentModel>>> studentPaymentHistory(String studentId);
 

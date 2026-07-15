@@ -5,8 +5,9 @@ import '../../../../core/network/api_client.dart';
 import '../../../students/data/models/student_models.dart';
 import '../models/transport_models.dart';
 
-final transportRemoteDataSourceProvider =
-    Provider<TransportRemoteDataSource>((ref) {
+final transportRemoteDataSourceProvider = Provider<TransportRemoteDataSource>((
+  ref,
+) {
   return TransportRemoteDataSource(ref.watch(apiClientProvider));
 });
 
@@ -29,7 +30,9 @@ class TransportRemoteDataSource {
     return _unwrapList(response.data, TransportDriverModel.fromJson);
   }
 
-  Future<TransportDriverModel> createDriver(Map<String, dynamic> payload) async {
+  Future<TransportDriverModel> createDriver(
+    Map<String, dynamic> payload,
+  ) async {
     final response = await _apiClient.post<Map<String, dynamic>>(
       ApiPaths.transportDrivers,
       data: payload,

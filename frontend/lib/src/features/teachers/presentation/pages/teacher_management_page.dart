@@ -445,10 +445,8 @@ Future<void> _showTeacherDialog(
                       );
                       Navigator.of(dialogContext).pop();
                     },
-                    failure: (failure) => _snack(
-                      dialogContext,
-                      failure.message,
-                    ),
+                    failure: (failure) =>
+                        _snack(dialogContext, failure.message),
                   );
                 },
                 icon: const Icon(Icons.save_outlined),
@@ -777,11 +775,20 @@ class _TeacherAttendanceTab extends ConsumerWidget {
             spacing: 12,
             runSpacing: 12,
             children: [
-              _AttendanceMetric(label: 'Working days', value: item.totalWorkingDays.toString()),
-              _AttendanceMetric(label: 'Present', value: item.present.toString()),
+              _AttendanceMetric(
+                label: 'Working days',
+                value: item.totalWorkingDays.toString(),
+              ),
+              _AttendanceMetric(
+                label: 'Present',
+                value: item.present.toString(),
+              ),
               _AttendanceMetric(label: 'Absent', value: item.absent.toString()),
               _AttendanceMetric(label: 'Late', value: item.late.toString()),
-              _AttendanceMetric(label: 'Half day', value: item.halfDay.toString()),
+              _AttendanceMetric(
+                label: 'Half day',
+                value: item.halfDay.toString(),
+              ),
               _AttendanceMetric(label: 'Leave', value: item.leave.toString()),
               _AttendanceMetric(
                 label: 'Attendance',
@@ -869,9 +876,9 @@ class _AttendanceMetric extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 value,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
               ),
             ],
           ),
@@ -964,9 +971,7 @@ class _MessageTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Text(message, textAlign: TextAlign.center),
-    );
+    return Center(child: Text(message, textAlign: TextAlign.center));
   }
 }
 
@@ -1331,9 +1336,9 @@ Future<void> _deleteTeacher(
   if (!confirmed || !context.mounted) {
     return;
   }
-  final result = await ref.read(teachersRepositoryProvider).deleteTeacher(
-        teacher.id,
-      );
+  final result = await ref
+      .read(teachersRepositoryProvider)
+      .deleteTeacher(teacher.id);
   if (!context.mounted) {
     return;
   }
@@ -1473,8 +1478,9 @@ class _DetailGrid extends StatelessWidget {
                       Text(
                         _dash(entry.value),
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ],
                   ),
@@ -1526,9 +1532,9 @@ class _StatusBadge extends StatelessWidget {
       child: Text(
         label,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w800,
-            ),
+          color: color,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -1543,10 +1549,7 @@ void _refreshTeacherState(
   if (teacherId != null && academicYearId != null) {
     ref.invalidate(
       teacherProfileProvider(
-        TeacherProfileKey(
-          teacherId: teacherId,
-          academicYearId: academicYearId,
-        ),
+        TeacherProfileKey(teacherId: teacherId, academicYearId: academicYearId),
       ),
     );
   }

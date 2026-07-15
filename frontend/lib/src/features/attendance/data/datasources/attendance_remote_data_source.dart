@@ -5,10 +5,11 @@ import '../../../../core/network/api_client.dart';
 import '../../../academic/data/models/academic_models.dart';
 import '../models/attendance_models.dart';
 
-final attendanceRemoteDataSourceProvider =
-    Provider<AttendanceRemoteDataSource>((ref) {
-  return AttendanceRemoteDataSource(ref.watch(apiClientProvider));
-});
+final attendanceRemoteDataSourceProvider = Provider<AttendanceRemoteDataSource>(
+  (ref) {
+    return AttendanceRemoteDataSource(ref.watch(apiClientProvider));
+  },
+);
 
 class AttendanceRemoteDataSource {
   const AttendanceRemoteDataSource(this._apiClient);
