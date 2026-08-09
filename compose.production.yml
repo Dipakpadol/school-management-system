@@ -1,122 +1,192 @@
 name: school-erp
 
 services:
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+
     environment:
       POSTGRES_DB: school_erp
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
+      POSTGRES_PASSWORD: "root"
+
     volumes:
       - postgres-data:/var/lib/postgresql/data
+
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres -d school_erp"
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
+
     networks:
       - db_net
+
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile
+
     image: school-erp-backend:latest
     restart: unless-stopped
+
     environment:
-      SERVER_PORT: 8080
+      SERVER_PORT: "8080"
       SERVER_FORWARD_HEADERS_STRATEGY: framework
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/school_erp
+
+      # PostgreSQL
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/school_erp"
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: root
-      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ISSUER: ${JWT_ISSUER:-school-erp}
-      JWT_AUDIENCES: ${JWT_AUDIENCES:-school-erp-api}
-      BOOTSTRAP_SUPER_ADMIN_ENABLED: ${BOOTSTRAP_SUPER_ADMIN_ENABLED:-false}
-      BOOTSTRAP_SUPER_ADMIN_EMAIL: ${BOOTSTRAP_SUPER_ADMIN_EMAIL:-}
-      BOOTSTRAP_SUPER_ADMIN_PASSWORD: ${BOOTSTRAP_SUPER_ADMIN_PASSWORD:-}
-      BOOTSTRAP_SUPER_ADMIN_FIRST_NAME: ${BOOTSTRAP_SUPER_ADMIN_FIRST_NAME:-Super}
-      BOOTSTRAP_SUPER_ADMIN_LAST_NAME: ${BOOTSTRAP_SUPER_ADMIN_LAST_NAME:-Admin}
-      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-smtp.gmail.com}
-      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
-      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-dipakpadol0@gmail.com}
-      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-oyriqzikuvrrpaug}
-      NOTIFICATIONS_EMAIL_FROM: ${NOTIFICATIONS_EMAIL_FROM:-}
-      JAVA_OPTS: ${JAVA_OPTS:--Xms256m -Xmx768m}
+      SPRING_DATASOURCE_PASSWORD: "root"
+
+      # JWT
+      JWT_SECRET: CZy0h8V9kC691XSyiZtmQdVNv8gakV2iwMHA3Tpo7GhN634i5xgvt6qE2MN//WMS
+      JWT_ISSUER: school-erp
+      JWT_AUDIENCES: school-erp-api
+
+      # CORS
+      APP_CORS_ALLOWED_ORIGINS: "http://72.62.250.216"
+
+      # Bootstrap admin
+      BOOTSTRAP_SUPER_ADMIN_ENABLED: "true"
+      BOOTSTRAP_SUPER_ADMIN_EMAIL: "admin@school.example.com"
+      BOOTSTRAP_SUPER_ADMIN_PASSWORD: CZy0h8V9kC691XSyiZtmQdVNv8gakV2iwMHA3Tpo7GhN634i5xgvt6qE2MN//WMS
+      BOOTSTRAP_SUPER_ADMIN_FIRST_NAME: Super
+      BOOTSTRAP_SUPER_ADMIN_LAST_NAME: Admin
+
+      # Mail
+      SPRING_MAIL_HOST: smtp.gmail.com
+      SPRING_MAIL_PORT: "587"
+      SPRING_MAIL_USERNAME: ""
+      SPRING_MAIL_PASSWORD: ""
+      NOTIFICATIONS_EMAIL_FROM: ""
+
+      # Java
+      JAVA_OPTS: "-Xms256m -Xmx768m"
+
     ports:
       - "8080:8080"
+
     depends_on:
       postgres:
         condition: service_healthy
+
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/actuator/health/readiness"]
+      test:
+        [
+          "CMD",
+          "curl",
+          "-fsS",
+          "http://localhost:8080/api/actuator/health/readiness"
+        ]
       interval: 30s
       timeout: 5s
       retries: 10
       start_period: 60s
+
     networks:
       - app_net
       - db_net
+
 
   nginx:
     build:
       context: .
       dockerfile: deploy/nginx/Dockerfile
+
       args:
-        FLUTTER_CHANNEL: ${FLUTTER_CHANNEL:-stable}
+        FLUTTER_CHANNEL: stable
         API_BASE_URL: /api
+
     image: school-erp-nginx:latest
     restart: unless-stopped
+
     environment:
-      NGINX_SERVER_NAME: ${NGINX_SERVER_NAME}
-      LETSENCRYPT_DOMAIN: ${DOMAIN}
+      NGINX_SERVER_NAME: "72.62.250.216"
+      LETSENCRYPT_DOMAIN: "72.62.250.216"
+
     ports:
       - "80:80"
       - "443:443"
+
     volumes:
       - letsencrypt:/etc/letsencrypt:ro
       - certbot-www:/var/www/certbot
+
     depends_on:
       backend:
         condition: service_healthy
-    command: /bin/sh -c "while :; do sleep 6h; nginx -s reload; done & nginx -g 'daemon off;'"
+
+    command:
+      - /bin/sh
+      - -c
+      - |
+        while :; do
+          sleep 6h
+          nginx -s reload
+        done &
+        nginx -g 'daemon off;'
+
     networks:
       - app_net
+
 
   certbot:
     image: certbot/certbot:latest
     profiles:
       - certbot
+
     volumes:
       - letsencrypt:/etc/letsencrypt
       - certbot-www:/var/www/certbot
+
     ports:
       - "80:80"
+
     networks:
       - app_net
+
 
   certbot-renew:
     image: certbot/certbot:latest
     restart: unless-stopped
+
     volumes:
       - letsencrypt:/etc/letsencrypt
       - certbot-www:/var/www/certbot
+
     entrypoint: /bin/sh
-    command: -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h; done"
+
+    command:
+      - -c
+      - |
+        trap exit TERM
+        while :; do
+          certbot renew --webroot -w /var/www/certbot --quiet
+          sleep 12h
+        done
+
     networks:
       - app_net
+
 
 volumes:
   postgres-data:
   letsencrypt:
   certbot-www:
 
+
 networks:
   app_net:
     driver: bridge
+
   db_net:
     driver: bridge
     internal: true
