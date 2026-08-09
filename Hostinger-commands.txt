@@ -1,0 +1,54 @@
+Basic Command for Hostinger
+
+ssh root@72.62.250.216
+
+pass- StarScl@2026
+
+cd school-app/
+
+docker compose -f compose.production.yml up -d --build
+
+docker ps
+
+
+ docker compose down
+ 
+ 
+ 
+ 
+ Option 1 — Redeploy (Recommended)
+
+We just redo deployment cleanly (fast now since you know steps):
+
+Step 1: Go to root
+cd ~
+Step 2: Create project folder
+mkdir school-app
+cd school-app
+Step 3: Clone your repo
+git clone https://github.com/Dipakpadol/school-management-system.git .
+
+Step 4: Git Checkout develop
+
+Step 4: Create .env
+cp .env.production.example .env
+
+Then edit:
+
+nano .env
+
+Make sure this exists:
+
+POSTGRES_DB=school_db
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=pass@123
+
+Save:
+
+CTRL + X → Y → Enter
+Step 5: Run Docker
+docker compose -f compose.production.yml up -d --build
+Step 6: Check containers
+docker ps
+🌐 Step 7: Open in browser
+http://YOUR_SERVER_IP
