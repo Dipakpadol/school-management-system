@@ -110,31 +110,36 @@ NGINX_SERVER_NAME=school.example.com www.school.example.com
 APP_CORS_ALLOWED_ORIGINS=https://school.example.com,https://www.school.example.com
 ```
 
-## 6. Get the Initial Let's Encrypt Certificate
-
-Nothing else should be using port `80` for this first command.
+## 6. Start HTTP First
 
 ```bash
 cd /opt/school-erp
-set -a
-. ./.env.production
-set +a
+docker compose --env-file .env.production -f compose.production.yml up -d --build postgres backend nginx
+```
 
+## 7. Get the Initial Let's Encrypt Certificate
+
+Nginx serves the HTTP ACME challenge from `/var/www/certbot`.
+
+```bash
+set -a; . ./.env.production; set +a
 CERT_DOMAINS=(-d "$DOMAIN")
-if [ -n "${WWW_DOMAIN:-}" ]; then
-  CERT_DOMAINS+=(-d "$WWW_DOMAIN")
-fi
+if [ -n "${WWW_DOMAIN:-}" ]; then CERT_DOMAINS+=(-d "$WWW_DOMAIN"); fi
 
-docker compose --env-file .env.production -f compose.production.yml --profile certbot run --rm --service-ports certbot \
+docker compose --env-file .env.production -f compose.production.yml --profile certbot run --rm certbot \
   certonly \
-  --standalone \
+  --webroot \
+  -w /var/www/certbot \
   --agree-tos \
   --no-eff-email \
   --email "$LETSENCRYPT_EMAIL" \
   "${CERT_DOMAINS[@]}"
+
+docker compose --env-file .env.production -f compose.production.yml exec nginx render-nginx-conf
+docker compose --env-file .env.production -f compose.production.yml exec nginx nginx -s reload
 ```
 
-## 7. Build and Start the Stack
+## 8. Build and Start the Stack
 
 ```bash
 docker compose --env-file .env.production -f compose.production.yml up -d --build
@@ -148,7 +153,7 @@ docker compose --env-file .env.production -f compose.production.yml logs -f --ta
 docker compose --env-file .env.production -f compose.production.yml logs -f --tail=100 nginx
 ```
 
-## 8. Verify the Deployment
+## 9. Verify the Deployment
 
 ```bash
 curl -I "https://$DOMAIN/"
@@ -162,7 +167,7 @@ https://school.example.com/
 https://school.example.com/api/swagger-ui.html
 ```
 
-## 9. Renew SSL Certificates
+## 10. Renew SSL Certificates
 
 The `certbot-renew` container checks renewal twice per day. Nginx reloads every 6 hours so renewed certificates are picked up automatically.
 
@@ -173,7 +178,7 @@ docker compose --env-file .env.production -f compose.production.yml --profile ce
   renew --webroot -w /var/www/certbot --dry-run
 ```
 
-## 10. Update the App
+## 11. Update the App
 
 ```bash
 cd /opt/school-erp
@@ -182,7 +187,7 @@ docker compose --env-file .env.production -f compose.production.yml up -d --buil
 docker image prune -f
 ```
 
-## 11. Backup and Restore PostgreSQL
+## 12. Backup and Restore PostgreSQL
 
 Backup:
 
@@ -206,7 +211,7 @@ docker compose --env-file .env.production -f compose.production.yml exec -T post
   psql -U "$POSTGRES_USER" "$POSTGRES_DB" < school_erp_YYYY-MM-DD.sql
 ```
 
-## 12. Useful Operations
+## 13. Useful Operations
 
 Restart:
 

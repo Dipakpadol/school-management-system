@@ -1,4 +1,9 @@
 HELP.md
+.env
+.env.*
+!.env.example
+!.env.production.example
+
 target/
 !**/src/main/**/target/
 !**/src/test/**/target/

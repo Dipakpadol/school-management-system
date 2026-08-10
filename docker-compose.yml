@@ -3,15 +3,15 @@ services:
     image: postgres:16-alpine
     container_name: school-erp-postgres
     environment:
-      POSTGRES_DB: school_erp
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
+      POSTGRES_DB: ${POSTGRES_DB:-school_erp}
+      POSTGRES_USER: ${POSTGRES_USER:-school_erp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-school_erp}
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U school_erp -d school_erp"]
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 10s
       timeout: 5s
       retries: 5

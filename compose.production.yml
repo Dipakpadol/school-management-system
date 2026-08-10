@@ -7,9 +7,9 @@ services:
     restart: unless-stopped
 
     environment:
-      POSTGRES_DB: school_erp
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "root"
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
 
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -18,7 +18,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "pg_isready -U postgres -d school_erp"
+          "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""
         ]
       interval: 10s
       timeout: 5s
@@ -40,39 +40,40 @@ services:
       SERVER_PORT: "8080"
       SERVER_FORWARD_HEADERS_STRATEGY: framework
       SPRING_PROFILES_ACTIVE: prod
+      APP_MASTER_DATA_SEED_ENABLED: ${APP_MASTER_DATA_SEED_ENABLED:-false}
 
       # PostgreSQL
-      SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/school_erp"
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: "root"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:?POSTGRES_DB is required}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:?POSTGRES_USER is required}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
 
       # JWT
-      JWT_SECRET: CZy0h8V9kC691XSyiZtmQdVNv8gakV2iwMHA3Tpo7GhN634i5xgvt6qE2MN//WMS
-      JWT_ISSUER: school-erp
-      JWT_AUDIENCES: school-erp-api
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_ISSUER: ${JWT_ISSUER:-school-erp}
+      JWT_AUDIENCES: ${JWT_AUDIENCES:-school-erp-api}
 
       # CORS
-      APP_CORS_ALLOWED_ORIGINS: "http://72.62.250.216"
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:?APP_CORS_ALLOWED_ORIGINS is required}
 
       # Bootstrap admin
-      BOOTSTRAP_SUPER_ADMIN_ENABLED: "true"
-      BOOTSTRAP_SUPER_ADMIN_EMAIL: "admin@school.example.com"
-      BOOTSTRAP_SUPER_ADMIN_PASSWORD: CZy0h8V9kC691XSyiZtmQdVNv8gakV2iwMHA3Tpo7GhN634i5xgvt6qE2MN//WMS
-      BOOTSTRAP_SUPER_ADMIN_FIRST_NAME: Super
-      BOOTSTRAP_SUPER_ADMIN_LAST_NAME: Admin
+      BOOTSTRAP_SUPER_ADMIN_ENABLED: ${BOOTSTRAP_SUPER_ADMIN_ENABLED:-false}
+      BOOTSTRAP_SUPER_ADMIN_EMAIL: ${BOOTSTRAP_SUPER_ADMIN_EMAIL:-}
+      BOOTSTRAP_SUPER_ADMIN_PASSWORD: ${BOOTSTRAP_SUPER_ADMIN_PASSWORD:-}
+      BOOTSTRAP_SUPER_ADMIN_FIRST_NAME: ${BOOTSTRAP_SUPER_ADMIN_FIRST_NAME:-Super}
+      BOOTSTRAP_SUPER_ADMIN_LAST_NAME: ${BOOTSTRAP_SUPER_ADMIN_LAST_NAME:-Admin}
 
       # Mail
-      SPRING_MAIL_HOST: smtp.gmail.com
-      SPRING_MAIL_PORT: "587"
-      SPRING_MAIL_USERNAME: ""
-      SPRING_MAIL_PASSWORD: ""
-      NOTIFICATIONS_EMAIL_FROM: ""
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      NOTIFICATIONS_EMAIL_FROM: ${NOTIFICATIONS_EMAIL_FROM:-}
 
       # Java
-      JAVA_OPTS: "-Xms256m -Xmx768m"
+      JAVA_OPTS: ${JAVA_OPTS:--Xms256m -Xmx768m}
 
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
 
     depends_on:
       postgres:
@@ -102,15 +103,15 @@ services:
       dockerfile: deploy/nginx/Dockerfile
 
       args:
-        FLUTTER_CHANNEL: stable
+        FLUTTER_CHANNEL: ${FLUTTER_CHANNEL:-stable}
         API_BASE_URL: /api
 
     image: school-erp-nginx:latest
     restart: unless-stopped
 
     environment:
-      NGINX_SERVER_NAME: "72.62.250.216"
-      LETSENCRYPT_DOMAIN: "72.62.250.216"
+      NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:?NGINX_SERVER_NAME is required}
+      LETSENCRYPT_DOMAIN: ${DOMAIN:?DOMAIN is required}
 
     ports:
       - "80:80"
@@ -130,8 +131,10 @@ services:
       - |
         while :; do
           sleep 6h
+          render-nginx-conf
           nginx -s reload
         done &
+        render-nginx-conf
         nginx -g 'daemon off;'
 
     networks:
@@ -146,9 +149,6 @@ services:
     volumes:
       - letsencrypt:/etc/letsencrypt
       - certbot-www:/var/www/certbot
-
-    ports:
-      - "80:80"
 
     networks:
       - app_net
