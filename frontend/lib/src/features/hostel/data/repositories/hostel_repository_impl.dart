@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/network/page_payload.dart' as core;
 import '../../../../core/result/result.dart';
 import '../../../fees/data/models/fee_models.dart';
 import '../../../students/data/models/student_models.dart';
@@ -181,6 +182,27 @@ class HostelRepositoryImpl implements HostelRepository {
         academicYearId: academicYearId,
         hostelId: hostelId,
         roomType: roomType,
+      ),
+    );
+  }
+
+  @override
+  Future<Result<core.PagePayload<HostelFeeStructureModel>>> feeStructuresPage({
+    String? academicYearId,
+    String? hostelId,
+    String? roomType,
+    String? status,
+    required int page,
+    required int size,
+  }) {
+    return _guard(
+      () => _remoteDataSource.feeStructuresPage(
+        academicYearId: academicYearId,
+        hostelId: hostelId,
+        roomType: roomType,
+        status: status,
+        page: page,
+        size: size,
       ),
     );
   }

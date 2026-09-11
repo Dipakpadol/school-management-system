@@ -33,6 +33,7 @@ class PaymentCollectionPage extends ConsumerStatefulWidget {
 }
 
 class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
+  static const _fallbackPageSize = 20;
   static const _paymentModes = [
     'CASH',
     'UPI',
@@ -43,6 +44,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
 
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
+  final _assignmentSearchController = TextEditingController();
   final _paymentDateController = TextEditingController();
   final _referenceController = TextEditingController();
   final _payerController = TextEditingController();
@@ -52,6 +54,9 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
   String? _assignmentId;
   String? _academicYearId;
   String? _defaultsAppliedAssignmentId;
+  FeeListFilter _fallbackFilter = const FeeListFilter(
+    size: _fallbackPageSize,
+  );
   String _paymentMode = 'CASH';
   double _selectedBalanceAmount = 0;
   bool _assessLateFee = true;
@@ -68,6 +73,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
   @override
   void dispose() {
     _amountController.dispose();
+    _assignmentSearchController.dispose();
     _paymentDateController.dispose();
     _referenceController.dispose();
     _payerController.dispose();
@@ -115,16 +121,16 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
         ),
       );
     }
-    const filter = FeeListFilter();
-    final assignments = ref.watch(feeAssignmentsProvider(filter));
+    final assignments = ref.watch(feeAssignmentsPageProvider(_fallbackFilter));
 
     return _shell(
       child: assignments.when(
-        data: _buildForm,
+        data: _buildPaymentSelection,
         error: (error, _) => AppErrorState(
           message:
               'Unable to load payment details. Please try again.\n${_message(error)}',
-          onRetry: () => ref.invalidate(feeAssignmentsProvider(filter)),
+          onRetry: () =>
+              ref.invalidate(feeAssignmentsPageProvider(_fallbackFilter)),
         ),
         loading: () => const AppLoadingState(label: 'Loading assignments'),
       ),
@@ -146,9 +152,38 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
     );
   }
 
+  Widget _buildPaymentSelection(PagePayload<StudentFeeAssignmentModel> page) {
+    final selector = _AssignmentLookupPanel(
+      controller: _assignmentSearchController,
+      onApply: _applyAssignmentSearch,
+      onReset: _resetAssignmentSearch,
+      onRefresh: () => ref.invalidate(
+        feeAssignmentsPageProvider(_fallbackFilter),
+      ),
+    );
+    if (page.content.isEmpty) {
+      return _buildEmptyAssignments(selector: selector);
+    }
+    return _buildForm(
+      page.content,
+      selector: selector,
+      footer: Card(
+        child: FeePaginationBar(
+          page: page.page,
+          size: page.size,
+          totalElements: page.totalElements,
+          totalPages: page.totalPages,
+          onPageChanged: _changeFallbackPage,
+        ),
+      ),
+    );
+  }
+
   Widget _buildForm(
     List<StudentFeeAssignmentModel> assignments, {
     StudentFeeSummaryModel? summary,
+    Widget? selector,
+    Widget? footer,
   }) {
     if (assignments.isEmpty) {
       return _buildEmptyAssignments();
@@ -195,6 +230,10 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
                   onSave: _saving || !canSubmit ? null : _submit,
                 ),
                 const SizedBox(height: 12),
+                if (selector != null) ...[
+                  selector,
+                  const SizedBox(height: 12),
+                ],
                 if (summary != null) ...[
                   _StudentSummaryPanel(summary: summary),
                   const SizedBox(height: 12),
@@ -333,6 +372,10 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
                     ),
                   ),
                 ),
+                if (footer != null) ...[
+                  const SizedBox(height: 12),
+                  footer,
+                ],
                 if (_receipt != null) ...[
                   const SizedBox(height: 12),
                   _ReceiptPanel(receipt: _receipt!),
@@ -347,7 +390,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
     );
   }
 
-  Widget _buildEmptyAssignments() {
+  Widget _buildEmptyAssignments({Widget? selector}) {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
@@ -362,6 +405,10 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
                 onSave: null,
               ),
               const SizedBox(height: 12),
+              if (selector != null) ...[
+                selector,
+                const SizedBox(height: 12),
+              ],
               _EmptyAssignmentsPanel(
                 onAssignFee: () => context.go(AppRoutes.newFeeAssignment),
               ),
@@ -424,6 +471,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
     result.when<void>(
       success: (receipt) {
         ref.invalidate(feeAssignmentsProvider(const FeeListFilter()));
+        ref.invalidate(feeAssignmentsPageProvider(_fallbackFilter));
         if (widget.assignmentId != null) {
           ref.invalidate(feeAssignmentProvider(widget.assignmentId!));
         }
@@ -432,6 +480,11 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
           ref.invalidate(studentPaymentHistoryProvider(widget.studentId!));
         }
         ref.invalidate(feeDefaultersProvider(const FeeDefaulterFilter()));
+        ref.invalidate(
+          feeDefaultersPageProvider(
+            const FeeDefaulterFilter(size: _fallbackPageSize),
+          ),
+        );
         setState(() => _receipt = receipt);
       },
       failure: (failure) => _showSnack(failure.message),
@@ -449,6 +502,83 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _applyAssignmentSearch() {
+    setState(() {
+      _fallbackFilter = FeeListFilter(
+        query: _blankToNull(_assignmentSearchController.text),
+        page: 0,
+        size: _fallbackPageSize,
+      );
+    });
+  }
+
+  void _resetAssignmentSearch() {
+    setState(() {
+      _assignmentSearchController.clear();
+      _fallbackFilter = const FeeListFilter(size: _fallbackPageSize);
+    });
+  }
+
+  void _changeFallbackPage(int page) {
+    setState(() => _fallbackFilter = _fallbackFilter.copyWith(page: page));
+  }
+}
+
+class _AssignmentLookupPanel extends StatelessWidget {
+  const _AssignmentLookupPanel({
+    required this.controller,
+    required this.onApply,
+    required this.onReset,
+    required this.onRefresh,
+  });
+
+  final TextEditingController controller;
+  final VoidCallback onApply;
+  final VoidCallback onReset;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            SizedBox(
+              width: 360,
+              child: TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  labelText: 'Search student or admission number',
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onSubmitted: (_) => onApply(),
+              ),
+            ),
+            FilledButton.icon(
+              onPressed: onApply,
+              icon: const Icon(Icons.tune_outlined),
+              label: const Text('Apply'),
+            ),
+            OutlinedButton.icon(
+              onPressed: onReset,
+              icon: const Icon(Icons.restart_alt_outlined),
+              label: const Text('Reset'),
+            ),
+            IconButton(
+              tooltip: 'Refresh assignments',
+              onPressed: onRefresh,
+              icon: const Icon(Icons.refresh_outlined),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

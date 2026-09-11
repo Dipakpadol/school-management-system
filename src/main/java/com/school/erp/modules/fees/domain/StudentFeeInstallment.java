@@ -85,7 +85,7 @@ public class StudentFeeInstallment extends BaseEntity {
 	}
 
 	public BigDecimal discountableBalance() {
-		return amount.subtract(discountAmount).max(BigDecimal.ZERO);
+		return amount.subtract(discountAmount).subtract(paidAmount).max(BigDecimal.ZERO);
 	}
 
 	public void applyDiscount(BigDecimal amount) {
@@ -110,6 +110,8 @@ public class StudentFeeInstallment extends BaseEntity {
 
 	public void cancel() {
 		status = FeeInstallmentStatus.CANCELLED;
+		payableAmount = BigDecimal.ZERO;
+		balanceAmount = BigDecimal.ZERO;
 	}
 
 	private void recalculate() {

@@ -47,7 +47,7 @@ public class RoleController {
 	private final RoleService roleService;
 
 	@PostMapping("/v1/roles")
-	@PreAuthorize("hasAuthority('USERS_CREATE') or hasAuthority('SETTINGS_UPDATE')")
+	@PreAuthorize("hasAuthority('USERS_CREATE')")
 	@Operation(summary = "Create role")
 	public ResponseEntity<ApiResponse<RoleResponse>> create(
 			@Valid @RequestBody RoleRequest request,
@@ -56,7 +56,7 @@ public class RoleController {
 	}
 
 	@PutMapping("/v1/roles/{roleId}")
-	@PreAuthorize("hasAuthority('USERS_UPDATE') or hasAuthority('SETTINGS_UPDATE')")
+	@PreAuthorize("hasAuthority('USERS_UPDATE')")
 	@Operation(summary = "Update role")
 	public ResponseEntity<ApiResponse<RoleResponse>> update(
 			@PathVariable UUID roleId,
@@ -66,7 +66,7 @@ public class RoleController {
 	}
 
 	@GetMapping("/v1/roles/{roleId}")
-	@PreAuthorize("hasAuthority('USERS_READ') or hasAuthority('SETTINGS_READ')")
+	@PreAuthorize("hasAuthority('USERS_READ')")
 	@Operation(summary = "Get role by ID")
 	public ResponseEntity<ApiResponse<RoleResponse>> get(
 			@PathVariable UUID roleId,
@@ -75,7 +75,7 @@ public class RoleController {
 	}
 
 	@GetMapping("/v1/roles")
-	@PreAuthorize("hasAuthority('USERS_READ') or hasAuthority('SETTINGS_READ')")
+	@PreAuthorize("hasAuthority('USERS_READ')")
 	@Operation(summary = "List roles")
 	public ResponseEntity<ApiResponse<List<RoleResponse>>> list(
 			@Valid @ParameterObject RoleSearchRequest request,
@@ -84,7 +84,7 @@ public class RoleController {
 	}
 
 	@DeleteMapping("/v1/roles/{roleId}")
-	@PreAuthorize("hasAuthority('USERS_DELETE') or hasAuthority('SETTINGS_UPDATE')")
+	@PreAuthorize("hasAuthority('USERS_DELETE')")
 	@Operation(summary = "Soft delete role")
 	public ResponseEntity<ApiResponse<Void>> delete(
 			@PathVariable UUID roleId,
@@ -94,7 +94,7 @@ public class RoleController {
 	}
 
 	@GetMapping("/v1/permissions")
-	@PreAuthorize("hasAuthority('USERS_READ') or hasAuthority('SETTINGS_READ')")
+	@PreAuthorize("hasAuthority('USERS_READ')")
 	@Operation(summary = "List permissions")
 	public ResponseEntity<ApiResponse<List<PermissionResponse>>> permissions(
 			@Valid @ParameterObject PermissionSearchRequest request,
@@ -103,7 +103,7 @@ public class RoleController {
 	}
 
 	@PostMapping("/v1/permissions")
-	@PreAuthorize("hasAuthority('USERS_UPDATE') or hasAuthority('SETTINGS_UPDATE')")
+	@PreAuthorize("hasAuthority('USERS_UPDATE')")
 	@Operation(summary = "Create permission")
 	public ResponseEntity<ApiResponse<PermissionResponse>> createPermission(
 			@Valid @RequestBody PermissionRequest request,
@@ -112,7 +112,7 @@ public class RoleController {
 	}
 
 	@PutMapping("/v1/permissions/{permissionId}")
-	@PreAuthorize("hasAuthority('USERS_UPDATE') or hasAuthority('SETTINGS_UPDATE')")
+	@PreAuthorize("hasAuthority('USERS_UPDATE')")
 	@Operation(summary = "Update permission")
 	public ResponseEntity<ApiResponse<PermissionResponse>> updatePermission(
 			@PathVariable UUID permissionId,
@@ -122,7 +122,7 @@ public class RoleController {
 	}
 
 	@GetMapping("/v1/permissions/{permissionId}")
-	@PreAuthorize("hasAuthority('USERS_READ') or hasAuthority('SETTINGS_READ')")
+	@PreAuthorize("hasAuthority('USERS_READ')")
 	@Operation(summary = "Get permission")
 	public ResponseEntity<ApiResponse<PermissionResponse>> getPermission(
 			@PathVariable UUID permissionId,
@@ -131,7 +131,7 @@ public class RoleController {
 	}
 
 	@DeleteMapping("/v1/permissions/{permissionId}")
-	@PreAuthorize("hasAuthority('USERS_UPDATE') or hasAuthority('SETTINGS_UPDATE')")
+	@PreAuthorize("hasAuthority('USERS_UPDATE')")
 	@Operation(summary = "Soft delete permission")
 	public ResponseEntity<ApiResponse<Void>> deletePermission(
 			@PathVariable UUID permissionId,
@@ -141,7 +141,7 @@ public class RoleController {
 	}
 
 	@PostMapping("/v1/roles/{roleId}/permissions")
-	@PreAuthorize("hasAuthority('USERS_UPDATE') or hasAuthority('SETTINGS_UPDATE')")
+	@PreAuthorize("hasAuthority('USERS_UPDATE')")
 	@Operation(summary = "Assign role permissions")
 	public ResponseEntity<ApiResponse<RolePermissionMatrixResponse>> assignPermissions(
 			@PathVariable UUID roleId,
@@ -151,7 +151,7 @@ public class RoleController {
 	}
 
 	@PutMapping("/v1/roles/{roleId}/permissions")
-	@PreAuthorize("hasAuthority('USERS_UPDATE') or hasAuthority('SETTINGS_UPDATE')")
+	@PreAuthorize("hasAuthority('USERS_UPDATE')")
 	@Operation(summary = "Update role permissions")
 	public ResponseEntity<ApiResponse<RolePermissionMatrixResponse>> updatePermissions(
 			@PathVariable UUID roleId,

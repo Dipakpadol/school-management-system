@@ -20,6 +20,7 @@ import com.school.erp.modules.academic.application.AcademicHierarchyService;
 import com.school.erp.modules.academic.domain.AcademicYear;
 import com.school.erp.modules.fees.api.dto.StudentFeeAssignmentResponse;
 import com.school.erp.modules.fees.application.FeeService;
+import com.school.erp.modules.fees.application.StudentFeeAutoAssignmentService;
 import com.school.erp.modules.fees.domain.FeeAssignmentStatus;
 import com.school.erp.modules.fees.domain.FeeCategory;
 import com.school.erp.modules.fees.domain.FeeScope;
@@ -85,6 +86,7 @@ public class TransportService {
 	private final StudentRepository studentRepository;
 	private final AcademicHierarchyService academicHierarchyService;
 	private final FeeService feeService;
+	private final StudentFeeAutoAssignmentService feeAutoAssignmentService;
 	private final TransportMapper transportMapper;
 	private final AuditLogService auditLogService;
 
@@ -553,19 +555,23 @@ public class TransportService {
 		}
 		StudentTransportAssignmentResponse oldValue = transportMapper.toAssignmentResponse(current);
 		ResolvedTransportAssignment resolved = resolveAssignmentRequest(current.getAcademicYear(), request);
+		validateTransportActive(resolved.vehicle(), resolved.route(), resolved.pickupPoint());
+		LocalDate assignmentDate = defaultDate(request.assignmentDate(), LocalDate.now());
+		current.transfer(assignmentDate);
+		assignmentRepository.flush();
 		validateVehicleAvailable(resolved.academicYear(), resolved.vehicle());
-		current.transfer(defaultDate(request.assignmentDate(), LocalDate.now()));
 		StudentTransportAssignment replacement = assignmentRepository.save(new StudentTransportAssignment(
 				current.getStudent(),
 				resolved.academicYear(),
 				resolved.vehicle(),
 				resolved.route(),
 				resolved.pickupPoint(),
-				defaultDate(request.assignmentDate(), LocalDate.now())));
-		if (request.appliesTransportFee()) {
-			List<StudentFeeAssignmentResponse> fees = assignApplicableTransportFees(replacement);
-			replacement.markFeeAssigned(!fees.isEmpty());
-		}
+				assignmentDate));
+		feeAutoAssignmentService.reconcileTransportFees(
+				current.getStudent().getId(),
+				resolved.academicYear().getId(),
+				assignmentDate,
+				request.appliesTransportFee());
 		StudentTransportAssignmentResponse response = transportMapper.toAssignmentResponse(replacement);
 		audit("StudentTransportAssignment", assignmentId, "TRANSPORT_CHANGED", oldValue, response);
 		return response;
@@ -582,7 +588,13 @@ public class TransportService {
 			throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Only active transport assignments can be removed.");
 		}
 		StudentTransportAssignmentResponse oldValue = transportMapper.toAssignmentResponse(assignment);
-		assignment.remove(defaultDate(request == null ? null : request.endDate(), LocalDate.now()));
+		LocalDate endDate = defaultDate(request == null ? null : request.endDate(), LocalDate.now());
+		assignment.remove(endDate);
+		feeAutoAssignmentService.reconcileTransportFees(
+				assignment.getStudent().getId(),
+				assignment.getAcademicYear().getId(),
+				endDate,
+				false);
 		StudentTransportAssignmentResponse response = transportMapper.toAssignmentResponse(assignment);
 		audit("StudentTransportAssignment", assignmentId, "TRANSPORT_REMOVED", oldValue, response);
 		return response;
@@ -813,11 +825,13 @@ public class TransportService {
 	}
 
 	private void validateVehicleAvailable(AcademicYear academicYear, TransportVehicle vehicle) {
+		TransportVehicle lockedVehicle = vehicleRepository.lockByIdAndDeletedFalse(vehicle.getId())
+				.orElseThrow(() -> new ResourceNotFoundException("Transport vehicle", vehicle.getId()));
 		long occupied = assignmentRepository.countByVehicleIdAndAcademicYearIdAndStatusAndDeletedFalse(
-				vehicle.getId(),
+				lockedVehicle.getId(),
 				academicYear.getId(),
 				TransportStatus.ASSIGNED);
-		if (occupied >= vehicle.getCapacity()) {
+		if (occupied >= lockedVehicle.getCapacity()) {
 			throw new BusinessException(ErrorCode.CONFLICT, "Vehicle is already full.");
 		}
 	}

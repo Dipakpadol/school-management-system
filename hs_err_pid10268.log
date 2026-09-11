@@ -1,0 +1,36 @@
+#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  EXCEPTION_ACCESS_VIOLATION (0xc0000005) at pc=0x00007ffd2ad96bb3, pid=10268, tid=30336
+#
+# JRE version: OpenJDK Runtime Environment Temurin-21.0.12.1+1 (21.0.12.1+1) (build 21.0.12.1+1-LTS)
+# Java VM: OpenJDK 64-Bit Server VM Temurin-21.0.12.1+1 (21.0.12.1+1-LTS, mixed mode, sharing, tiered, compressed oops, compressed class ptrs, parallel gc, windows-amd64)
+# Problematic frame:
+# V  [jvm.dll+0x3e6bb3]
+#
+# No core dump will be written. Minidumps are not enabled by default on client versions of Windows
+#
+# If you would like to submit a bug report, please visit:
+#   https://github.com/adoptium/adoptium-support/issues
+#
+
+---------------  S U M M A R Y ------------
+
+Command Line: --add-modules=ALL-SYSTEM --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/sun.nio.fs=ALL-UNNAMED -Declipse.application=org.eclipse.jdt.ls.core.id1 -Dosgi.bundles.defaultStartLevel=4 -Declipse.product=org.eclipse.jdt.ls.core.product -Djava.import.generatesMetadataFilesAtProjectRoot=false -Dm2e.project.cache.size=50 -DDetectVMInstallationsJob.disabled=true -Dfile.encoding=utf8 -XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx2G -Xms100m -Xlog:disable -javaagent:c:\Users\dipak\.vscode\extensions\redhat.java-1.56.0-win32-x64\lombok\lombok-1.18.39-4050.jar -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=c:\Users\dipak\AppData\Roaming\Code\User\workspaceStorage\6efa0eabb386bb338ec32b4f387a31a2\redhat.java -Daether.dependencyCollector.impl=bf c:\Users\dipak\.vscode\extensions\redhat.java-1.56.0-win32-x64\server\plugins\org.eclipse.equinox.launcher_1.8.0.v20260804-1928.jar -configuration c:\Users\dipak\AppData\Roaming\Code\User\globalStorage\redhat.java\1.56.0\config_win -data c:\Users\dipak\AppData\Roaming\Code\User\workspaceStorage\6efa0eabb386bb338ec32b4f387a31a2\redhat.java\jdt_ws --stdio
+
+Host: 11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz, 8 cores, 19G,  Windows 11 , 64 bit Build 26100 (10.0.26100.9278)
+Time: Wed Sep  9 10:39:59 2026 India Standard Time elapsed time: 1069.948920 seconds (0d 0h 17m 49s)
+
+---------------  T H R E A D  ---------------
+
+Current thread (0x00000179c8b79270):  JavaThread "ProjectImportProgressReporter" daemon [_thread_in_vm, id=30336, stack(0x000000710d900000,0x000000710da00000) (1024K)]
+
+Stack: [0x000000710d900000,0x000000710da00000],  sp=0x000000710d9ff9e0,  free space=1022k
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+V  [jvm.dll+0x3e6bb3]
+V  [jvm.dll+0x6d8302]
+V  [jvm.dll+0x3e781b]
+V  [jvm.dll+0x3e7aa7]
+V  [jvm.dll+0x47a556]
+V  [jvm.dll+0x3f8aae]
+V  [jvm.dll+0x8600cd]

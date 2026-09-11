@@ -24,6 +24,7 @@ import com.school.erp.modules.academic.application.AcademicHierarchyService;
 import com.school.erp.modules.academic.domain.AcademicYear;
 import com.school.erp.modules.fees.api.dto.StudentFeeAssignmentResponse;
 import com.school.erp.modules.fees.application.FeeService;
+import com.school.erp.modules.fees.application.StudentFeeAutoAssignmentService;
 import com.school.erp.modules.fees.domain.FeeAssignmentStatus;
 import com.school.erp.modules.fees.domain.FeeCategory;
 import com.school.erp.modules.fees.domain.FeeScope;
@@ -86,6 +87,7 @@ public class HostelService {
 	private final StudentRepository studentRepository;
 	private final AcademicHierarchyService academicHierarchyService;
 	private final FeeService feeService;
+	private final StudentFeeAutoAssignmentService feeAutoAssignmentService;
 	private final HostelMapper hostelMapper;
 	private final AuditLogService auditLogService;
 
@@ -390,8 +392,9 @@ public class HostelService {
 		HostelAllocationResponse oldValue = hostelMapper.toAllocationResponse(current);
 		HostelRoom room = loadRoom(request.roomId());
 		HostelBed bed = resolveBed(room, request.bedId(), request.bedNumber());
-		validateRoomAvailable(current.getAcademicYear(), room, bed);
 		current.transfer(request.allocationDate());
+		allocationRepository.flush();
+		validateRoomAvailable(current.getAcademicYear(), room, bed);
 		HostelAllocation replacement = new HostelAllocation(
 				current.getStudent(),
 				current.getAcademicYear(),
@@ -400,9 +403,11 @@ public class HostelService {
 				bed,
 				request.allocationDate());
 		HostelAllocation saved = allocationRepository.save(replacement);
-		if (request.hostelFeeApplicable()) {
-			assignApplicableHostelFees(current.getStudent(), current.getAcademicYear(), room, request.allocationDate());
-		}
+		feeAutoAssignmentService.reconcileHostelFees(
+				current.getStudent().getId(),
+				current.getAcademicYear().getId(),
+				request.allocationDate(),
+				request.hostelFeeApplicable());
 		HostelAllocationResponse response = toAllocationResponse(saved);
 		audit("HostelAllocation", allocationId, "HOSTEL_ROOM_CHANGED", oldValue, response);
 		return response;
@@ -423,6 +428,11 @@ public class HostelService {
 		}
 		HostelAllocationResponse oldValue = hostelMapper.toAllocationResponse(allocation);
 		allocation.vacate(request.vacateDate());
+		feeAutoAssignmentService.reconcileHostelFees(
+				allocation.getStudent().getId(),
+				allocation.getAcademicYear().getId(),
+				request.vacateDate(),
+				false);
 		HostelAllocationResponse response = toAllocationResponse(allocation);
 		audit("HostelAllocation", allocationId, "HOSTEL_VACATED", oldValue, response);
 		return response;
@@ -574,6 +584,8 @@ public class HostelService {
 	}
 
 	private void ensureRoomCapacity(HostelRoom room, int capacity) {
+		roomRepository.lockDetailedByIdAndDeletedFalse(room.getId())
+				.orElseThrow(() -> new ResourceNotFoundException("Hostel room", room.getId()));
 		long maxOccupancy = allocationRepository.activeOccupancyCountsByRoom(room.getId(), HostelAllocationStatus.ACTIVE)
 				.stream()
 				.max(Long::compareTo)
@@ -646,13 +658,16 @@ public class HostelService {
 	}
 
 	private void validateRoomAvailable(AcademicYear academicYear, HostelRoom room, HostelBed bed) {
-		if (!room.getHostel().isActive()) {
+		UUID roomId = room.getId();
+		HostelRoom lockedRoom = roomRepository.lockDetailedByIdAndDeletedFalse(roomId)
+				.orElseThrow(() -> new ResourceNotFoundException("Hostel room", roomId));
+		if (!lockedRoom.getHostel().isActive()) {
 			throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Hostel is inactive.");
 		}
-		if (!room.isActive()) {
+		if (!lockedRoom.isActive()) {
 			throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Room is inactive.");
 		}
-		if (room.isHasBeds()) {
+		if (lockedRoom.isHasBeds()) {
 			if (bed == null) {
 				throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Bed is required for this room.");
 			}
@@ -668,9 +683,9 @@ public class HostelService {
 		}
 		long occupied = allocationRepository.countByAcademicYearIdAndRoomIdAndStatusAndDeletedFalse(
 				academicYear.getId(),
-				room.getId(),
+				lockedRoom.getId(),
 				HostelAllocationStatus.ACTIVE);
-		if (occupied >= room.getCapacity()) {
+		if (occupied >= lockedRoom.getCapacity()) {
 			throw new BusinessException(ErrorCode.CONFLICT, "Room is already full.");
 		}
 	}

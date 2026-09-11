@@ -621,7 +621,9 @@ class _YearPanel extends StatelessWidget {
                   subtitle:
                       '${dateLabel(year.startDate)} to ${dateLabel(year.endDate)}',
                   leading: Icons.calendar_month_outlined,
-                  status: year.active ? 'ACTIVE' : 'INACTIVE',
+                  status: year.current
+                      ? 'CURRENT'
+                      : (year.active ? 'ACTIVE' : 'INACTIVE'),
                   onTap: () => onSelected(year),
                   onEdit: () => onEdit(year),
                   onDelete: () => onDelete(year),
@@ -1094,6 +1096,7 @@ class _YearDialogState extends State<_YearDialog> {
     text: widget.year?.description ?? '',
   );
   late var _active = widget.year?.active ?? true;
+  late var _current = widget.year?.current ?? false;
 
   @override
   void dispose() {
@@ -1161,7 +1164,20 @@ class _YearDialogState extends State<_YearDialog> {
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Active'),
                   value: _active,
-                  onChanged: (value) => setState(() => _active = value),
+                  onChanged: (value) => setState(() {
+                    _active = value;
+                    if (!value) {
+                      _current = false;
+                    }
+                  }),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Current academic year'),
+                  value: _active && _current,
+                  onChanged: _active
+                      ? (value) => setState(() => _current = value)
+                      : null,
                 ),
               ],
             ),
@@ -1196,6 +1212,7 @@ class _YearDialogState extends State<_YearDialog> {
                 endDate: _endDate.text.trim(),
                 description: _blankToNull(_description.text),
                 active: _active,
+                current: _current,
               ),
             );
           },
@@ -1541,6 +1558,7 @@ class _YearFormValue {
     required this.startDate,
     required this.endDate,
     required this.active,
+    required this.current,
     this.code,
     this.description,
   });
@@ -1550,6 +1568,7 @@ class _YearFormValue {
   final String startDate;
   final String endDate;
   final bool active;
+  final bool current;
   final String? description;
 
   Map<String, dynamic> toPayload() {
@@ -1559,6 +1578,7 @@ class _YearFormValue {
       'startDate': startDate,
       'endDate': endDate,
       'active': active,
+      'current': current,
       'description': description,
     };
   }

@@ -2,15 +2,10 @@ package com.school.erp.modules.auth.application;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-import org.springframework.util.StringUtils;
-
 public record ClientRequestInfo(String ipAddress, String userAgent) {
 
 	public static ClientRequestInfo from(HttpServletRequest request) {
-		String forwardedFor = request.getHeader("X-Forwarded-For");
-		String ipAddress = StringUtils.hasText(forwardedFor)
-				? forwardedFor.split(",")[0].trim()
-				: request.getRemoteAddr();
+		String ipAddress = request.getRemoteAddr();
 		return new ClientRequestInfo(truncate(ipAddress, 80), truncate(request.getHeader("User-Agent"), 500));
 	}
 

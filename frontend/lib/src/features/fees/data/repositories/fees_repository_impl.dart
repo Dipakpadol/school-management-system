@@ -53,7 +53,28 @@ class FeesRepositoryImpl implements FeesRepository {
         academicYearId: academicYearId,
         classId: classId,
         status: status,
+        page: 0,
+        size: 100,
       )).content,
+    );
+  }
+
+  @override
+  Future<Result<PagePayload<FeeStructureModel>>> structuresPage({
+    String? academicYearId,
+    String? classId,
+    String? status,
+    required int page,
+    required int size,
+  }) {
+    return _guard(
+      () => _remoteDataSource.structures(
+        academicYearId: academicYearId,
+        classId: classId,
+        status: status,
+        page: page,
+        size: size,
+      ),
     );
   }
 
@@ -87,6 +108,9 @@ class FeesRepositoryImpl implements FeesRepository {
     String? academicYearId,
     String? classId,
     String? sectionId,
+    String? feeCategoryId,
+    String? feeStructureId,
+    String? sourceType,
     String? status,
     String? query,
   }) {
@@ -95,9 +119,43 @@ class FeesRepositoryImpl implements FeesRepository {
         academicYearId: academicYearId,
         classId: classId,
         sectionId: sectionId,
+        feeCategoryId: feeCategoryId,
+        feeStructureId: feeStructureId,
+        sourceType: sourceType,
         status: status,
         query: query,
+        page: 0,
+        size: 100,
       )).content,
+    );
+  }
+
+  @override
+  Future<Result<PagePayload<StudentFeeAssignmentModel>>> assignmentsPage({
+    String? academicYearId,
+    String? classId,
+    String? sectionId,
+    String? feeCategoryId,
+    String? feeStructureId,
+    String? sourceType,
+    String? status,
+    String? query,
+    required int page,
+    required int size,
+  }) {
+    return _guard(
+      () => _remoteDataSource.assignments(
+        academicYearId: academicYearId,
+        classId: classId,
+        sectionId: sectionId,
+        feeCategoryId: feeCategoryId,
+        feeStructureId: feeStructureId,
+        sourceType: sourceType,
+        status: status,
+        query: query,
+        page: page,
+        size: size,
+      ),
     );
   }
 
@@ -158,6 +216,16 @@ class FeesRepositoryImpl implements FeesRepository {
   }
 
   @override
+  Future<Result<StudentFeeAssignmentModel>> applyDiscount(
+    String assignmentId,
+    Map<String, dynamic> payload,
+  ) {
+    return _guard(
+      () => _remoteDataSource.applyDiscount(assignmentId, payload),
+    );
+  }
+
+  @override
   Future<Result<StudentFeeSummaryModel>> studentSummary(
     String studentId, {
     String? academicYearId,
@@ -209,7 +277,34 @@ class FeesRepositoryImpl implements FeesRepository {
         sourceType: sourceType,
         asOf: asOf,
         query: query,
+        page: 0,
+        size: 100,
       )).content,
+    );
+  }
+
+  @override
+  Future<Result<PagePayload<FeeDefaulterModel>>> defaultersPage({
+    String? academicYearId,
+    String? classId,
+    String? sectionId,
+    String? sourceType,
+    String? asOf,
+    String? query,
+    required int page,
+    required int size,
+  }) {
+    return _guard(
+      () => _remoteDataSource.defaulters(
+        academicYearId: academicYearId,
+        classId: classId,
+        sectionId: sectionId,
+        sourceType: sourceType,
+        asOf: asOf,
+        query: query,
+        page: page,
+        size: size,
+      ),
     );
   }
 

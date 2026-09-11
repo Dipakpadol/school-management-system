@@ -2,8 +2,6 @@ package com.school.erp.modules.users.api.dto;
 
 import java.util.Set;
 
-import com.school.erp.modules.users.domain.RoleName;
-
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -17,5 +15,5 @@ public record UserCreateRequest(
 		@Size(max = 80) String lastName,
 		@Size(max = 30) String phoneNumber,
 		@NotBlank @Size(min = 8, max = 72) String password,
-		@NotEmpty Set<RoleName> roles) {
+		@NotEmpty Set<@NotBlank @Size(max = 60) String> roles) {
 }

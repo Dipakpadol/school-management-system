@@ -31,6 +31,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -65,6 +66,13 @@ public class AcademicHierarchyController {
 		return created(academicHierarchyService.createAcademicYear(body), "Academic year created successfully", request);
 	}
 
+	@GetMapping("/academic-years/current")
+	@PreAuthorize("hasAnyAuthority('STUDENTS_READ', 'ACADEMIC_READ')")
+	@Operation(summary = "Get current academic year")
+	public ResponseEntity<ApiResponse<AcademicYearResponse>> currentAcademicYear(HttpServletRequest request) {
+		return ok(academicHierarchyService.getCurrentAcademicYear(), "Current academic year fetched successfully", request);
+	}
+
 	@GetMapping("/academic-years/{academicYearId}")
 	@PreAuthorize("hasAuthority('ACADEMIC_READ')")
 	@Operation(summary = "Get academic year")
@@ -82,6 +90,15 @@ public class AcademicHierarchyController {
 			@Valid @RequestBody AcademicYearRequest body,
 			HttpServletRequest request) {
 		return ok(academicHierarchyService.updateAcademicYear(academicYearId, body), "Academic year updated successfully", request);
+	}
+
+	@PatchMapping("/academic-years/{academicYearId}/current")
+	@PreAuthorize("hasAuthority('ACADEMIC_MANAGE')")
+	@Operation(summary = "Mark academic year current")
+	public ResponseEntity<ApiResponse<AcademicYearResponse>> setCurrentAcademicYear(
+			@PathVariable UUID academicYearId,
+			HttpServletRequest request) {
+		return ok(academicHierarchyService.setCurrentAcademicYear(academicYearId), "Academic year marked current successfully", request);
 	}
 
 	@DeleteMapping("/academic-years/{academicYearId}")

@@ -85,6 +85,10 @@ public class Role extends BaseEntity {
 		status = RoleStatus.INACTIVE;
 	}
 
+	public boolean isActive() {
+		return status == RoleStatus.ACTIVE;
+	}
+
 	public void addPermission(Permission permission) {
 		if (permission != null) {
 			permissions.add(permission);

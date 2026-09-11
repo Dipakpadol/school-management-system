@@ -25,6 +25,7 @@ import org.slf4j.MDC;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -102,16 +103,17 @@ public class AuthController {
 	}
 
 	@GetMapping("/me")
-	@PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','PRINCIPAL','TEACHER','ACCOUNTANT','RECEPTIONIST','STUDENT','PARENT','WARDEN')")
+	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<ApiResponse<CurrentUserResponse>> me(
 			@AuthenticationPrincipal Jwt jwt,
+			Authentication authentication,
 			HttpServletRequest httpRequest) {
 		var response = new CurrentUserResponse(
-				UUID.fromString(jwt.getSubject()),
-				jwt.getClaimAsString("email"),
-				jwt.getClaimAsString("username"),
-				listClaim(jwt, "roles"),
-				listClaim(jwt, "authorities"));
+				jwt == null ? null : UUID.fromString(jwt.getSubject()),
+				jwt == null ? null : jwt.getClaimAsString("email"),
+				jwt == null ? authentication.getName() : jwt.getClaimAsString("username"),
+				roles(authentication),
+				permissions(authentication));
 		return ok(response, "Authenticated user context", httpRequest);
 	}
 
@@ -131,8 +133,28 @@ public class AuthController {
 				MDC.get(CorrelationIdFilter.CORRELATION_ID)));
 	}
 
-	private java.util.List<String> listClaim(Jwt jwt, String claimName) {
-		java.util.List<String> values = jwt.getClaimAsStringList(claimName);
-		return values == null ? java.util.List.of() : values;
+	private java.util.List<String> roles(Authentication authentication) {
+		return authorities(authentication).stream()
+				.filter(authority -> authority.startsWith("ROLE_"))
+				.map(authority -> authority.substring("ROLE_".length()))
+				.sorted()
+				.toList();
+	}
+
+	private java.util.List<String> permissions(Authentication authentication) {
+		return authorities(authentication).stream()
+				.filter(authority -> !authority.startsWith("ROLE_"))
+				.filter(authority -> !authority.startsWith("SCOPE_"))
+				.sorted()
+				.toList();
+	}
+
+	private java.util.List<String> authorities(Authentication authentication) {
+		if (authentication == null) {
+			return java.util.List.of();
+		}
+		return authentication.getAuthorities().stream()
+				.map(org.springframework.security.core.GrantedAuthority::getAuthority)
+				.toList();
 	}
 }

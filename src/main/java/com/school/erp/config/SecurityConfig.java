@@ -11,7 +11,9 @@ import com.school.erp.common.security.JwtProperties;
 import com.school.erp.common.security.RestAccessDeniedHandler;
 import com.school.erp.common.security.RestAuthenticationEntryPoint;
 import com.school.erp.common.security.SchoolJwtGrantedAuthoritiesConverter;
+import com.school.erp.common.security.UserAccountJwtValidator;
 import com.school.erp.common.web.CorsProperties;
+import com.school.erp.modules.users.infrastructure.UserAccountRepository;
 
 import org.springframework.security.config.Customizer;
 import org.springframework.context.annotation.Bean;
@@ -54,6 +56,7 @@ public class SecurityConfig {
 	private final JwtProperties jwtProperties;
 	private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
 	private final RestAccessDeniedHandler restAccessDeniedHandler;
+	private final UserAccountRepository userAccountRepository;
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -74,8 +77,7 @@ public class SecurityConfig {
 								"/v1/auth/login",
 								"/v1/auth/refresh",
 								"/v1/auth/forgot-password",
-								"/v1/auth/reset-password",
-								"/v1/users/roles"
+								"/v1/auth/reset-password"
 								)
 						.permitAll()
 						.anyRequest().authenticated())
@@ -108,6 +110,7 @@ public class SecurityConfig {
 		if (!jwtProperties.audiences().isEmpty()) {
 			validators.add(new JwtAudienceValidator(jwtProperties.audiences()));
 		}
+		validators.add(new UserAccountJwtValidator(userAccountRepository));
 		decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(validators));
 		return decoder;
 	}
@@ -120,7 +123,7 @@ public class SecurityConfig {
 	@Bean
 	JwtAuthenticationConverter jwtAuthenticationConverter() {
 		var converter = new JwtAuthenticationConverter();
-		converter.setJwtGrantedAuthoritiesConverter(new SchoolJwtGrantedAuthoritiesConverter());
+		converter.setJwtGrantedAuthoritiesConverter(new SchoolJwtGrantedAuthoritiesConverter(userAccountRepository));
 		return converter;
 	}
 

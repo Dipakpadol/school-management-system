@@ -191,6 +191,7 @@ class StudentFeeAssignmentModel {
     required this.grossAmount,
     required this.discountAmount,
     required this.lateFeeAmount,
+    required this.payableAmount,
     required this.paidAmount,
     required this.balanceAmount,
     required this.installments,
@@ -210,6 +211,14 @@ class StudentFeeAssignmentModel {
   });
 
   factory StudentFeeAssignmentModel.fromJson(Map<String, dynamic> json) {
+    final grossAmount = _money(json['grossAmount'] ?? json['amount']);
+    final discountAmount = _money(json['discountAmount']);
+    final lateFeeAmount = _money(json['lateFeeAmount']);
+    final payableAmount = json['payableAmount'] == null
+        ? (grossAmount - discountAmount + lateFeeAmount)
+              .clamp(0.0, double.infinity)
+              .toDouble()
+        : _money(json['payableAmount']);
     return StudentFeeAssignmentModel(
       id: json['id'] as String? ?? json['assignmentId'] as String? ?? '',
       studentId: json['studentId'] as String,
@@ -239,9 +248,10 @@ class StudentFeeAssignmentModel {
       transportRouteName: json['transportRouteName'] as String?,
       transportPickupPointName: json['transportPickupPointName'] as String?,
       status: json['status'] as String? ?? 'PENDING',
-      grossAmount: _money(json['grossAmount'] ?? json['amount']),
-      discountAmount: _money(json['discountAmount']),
-      lateFeeAmount: _money(json['lateFeeAmount']),
+      grossAmount: grossAmount,
+      discountAmount: discountAmount,
+      lateFeeAmount: lateFeeAmount,
+      payableAmount: payableAmount,
       paidAmount: _money(json['paidAmount']),
       balanceAmount: _money(json['balanceAmount'] ?? json['pendingAmount']),
       installments: _list(json['installments'], FeeInstallmentModel.fromJson),
@@ -274,6 +284,7 @@ class StudentFeeAssignmentModel {
   final double grossAmount;
   final double discountAmount;
   final double lateFeeAmount;
+  final double payableAmount;
   final double paidAmount;
   final double balanceAmount;
   final List<FeeInstallmentModel> installments;
@@ -287,24 +298,29 @@ class StudentFeeGroupModel {
     required this.grossAmount,
     required this.discountAmount,
     required this.lateFeeAmount,
+    required this.payableAmount,
     required this.paidAmount,
     required this.balanceAmount,
     required this.assignments,
   });
 
   factory StudentFeeGroupModel.fromJson(Map<String, dynamic> json) {
+    final assignments = _list(
+      json['assignments'],
+      StudentFeeAssignmentModel.fromJson,
+    );
     return StudentFeeGroupModel(
       sourceType: json['sourceType'] as String? ?? 'CLASS',
       label: json['label'] as String? ?? '',
       grossAmount: _money(json['grossAmount']),
       discountAmount: _money(json['discountAmount']),
       lateFeeAmount: _money(json['lateFeeAmount']),
+      payableAmount: json['payableAmount'] == null
+          ? assignments.fold(0.0, (sum, item) => sum + item.payableAmount)
+          : _money(json['payableAmount']),
       paidAmount: _money(json['paidAmount']),
       balanceAmount: _money(json['balanceAmount']),
-      assignments: _list(
-        json['assignments'],
-        StudentFeeAssignmentModel.fromJson,
-      ),
+      assignments: assignments,
     );
   }
 
@@ -325,6 +341,10 @@ class StudentFeeGroupModel {
         0.0,
         (sum, item) => sum + item.lateFeeAmount,
       ),
+      payableAmount: assignments.fold(
+        0.0,
+        (sum, item) => sum + item.payableAmount,
+      ),
       paidAmount: assignments.fold(0.0, (sum, item) => sum + item.paidAmount),
       balanceAmount: assignments.fold(
         0.0,
@@ -339,6 +359,7 @@ class StudentFeeGroupModel {
   final double grossAmount;
   final double discountAmount;
   final double lateFeeAmount;
+  final double payableAmount;
   final double paidAmount;
   final double balanceAmount;
   final List<StudentFeeAssignmentModel> assignments;
@@ -431,6 +452,7 @@ class StudentFeeSummaryModel {
     required this.grossAmount,
     required this.discountAmount,
     required this.lateFeeAmount,
+    required this.payableAmount,
     required this.paidAmount,
     required this.balanceAmount,
     required this.assignments,
@@ -465,6 +487,9 @@ class StudentFeeSummaryModel {
       grossAmount: _money(json['grossAmount']),
       discountAmount: _money(json['discountAmount']),
       lateFeeAmount: _money(json['lateFeeAmount']),
+      payableAmount: json['payableAmount'] == null
+          ? assignments.fold(0.0, (sum, item) => sum + item.payableAmount)
+          : _money(json['payableAmount']),
       paidAmount: _money(json['paidAmount']),
       balanceAmount: _money(json['balanceAmount']),
       assignments: assignments,
@@ -505,6 +530,7 @@ class StudentFeeSummaryModel {
   final double grossAmount;
   final double discountAmount;
   final double lateFeeAmount;
+  final double payableAmount;
   final double paidAmount;
   final double balanceAmount;
   final List<StudentFeeAssignmentModel> assignments;

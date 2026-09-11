@@ -1,6 +1,7 @@
 package com.school.erp.modules.academic.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,6 +13,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.school.erp.common.audit.application.AuditLogService;
+import com.school.erp.common.exception.BusinessException;
+import com.school.erp.common.exception.ErrorCode;
+import com.school.erp.modules.academic.api.dto.AcademicYearRequest;
 import com.school.erp.modules.academic.api.dto.AssignClassTeacherRequest;
 import com.school.erp.modules.academic.api.dto.AssignSubjectTeacherRequest;
 import com.school.erp.modules.academic.api.dto.ClassSectionTeachersResponse;
@@ -97,6 +101,78 @@ class AcademicHierarchyServiceTest {
 		setId(academicYear);
 		setId(classEntity);
 		setId(section);
+	}
+
+	@Test
+	void createAcademicYearCanMarkYearCurrent() {
+		when(academicYearRepository.existsOverlappingActiveYear(
+				LocalDate.of(2028, 4, 1),
+				LocalDate.of(2029, 3, 31),
+				null))
+				.thenReturn(false);
+		when(academicYearRepository.findByCodeIgnoreCaseAndDeletedFalse("AY-2028-29")).thenReturn(Optional.empty());
+		when(academicYearRepository.findByNameIgnoreCaseAndDeletedFalse("2028-2029")).thenReturn(Optional.empty());
+		when(academicYearRepository.save(any(AcademicYear.class))).thenAnswer(invocation -> {
+			AcademicYear year = invocation.getArgument(0);
+			setId(year);
+			return year;
+		});
+
+		var response = service.createAcademicYear(new AcademicYearRequest(
+				"AY-2028-29",
+				"2028-2029",
+				LocalDate.of(2028, 4, 1),
+				LocalDate.of(2029, 3, 31),
+				true,
+				true,
+				"Next session"));
+
+		assertThat(response.current()).isTrue();
+		assertThat(response.active()).isTrue();
+		verify(academicYearRepository).clearCurrentYearExcept(null);
+	}
+
+	@Test
+	void getCurrentAcademicYearFallsBackToActiveYearContainingToday() {
+		when(academicYearRepository.findFirstByCurrentYearTrueAndDeletedFalseOrderByStartDateDescNameAsc())
+				.thenReturn(Optional.empty());
+		when(academicYearRepository
+				.findFirstByActiveTrueAndStartDateLessThanEqualAndEndDateGreaterThanEqualAndDeletedFalseOrderByStartDateDescNameAsc(
+						any(LocalDate.class),
+						any(LocalDate.class)))
+				.thenReturn(Optional.of(academicYear));
+
+		var response = service.getCurrentAcademicYear();
+
+		assertThat(response.id()).isEqualTo(academicYear.getId());
+		assertThat(response.name()).isEqualTo("2026-2027");
+	}
+
+	@Test
+	void setCurrentAcademicYearRejectsInactiveYear() {
+		academicYear.deactivate();
+		when(academicYearRepository.findByIdAndDeletedFalse(academicYear.getId())).thenReturn(Optional.of(academicYear));
+
+		assertThatThrownBy(() -> service.setCurrentAcademicYear(academicYear.getId()))
+				.isInstanceOf(BusinessException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.BUSINESS_RULE_VIOLATION);
+	}
+
+	@Test
+	void deleteDivisionRejectsHistoricalStudentAssignments() {
+		when(sectionEntityRepository.findByIdAndDeletedFalse(section.getId())).thenReturn(Optional.of(section));
+		when(classTeacherMappingRepository.findByClassEntityIdAndSectionIdAndActiveTrueAndDeletedFalse(
+				classEntity.getId(),
+				section.getId()))
+				.thenReturn(Optional.empty());
+		when(divisionSubjectRepository.findBySectionIdAndDeletedFalseOrderBySubjectNameAsc(section.getId())).thenReturn(List.of());
+		when(studentClassAssignmentRepository.countBySectionId(section.getId())).thenReturn(1L);
+
+		assertThatThrownBy(() -> service.deleteDivision(section.getId()))
+				.isInstanceOf(BusinessException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.BUSINESS_RULE_VIOLATION);
 	}
 
 	@Test

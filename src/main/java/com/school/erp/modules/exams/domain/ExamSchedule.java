@@ -131,7 +131,26 @@ public class ExamSchedule extends BaseEntity {
 			LocalDate examDate,
 			BigDecimal maxMarks,
 			BigDecimal passingMarks) {
-		ExamScheduleSubject scheduleSubject = new ExamScheduleSubject(this, subject, examDate, maxMarks, passingMarks);
+		return addSubject(subject, examDate, null, null, null, maxMarks, passingMarks);
+	}
+
+	public ExamScheduleSubject addSubject(
+			Subject subject,
+			LocalDate examDate,
+			java.time.LocalTime startTime,
+			java.time.LocalTime endTime,
+			String room,
+			BigDecimal maxMarks,
+			BigDecimal passingMarks) {
+		ExamScheduleSubject scheduleSubject = new ExamScheduleSubject(
+				this,
+				subject,
+				examDate,
+				startTime,
+				endTime,
+				room,
+				maxMarks,
+				passingMarks);
 		subjects.add(scheduleSubject);
 		syncLegacySubjectFields();
 		return scheduleSubject;
@@ -148,6 +167,9 @@ public class ExamSchedule extends BaseEntity {
 		return subjects.stream()
 				.filter(subject -> !subject.isDeleted())
 				.sorted(Comparator.comparing(ExamScheduleSubject::getExamDate)
+						.thenComparing(
+								ExamScheduleSubject::getStartTime,
+								Comparator.nullsLast(Comparator.naturalOrder()))
 						.thenComparing(subject -> subject.getSubject().getName()))
 				.toList();
 	}

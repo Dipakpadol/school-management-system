@@ -17,6 +17,7 @@ import com.school.erp.common.audit.infrastructure.AuditLogRepository;
 import com.school.erp.modules.attendance.domain.AttendanceRecord;
 import com.school.erp.modules.attendance.domain.AttendanceStatus;
 import com.school.erp.modules.attendance.infrastructure.AttendanceRecordRepository;
+import com.school.erp.modules.fees.domain.FeeAssignmentStatus;
 import com.school.erp.modules.fees.infrastructure.FeeReportTotals;
 import com.school.erp.modules.fees.infrastructure.StudentFeeAssignmentRepository;
 import com.school.erp.modules.students.domain.Gender;
@@ -93,7 +94,7 @@ class DashboardServiceTest {
 				"ACCOUNTANT",
 				"RECEPTIONIST",
 				"WARDEN"))).thenReturn(5L);
-		when(assignmentRepository.summarizeAll()).thenReturn(feeReportTotals);
+		when(assignmentRepository.summarizeAll(FeeAssignmentStatus.CANCELLED)).thenReturn(feeReportTotals);
 		when(feeReportTotals.getPaidAmount()).thenReturn(new BigDecimal("18000.00"));
 		when(feeReportTotals.getBalanceAmount()).thenReturn(new BigDecimal("60000.00"));
 		when(attendanceRecordRepository.findTodayDashboardRecords(any(LocalDate.class), isNull(), isNull(), isNull()))

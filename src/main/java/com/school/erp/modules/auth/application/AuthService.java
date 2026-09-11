@@ -57,6 +57,7 @@ public class AuthService {
 	private final JwtService jwtService;
 	private final SecureTokenService secureTokenService;
 	private final AuthMapper authMapper;
+	private final AuthenticationFailureService authenticationFailureService;
 	private final AuthProperties authProperties;
 	private final com.school.erp.common.security.JwtProperties jwtProperties;
 	private final ApplicationEventPublisher eventPublisher;
@@ -103,7 +104,7 @@ public class AuthService {
 		user.addRole(role);
 		UserAccount saved = userAccountRepository.save(user);
 
-		auditAuth(saved, "SIGN_UP", null, authMetadata(saved, client));
+		auditAuth(saved, "SIGN_UP", null, authMetadata(saved, client), client);
 		String message = saved.getStatus() == UserStatus.ACTIVE
 				? "Registration successful. You can now login."
 				: "Registration successful. Please wait for admin approval.";
@@ -112,24 +113,32 @@ public class AuthService {
 
 	@Transactional
 	public AuthenticationResponse login(LoginRequest request, ClientRequestInfo client) {
-		UserAccount user = userAccountRepository.findByEmailIgnoreCaseAndDeletedFalse(request.email())
-				.orElseThrow(() -> invalidCredentials());
-		try {
-			authenticationManager.authenticate(
-					new UsernamePasswordAuthenticationToken(request.email(), request.password()));
-		}
-		catch (AuthenticationException ex) {
-			user.recordFailedLogin(authProperties.maxFailedLoginAttempts(), authProperties.lockDuration());
+		String email = normalizeEmail(request.email());
+		UserAccount user = userAccountRepository.findByEmailIgnoreCaseAndDeletedFalse(email)
+				.orElse(null);
+		if (user == null) {
+			authenticationFailureService.recordFailedLogin(email, client);
 			throw invalidCredentials();
 		}
 
+		user.unlockIfTemporaryLockExpired();
 		if (!user.canAuthenticate()) {
-			throw new BusinessException(ErrorCode.UNAUTHORIZED, "User account is not active.");
+			authenticationFailureService.recordBlockedLogin(user, loginBlockedReason(user), client);
+			throw new BusinessException(ErrorCode.UNAUTHORIZED, "User account cannot authenticate.");
+		}
+
+		try {
+			authenticationManager.authenticate(
+					new UsernamePasswordAuthenticationToken(email, request.password()));
+		}
+		catch (AuthenticationException ex) {
+			authenticationFailureService.recordFailedLogin(email, client);
+			throw invalidCredentials();
 		}
 
 		user.recordSuccessfulLogin();
 		AuthenticationResponse response = issueSession(user, client);
-		auditAuth(user, AuditAction.LOGIN, null, authMetadata(user, client));
+		auditAuth(user, AuditAction.LOGIN, null, authMetadata(user, client), client);
 		return response;
 	}
 
@@ -138,7 +147,7 @@ public class AuthService {
 		String tokenHash = secureTokenService.hash(request.refreshToken());
 		refreshTokenRepository.findByTokenHashAndDeletedFalse(tokenHash).ifPresent(token -> {
 			token.revoke();
-			auditAuth(token.getUser(), AuditAction.LOGOUT, null, authMetadata(token.getUser(), null));
+			auditAuth(token.getUser(), AuditAction.LOGOUT, null, authMetadata(token.getUser(), null), null);
 		});
 	}
 
@@ -157,7 +166,9 @@ public class AuthService {
 		}
 
 		UserAccount user = oldToken.getUser();
+		user.unlockIfTemporaryLockExpired();
 		if (!user.canAuthenticate()) {
+			oldToken.revoke();
 			throw new BusinessException(ErrorCode.UNAUTHORIZED, "User account is not active.");
 		}
 
@@ -191,7 +202,7 @@ public class AuthService {
 							user.getDisplayName(),
 							token.value(),
 							token.expiresAt()));
-					auditAuth(user, "FORGOT_PASSWORD_REQUEST", null, authMetadata(user, client));
+					auditAuth(user, "FORGOT_PASSWORD_REQUEST", null, authMetadata(user, client), client);
 				});
 		return new ForgotPasswordResponse(true);
 	}
@@ -217,7 +228,7 @@ public class AuthService {
 		}
 		resetToken.markUsed();
 		refreshTokenRepository.revokeActiveTokensForUser(user.getId(), Instant.now());
-		auditAuth(user, "PASSWORD_RESET", null, Map.of("userId", user.getId().toString(), "email", user.getEmail()));
+		auditAuth(user, "PASSWORD_RESET", null, Map.of("userId", user.getId().toString(), "email", user.getEmail()), null);
 	}
 
 	@Transactional
@@ -237,7 +248,7 @@ public class AuthService {
 
 		user.changePassword(passwordEncoder.encode(request.newPassword()));
 		refreshTokenRepository.revokeActiveTokensForUser(userId, Instant.now());
-		auditAuth(user, "PASSWORD_CHANGE", null, Map.of("userId", user.getId().toString(), "email", user.getEmail()));
+		auditAuth(user, "PASSWORD_CHANGE", null, Map.of("userId", user.getId().toString(), "email", user.getEmail()), null);
 	}
 
 	private AuthenticationResponse issueSession(UserAccount user, ClientRequestInfo client) {
@@ -317,6 +328,13 @@ public class AuthService {
 		return new BusinessException(ErrorCode.INVALID_CREDENTIALS);
 	}
 
+	private String loginBlockedReason(UserAccount user) {
+		if (user.isLocked()) {
+			return "ACCOUNT_LOCKED";
+		}
+		return "ACCOUNT_" + user.getStatus().name();
+	}
+
 	private Map<String, Object> authMetadata(UserAccount user, ClientRequestInfo client) {
 		Map<String, Object> metadata = new LinkedHashMap<>();
 		metadata.put("userId", user.getId() == null ? null : user.getId().toString());
@@ -328,7 +346,7 @@ public class AuthService {
 		return metadata;
 	}
 
-	private void auditAuth(UserAccount user, String action, Object oldValue, Object newValue) {
+	private void auditAuth(UserAccount user, String action, Object oldValue, Object newValue, ClientRequestInfo client) {
 		auditLogService.recordAs(
 				new AuditLogEvent(
 						"AUTH",
@@ -338,6 +356,6 @@ public class AuthService {
 						oldValue,
 						newValue),
 				user.getEmail(),
-				null);
+				client == null ? null : client.ipAddress());
 	}
 }

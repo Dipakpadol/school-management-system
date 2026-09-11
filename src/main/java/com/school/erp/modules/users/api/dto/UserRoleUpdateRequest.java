@@ -1,8 +1,7 @@
 package com.school.erp.modules.users.api.dto;
 
-import com.school.erp.modules.users.domain.RoleName;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
-import jakarta.validation.constraints.NotNull;
-
-public record UserRoleUpdateRequest(@NotNull RoleName role) {
+public record UserRoleUpdateRequest(@NotBlank @Size(max = 60) String role) {
 }

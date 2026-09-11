@@ -2,6 +2,8 @@ package com.school.erp.modules.students.application;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 import com.school.erp.common.api.PageRequestDto;
@@ -11,12 +13,12 @@ import com.school.erp.common.audit.application.AuditLogService;
 import com.school.erp.common.exception.BusinessException;
 import com.school.erp.common.exception.ErrorCode;
 import com.school.erp.common.exception.ResourceNotFoundException;
+import com.school.erp.modules.auth.application.SchoolUserPrincipal;
 import com.school.erp.modules.academic.application.AcademicHierarchyService;
 import com.school.erp.modules.academic.domain.AcademicYear;
 import com.school.erp.modules.academic.domain.ClassEntity;
 import com.school.erp.modules.academic.domain.SectionEntity;
 import com.school.erp.modules.fees.api.dto.FeeAutoAssignmentResult;
-import com.school.erp.modules.fees.application.FeeService;
 import com.school.erp.modules.fees.application.StudentFeeAutoAssignmentService;
 import com.school.erp.modules.hostel.application.HostelService;
 import com.school.erp.modules.transport.application.TransportService;
@@ -62,7 +64,6 @@ public class StudentService {
 	private final ParentGuardianRepository parentGuardianRepository;
 	private final StudentClassAssignmentRepository studentClassAssignmentRepository;
 	private final AcademicHierarchyService academicHierarchyService;
-	private final FeeService feeService;
 	private final StudentFeeAutoAssignmentService feeAutoAssignmentService;
 	private final HostelService hostelService;
 	private final TransportService transportService;
@@ -140,6 +141,15 @@ public class StudentService {
 				.toList();
 	}
 
+	@Transactional(readOnly = true)
+	public List<StudentSummaryResponse> getMyChildren() {
+		UUID userId = currentUserId()
+				.orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN, "Authenticated parent user id is required."));
+		return studentRepository.findChildrenByParentUserAccountId(userId).stream()
+				.map(studentMapper::toSummaryResponse)
+				.toList();
+	}
+
 	@Transactional
 	public StudentResponse updateStudentProfile(UUID studentId, StudentProfileRequest request) {
 		Student student = loadProfile(studentId);
@@ -168,7 +178,7 @@ public class StudentService {
 		StudentResponse oldValue = studentMapper.toProfileResponse(student);
 		validateParentRequest(request.parent());
 		StudentParent mapping = findParentMapping(student, parentMappingId);
-		ParentGuardian parent = resolveParent(request.parent());
+		ParentGuardian parent = resolveParent(mapping.getParent(), request.parent());
 		if (request.primaryContact()) {
 			student.getParents().forEach(StudentParent::markSecondary);
 		}
@@ -252,10 +262,7 @@ public class StudentService {
 		Student student = loadProfile(studentId);
 		StudentResponse oldValue = studentMapper.toProfileResponse(student);
 		ResolvedClassAssignment resolved = assignClassSection(student, request);
-		feeService.assignActiveClassFeesToStudent(
-				studentId,
-				resolved.classEntity().getId(),
-				request.effectiveFrom());
+		feeAutoAssignmentService.reconcileStudentFees(studentId, resolved.academicYear().getId());
 		StudentResponse response = studentMapper.toProfileResponse(student);
 		auditStudent(studentId, "CLASS_ASSIGNMENT_CHANGED", oldValue, response);
 		return response;
@@ -266,15 +273,18 @@ public class StudentService {
 		Student student = loadProfile(studentId);
 		StudentResponse oldValue = studentMapper.toProfileResponse(student);
 		StudentClassAssignment assignment = findClassAssignment(student, assignmentId);
+		if (!assignment.isActive()) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Historical class assignments cannot be reactivated through update.");
+		}
 		ResolvedClassAssignment resolved = resolveClassAssignment(request);
 		ensureRollNumberAvailable(request.rollNumber(), resolved, assignmentId);
-		if (assignment.isActive()) {
-			student.getClassAssignments().stream()
-					.filter(existing -> !existing.getId().equals(assignmentId))
-					.filter(StudentClassAssignment::isActive)
-					.filter(existing -> existing.isForAcademicYear(resolved.academicYear()))
-					.forEach(existing -> existing.deactivate(request.effectiveFrom().minusDays(1)));
-		}
+		student.getClassAssignments().stream()
+				.filter(existing -> !existing.getId().equals(assignmentId))
+				.filter(StudentClassAssignment::isActive)
+				.filter(existing -> existing.isForAcademicYear(resolved.academicYear()))
+				.forEach(existing -> existing.deactivateBefore(request.effectiveFrom()));
 		assignment.update(
 				resolved.academicYear(),
 				resolved.classEntity(),
@@ -283,10 +293,7 @@ public class StudentService {
 				request.effectiveFrom(),
 				null,
 				true);
-		feeService.assignActiveClassFeesToStudent(
-				studentId,
-				resolved.classEntity().getId(),
-				request.effectiveFrom());
+		feeAutoAssignmentService.reconcileStudentFees(studentId, resolved.academicYear().getId());
 		StudentResponse response = studentMapper.toProfileResponse(student);
 		auditStudent(studentId, "CLASS_ASSIGNMENT_UPDATED", oldValue, response);
 		return response;
@@ -393,6 +400,22 @@ public class StudentService {
 	}
 
 	private ParentGuardian resolveParent(ParentGuardianRequest request) {
+		return resolveParent(null, request);
+	}
+
+	private ParentGuardian resolveParent(ParentGuardian currentParent, ParentGuardianRequest request) {
+		if (currentParent != null) {
+			if (StringUtils.hasText(request.email())) {
+				Optional<ParentGuardian> existingByEmail = parentGuardianRepository
+						.findByEmailIgnoreCaseAndDeletedFalse(request.email());
+				if (existingByEmail.isPresent() && !sameId(existingByEmail.get(), currentParent)) {
+					studentMapper.updateParentGuardian(existingByEmail.get(), request);
+					return existingByEmail.get();
+				}
+			}
+			studentMapper.updateParentGuardian(currentParent, request);
+			return currentParent;
+		}
 		if (StringUtils.hasText(request.email())) {
 			return parentGuardianRepository.findByEmailIgnoreCaseAndDeletedFalse(request.email())
 					.map(parent -> {
@@ -401,7 +424,14 @@ public class StudentService {
 					})
 					.orElseGet(() -> parentGuardianRepository.save(studentMapper.toParentGuardian(request)));
 		}
-		return parentGuardianRepository.save(studentMapper.toParentGuardian(request));
+		return parentGuardianRepository.findByPhoneNumberAndDeletedFalse(request.phoneNumber().trim()).stream()
+				.filter(parent -> sameParentName(parent, request))
+				.findFirst()
+				.map(parent -> {
+					studentMapper.updateParentGuardian(parent, request);
+					return parent;
+				})
+				.orElseGet(() -> parentGuardianRepository.save(studentMapper.toParentGuardian(request)));
 	}
 
 	private ResolvedClassAssignment assignClassSection(Student student, ClassSectionAssignmentRequest request) {
@@ -505,7 +535,20 @@ public class StudentService {
 		SectionEntity section = request.sectionId() == null
 				? academicHierarchyService.resolveSection(classEntity, request.sectionName())
 				: academicHierarchyService.loadSectionForClass(classEntity.getId(), request.sectionId());
+		validateAssignableHierarchy(academicYear, classEntity, section);
 		return new ResolvedClassAssignment(academicYear, classEntity, section);
+	}
+
+	private void validateAssignableHierarchy(AcademicYear academicYear, ClassEntity classEntity, SectionEntity section) {
+		if (!academicYear.isActive()) {
+			throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Academic year is inactive.");
+		}
+		if (!classEntity.isActive()) {
+			throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Class is inactive.");
+		}
+		if (!section.isActive()) {
+			throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Division is inactive.");
+		}
 	}
 
 	private void ensureRollNumberAvailable(
@@ -537,6 +580,35 @@ public class StudentService {
 			return "system";
 		}
 		return authentication.getName();
+	}
+
+	private Optional<UUID> currentUserId() {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication == null || !authentication.isAuthenticated()) {
+			return Optional.empty();
+		}
+		if (authentication.getPrincipal() instanceof SchoolUserPrincipal principal) {
+			return Optional.of(principal.getId());
+		}
+		try {
+			return Optional.of(UUID.fromString(authentication.getName()));
+		}
+		catch (IllegalArgumentException ex) {
+			return Optional.empty();
+		}
+	}
+
+	private boolean sameId(ParentGuardian first, ParentGuardian second) {
+		return first.getId() != null && Objects.equals(first.getId(), second.getId());
+	}
+
+	private boolean sameParentName(ParentGuardian parent, ParentGuardianRequest request) {
+		return normalized(parent.getFirstName()).equals(normalized(request.firstName()))
+				&& normalized(parent.getLastName()).equals(normalized(request.lastName()));
+	}
+
+	private String normalized(String value) {
+		return StringUtils.hasText(value) ? value.trim().toLowerCase() : "";
 	}
 
 	private void auditStudent(UUID studentId, String action, Object oldValue, Object newValue) {

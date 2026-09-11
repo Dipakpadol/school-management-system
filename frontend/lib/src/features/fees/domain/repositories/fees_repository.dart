@@ -19,6 +19,14 @@ abstract interface class FeesRepository {
     String? status,
   });
 
+  Future<Result<PagePayload<FeeStructureModel>>> structuresPage({
+    String? academicYearId,
+    String? classId,
+    String? status,
+    required int page,
+    required int size,
+  });
+
   Future<Result<FeeStructureModel>> structure(String id);
 
   Future<Result<FeeStructureModel>> createStructure(
@@ -36,8 +44,24 @@ abstract interface class FeesRepository {
     String? academicYearId,
     String? classId,
     String? sectionId,
+    String? feeCategoryId,
+    String? feeStructureId,
+    String? sourceType,
     String? status,
     String? query,
+  });
+
+  Future<Result<PagePayload<StudentFeeAssignmentModel>>> assignmentsPage({
+    String? academicYearId,
+    String? classId,
+    String? sectionId,
+    String? feeCategoryId,
+    String? feeStructureId,
+    String? sourceType,
+    String? status,
+    String? query,
+    required int page,
+    required int size,
   });
 
   Future<Result<StudentFeeAssignmentModel>> assignment(String id);
@@ -66,6 +90,11 @@ abstract interface class FeesRepository {
     Map<String, dynamic> payload,
   );
 
+  Future<Result<StudentFeeAssignmentModel>> applyDiscount(
+    String assignmentId,
+    Map<String, dynamic> payload,
+  );
+
   Future<Result<StudentFeeSummaryModel>> studentSummary(
     String studentId, {
     String? academicYearId,
@@ -87,6 +116,17 @@ abstract interface class FeesRepository {
     String? sourceType,
     String? asOf,
     String? query,
+  });
+
+  Future<Result<PagePayload<FeeDefaulterModel>>> defaultersPage({
+    String? academicYearId,
+    String? classId,
+    String? sectionId,
+    String? sourceType,
+    String? asOf,
+    String? query,
+    required int page,
+    required int size,
   });
 
   Future<Result<StudentFeeAssignmentModel>> reversePayment(String paymentId);

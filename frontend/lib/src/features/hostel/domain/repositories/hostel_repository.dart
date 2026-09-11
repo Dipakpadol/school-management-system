@@ -1,4 +1,5 @@
 import '../../../../core/result/result.dart';
+import '../../../../core/network/page_payload.dart' as core;
 import '../../../fees/data/models/fee_models.dart';
 import '../../../students/data/models/student_models.dart';
 import '../../data/models/hostel_models.dart';
@@ -86,6 +87,15 @@ abstract interface class HostelRepository {
     String? academicYearId,
     String? hostelId,
     String? roomType,
+  });
+
+  Future<Result<core.PagePayload<HostelFeeStructureModel>>> feeStructuresPage({
+    String? academicYearId,
+    String? hostelId,
+    String? roomType,
+    String? status,
+    required int page,
+    required int size,
   });
 
   Future<Result<HostelFeeStructureModel>> createFeeStructure(

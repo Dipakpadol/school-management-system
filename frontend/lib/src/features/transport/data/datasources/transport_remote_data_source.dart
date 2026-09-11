@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/api_paths.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/page_payload.dart' as core;
 import '../../../students/data/models/student_models.dart';
 import '../models/transport_models.dart';
 
@@ -139,6 +140,24 @@ class TransportRemoteDataSource {
     String? pickupPointId,
     String? status,
   }) async {
+    return (await feeStructuresPage(
+      academicYearId: academicYearId,
+      routeId: routeId,
+      pickupPointId: pickupPointId,
+      status: status,
+      page: 0,
+      size: 100,
+    )).content;
+  }
+
+  Future<core.PagePayload<TransportFeeStructureModel>> feeStructuresPage({
+    String? academicYearId,
+    String? routeId,
+    String? pickupPointId,
+    String? status,
+    int page = 0,
+    int size = 20,
+  }) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.transportFeeStructures,
       queryParameters: {
@@ -148,9 +167,14 @@ class TransportRemoteDataSource {
         if (pickupPointId != null && pickupPointId.isNotEmpty)
           'pickupPointId': pickupPointId,
         if (status != null && status.isNotEmpty) 'status': status,
+        'page': page,
+        'size': size,
       },
     );
-    return _unwrapList(response.data, TransportFeeStructureModel.fromJson);
+    return core.PagePayload.fromJson(
+      _unwrapData(response.data),
+      TransportFeeStructureModel.fromJson,
+    );
   }
 
   Future<TransportFeeStructureModel> createFeeStructure(

@@ -24,6 +24,6 @@ public record HostelAssignmentRequest(
 	}
 
 	public boolean appliesHostelFee() {
-		return Boolean.TRUE.equals(hostelFeeApplicable);
+		return !Boolean.FALSE.equals(hostelFeeApplicable);
 	}
 }

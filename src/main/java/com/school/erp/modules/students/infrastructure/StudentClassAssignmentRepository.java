@@ -1,6 +1,7 @@
 package com.school.erp.modules.students.infrastructure;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import com.school.erp.common.domain.BaseRepository;
@@ -38,6 +39,14 @@ public interface StudentClassAssignmentRepository extends BaseRepository<Student
 			  and assignment.sectionEntity.id = :sectionId
 			""")
 	long countActiveBySectionId(@Param("sectionId") UUID sectionId);
+
+	@Query("""
+			select count(assignment)
+			from StudentClassAssignment assignment
+			where assignment.deleted = false
+			  and assignment.sectionEntity.id = :sectionId
+			""")
+	long countBySectionId(@Param("sectionId") UUID sectionId);
 
 	@Query("""
 			select count(distinct student.id)
@@ -90,4 +99,20 @@ public interface StudentClassAssignmentRepository extends BaseRepository<Student
 			@Param("academicYearId") UUID academicYearId,
 			@Param("classId") UUID classId,
 			@Param("sectionId") UUID sectionId);
+
+	@EntityGraph(attributePaths = { "student", "academicYearEntity", "classEntity", "sectionEntity" })
+	@Query("""
+			select assignment
+			from StudentClassAssignment assignment
+			join assignment.student student
+			where assignment.deleted = false
+			  and assignment.active = true
+			  and student.deleted = false
+			  and student.id = :studentId
+			  and assignment.academicYearEntity.id = :academicYearId
+			order by assignment.effectiveFrom desc, assignment.createdAt desc
+			""")
+	Optional<StudentClassAssignment> findActiveForStudentAndAcademicYear(
+			@Param("studentId") UUID studentId,
+			@Param("academicYearId") UUID academicYearId);
 }

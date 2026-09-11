@@ -171,6 +171,9 @@ abstract final class ApiPaths {
   static String feeAssignmentPayments(String id) =>
       '/v1/fees/assignments/$id/payments';
 
+  static String feeAssignmentDiscounts(String id) =>
+      '/v1/fees/assignments/$id/discounts';
+
   static String feeStudentSummary(String studentId) =>
       '/v1/fees/students/$studentId/summary';
 

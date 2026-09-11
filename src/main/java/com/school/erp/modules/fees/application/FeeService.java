@@ -335,7 +335,10 @@ public class FeeService {
 						classId,
 						ClassFeeAssignmentStatus.ACTIVE)) {
 			FeeStructure structure = classAssignment.getFeeStructure();
-			if (assignmentRepository.existsByStudentIdAndFeeStructureIdAndDeletedFalse(studentId, structure.getId())) {
+			if (assignmentRepository.existsByStudentIdAndFeeStructureIdAndStatusNotAndDeletedFalse(
+					studentId,
+					structure.getId(),
+					FeeAssignmentStatus.CANCELLED)) {
 				continue;
 			}
 			StudentFeeAssignment assignment = buildAssignment(student, structure, assignedDate, "Auto assigned from class fee structure.");
@@ -380,7 +383,10 @@ public class FeeService {
 		for (UUID feeStructureId : feeStructureIds) {
 			FeeStructure structure = loadStructure(feeStructureId);
 			validateHostelFeeStructure(structure);
-			if (assignmentRepository.existsByStudentIdAndFeeStructureIdAndDeletedFalse(studentId, structure.getId())) {
+			if (assignmentRepository.existsByStudentIdAndFeeStructureIdAndStatusNotAndDeletedFalse(
+					studentId,
+					structure.getId(),
+					FeeAssignmentStatus.CANCELLED)) {
 				continue;
 			}
 			StudentFeeAssignment assignment = buildAssignment(
@@ -429,7 +435,10 @@ public class FeeService {
 		for (UUID feeStructureId : feeStructureIds) {
 			FeeStructure structure = loadStructure(feeStructureId);
 			validateTransportFeeStructure(structure);
-			if (assignmentRepository.existsByStudentIdAndFeeStructureIdAndDeletedFalse(studentId, structure.getId())) {
+			if (assignmentRepository.existsByStudentIdAndFeeStructureIdAndStatusNotAndDeletedFalse(
+					studentId,
+					structure.getId(),
+					FeeAssignmentStatus.CANCELLED)) {
 				continue;
 			}
 			StudentFeeAssignment assignment = buildAssignment(
@@ -673,6 +682,7 @@ public class FeeService {
 		BigDecimal gross = assignments.stream().map(StudentFeeAssignmentResponse::grossAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
 		BigDecimal discount = assignments.stream().map(StudentFeeAssignmentResponse::discountAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
 		BigDecimal lateFee = assignments.stream().map(StudentFeeAssignmentResponse::lateFeeAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+		BigDecimal payable = assignments.stream().map(StudentFeeAssignmentResponse::payableAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
 		BigDecimal paid = assignments.stream().map(StudentFeeAssignmentResponse::paidAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
 		BigDecimal balance = assignments.stream().map(StudentFeeAssignmentResponse::balanceAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
 		List<StudentFeeAssignmentResponse> classFees = assignmentsBySource(assignments, FeeScope.CLASS);
@@ -693,6 +703,7 @@ public class FeeService {
 				gross,
 				discount,
 				lateFee,
+				payable,
 				paid,
 				balance,
 				assignments,
@@ -775,15 +786,26 @@ public class FeeService {
 	@Transactional
 	public StudentFeeAssignmentResponse applyDiscount(UUID assignmentId, FeeDiscountRequest request) {
 		StudentFeeAssignment assignment = loadAssignment(assignmentId);
+		ensureAssignmentCanChange(assignment, "apply discounts");
 		StudentFeeAssignmentResponse oldValue = feeMapper.toAssignmentResponse(assignment);
 		StudentFeeInstallment installment = request.installmentId() == null
 				? null
 				: assignment.findInstallment(request.installmentId())
 						.orElseThrow(() -> new ResourceNotFoundException("Fee installment", request.installmentId()));
-		BigDecimal basis = installment == null ? assignment.getBalanceAmount() : installment.getBalanceAmount();
+		BigDecimal basis = installment == null ? assignment.getDiscountableBalance() : installment.discountableBalance();
+		if (basis.signum() == 0) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"No outstanding fee balance is available for discount.");
+		}
 		BigDecimal amount = calculateDiscountAmount(request.calculationType(), request.value(), basis);
+		if (amount.signum() == 0) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Discount amount must be greater than zero.");
+		}
 		if (amount.compareTo(basis) > 0) {
-			throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Discount cannot exceed outstanding balance.");
+			throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Discount cannot exceed outstanding fee balance.");
 		}
 		FeeDiscount discount = new FeeDiscount(
 				assignment,
@@ -803,6 +825,7 @@ public class FeeService {
 	@Transactional
 	public StudentFeeAssignmentResponse assessLateFees(UUID assignmentId, AssessLateFeeRequest request) {
 		StudentFeeAssignment assignment = loadAssignment(assignmentId);
+		ensureAssignmentCanChange(assignment, "assess late fees");
 		StudentFeeAssignmentResponse oldValue = feeMapper.toAssignmentResponse(assignment);
 		assignment.assessLateFees(matchingLateFeeRules(assignment), defaultDate(request.asOf()));
 		StudentFeeAssignmentResponse response = feeMapper.toAssignmentResponse(assignment);
@@ -813,6 +836,7 @@ public class FeeService {
 	@Transactional
 	public FeeReceiptResponse collectPayment(UUID assignmentId, PaymentCollectionRequest request) {
 		StudentFeeAssignment assignment = loadAssignment(assignmentId);
+		ensureAssignmentCanChange(assignment, "collect payments");
 		StudentFeeAssignmentResponse oldAssignment = feeMapper.toAssignmentResponse(assignment);
 		if (request.assessLateFee()) {
 			assignment.assessLateFees(matchingLateFeeRules(assignment), request.paymentDate());
@@ -913,6 +937,7 @@ public class FeeService {
 	@Transactional
 	public StudentFeeAssignmentResponse deleteAssignment(UUID assignmentId) {
 		StudentFeeAssignment assignment = loadAssignment(assignmentId);
+		ensureAssignmentHasNoPaymentHistory(assignment, "deleted");
 		StudentFeeAssignmentResponse oldValue = feeMapper.toAssignmentResponse(assignment);
 		assignment.softDelete(currentActor());
 		StudentFeeAssignmentResponse response = feeMapper.toAssignmentResponse(assignment);
@@ -923,6 +948,8 @@ public class FeeService {
 	@Transactional
 	public StudentFeeAssignmentResponse cancelAssignment(UUID assignmentId) {
 		StudentFeeAssignment assignment = loadAssignment(assignmentId);
+		ensureAssignmentCanChange(assignment, "cancel");
+		ensureAssignmentHasNoPaymentHistory(assignment, "cancelled");
 		StudentFeeAssignmentResponse oldValue = feeMapper.toAssignmentResponse(assignment);
 		assignment.cancel();
 		StudentFeeAssignmentResponse response = feeMapper.toAssignmentResponse(assignment);
@@ -992,17 +1019,15 @@ public class FeeService {
 	public PageResponse<FeeDefaulterResponse> findDefaulters(DefaulterSearchRequest request, PageRequestDto pageRequest) {
 		LocalDate asOf = request.dueDate() == null ? defaultDate(request.asOf()) : request.dueDate();
 		BigDecimal minimumBalance = request.minimumBalance() == null ? BigDecimal.valueOf(0.01) : money(request.minimumBalance());
-		String sectionName = request.sectionId() == null
-				? request.sectionName()
-				: academicHierarchyService.loadSection(request.sectionId()).getName();
 		return PageResponse.from(
 				assignmentRepository.findDefaulters(
 						asOf,
 						request.academicYearId(),
 						request.classId(),
+						request.sectionId(),
 						blankToNull(request.academicYear()),
 						blankToNull(request.className()),
-						blankToNull(sectionName),
+						blankToNull(request.sectionName()),
 						request.sourceType(),
 						blankToNull(request.studentName()),
 						minimumBalance,
@@ -1020,7 +1045,8 @@ public class FeeService {
 				blankToNull(request.academicYear()),
 				blankToNull(request.className()),
 				blankToNull(request.sectionName()),
-				request.status()));
+				request.status(),
+				FeeAssignmentStatus.CANCELLED));
 	}
 
 	private StudentFeeAssignment buildAssignment(
@@ -1057,6 +1083,7 @@ public class FeeService {
 				assignments.stream().map(StudentFeeAssignmentResponse::grossAmount).reduce(BigDecimal.ZERO, BigDecimal::add),
 				assignments.stream().map(StudentFeeAssignmentResponse::discountAmount).reduce(BigDecimal.ZERO, BigDecimal::add),
 				assignments.stream().map(StudentFeeAssignmentResponse::lateFeeAmount).reduce(BigDecimal.ZERO, BigDecimal::add),
+				assignments.stream().map(StudentFeeAssignmentResponse::payableAmount).reduce(BigDecimal.ZERO, BigDecimal::add),
 				assignments.stream().map(StudentFeeAssignmentResponse::paidAmount).reduce(BigDecimal.ZERO, BigDecimal::add),
 				assignments.stream().map(StudentFeeAssignmentResponse::balanceAmount).reduce(BigDecimal.ZERO, BigDecimal::add),
 				assignments);
@@ -1177,6 +1204,23 @@ public class FeeService {
 	private StudentFeeAssignment loadAssignment(UUID assignmentId) {
 		return assignmentRepository.findDetailedByIdAndDeletedFalse(assignmentId)
 				.orElseThrow(() -> new ResourceNotFoundException("Student fee assignment", assignmentId));
+	}
+
+	private void ensureAssignmentCanChange(StudentFeeAssignment assignment, String action) {
+		if (assignment.getStatus() == FeeAssignmentStatus.CANCELLED) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Cancelled fee assignments cannot " + action + ".");
+		}
+	}
+
+	private void ensureAssignmentHasNoPaymentHistory(StudentFeeAssignment assignment, String targetState) {
+		if (assignment.getPaidAmount().signum() > 0 || !assignment.getPayments().isEmpty()) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Fee assignments with payment history cannot be " + targetState
+							+ ". Reverse, void, or refund payments first.");
+		}
 	}
 
 	private StudentFeeAssignmentResponse processPaymentAction(

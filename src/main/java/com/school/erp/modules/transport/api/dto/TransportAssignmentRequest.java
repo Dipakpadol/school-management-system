@@ -24,6 +24,6 @@ public record TransportAssignmentRequest(
 	}
 
 	public boolean appliesTransportFee() {
-		return Boolean.TRUE.equals(transportFeeApplicable);
+		return !Boolean.FALSE.equals(transportFeeApplicable);
 	}
 }

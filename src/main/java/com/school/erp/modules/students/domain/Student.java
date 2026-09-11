@@ -225,11 +225,10 @@ public class Student extends BaseEntity {
 			String sectionName,
 			String rollNumber,
 			LocalDate effectiveFrom) {
-		LocalDate previousEffectiveTo = effectiveFrom == null ? null : effectiveFrom.minusDays(1);
 		classAssignments.stream()
 				.filter(StudentClassAssignment::isActive)
 				.filter(assignment -> assignment.isForAcademicYear(academicYear))
-				.forEach(assignment -> assignment.deactivate(previousEffectiveTo));
+				.forEach(assignment -> assignment.deactivateBefore(effectiveFrom));
 		StudentClassAssignment assignment = new StudentClassAssignment(
 				this,
 				academicYear,
@@ -247,11 +246,10 @@ public class Student extends BaseEntity {
 			SectionEntity sectionEntity,
 			String rollNumber,
 			LocalDate effectiveFrom) {
-		LocalDate previousEffectiveTo = effectiveFrom == null ? null : effectiveFrom.minusDays(1);
 		classAssignments.stream()
 				.filter(StudentClassAssignment::isActive)
 				.filter(assignment -> assignment.isForAcademicYear(academicYear))
-				.forEach(assignment -> assignment.deactivate(previousEffectiveTo));
+				.forEach(assignment -> assignment.deactivateBefore(effectiveFrom));
 		StudentClassAssignment assignment = new StudentClassAssignment(
 				this,
 				academicYear,

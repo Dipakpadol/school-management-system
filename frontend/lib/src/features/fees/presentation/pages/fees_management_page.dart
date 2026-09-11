@@ -417,75 +417,105 @@ class _CategoryList extends ConsumerWidget {
   }
 }
 
-class _StructureList extends ConsumerWidget {
+class _StructureList extends ConsumerStatefulWidget {
   const _StructureList();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final structures = ref.watch(feeStructuresProvider);
+  ConsumerState<_StructureList> createState() => _StructureListState();
+}
+
+class _StructureListState extends ConsumerState<_StructureList> {
+  static const _pageSize = 20;
+
+  FeeStructureFilter _filter = const FeeStructureFilter(size: _pageSize);
+
+  @override
+  Widget build(BuildContext context) {
+    final structures = ref.watch(feeStructuresPageProvider(_filter));
 
     return structures.when(
-      data: (items) => _ListSurface(
+      data: (page) => _ListSurface(
         title: 'Fee structures',
         action: OutlinedButton.icon(
           onPressed: () => context.go(AppRoutes.newFeeStructure),
           icon: const Icon(Icons.add),
           label: const Text('Add fee structure'),
         ),
-        child: _ResponsiveList(
-          emptyMessage: 'No fee structures found.',
-          itemCount: items.length,
-          itemBuilder: (context, index) {
-            final structure = items[index];
-            return _InfoCard(
-              icon: Icons.account_tree_outlined,
-              title: structure.name,
-              subtitle:
-                  '${structure.academicYear} - ${structure.className}${structure.sectionName == null ? '' : ' ${structure.sectionName}'}',
-              trailing: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Row(
+        child: Column(
+          children: [
+            _ResponsiveList(
+              emptyMessage: 'No fee structures found.',
+              itemCount: page.content.length,
+              itemBuilder: (context, index) {
+                final structure = page.content[index];
+                return _InfoCard(
+                  icon: Icons.account_tree_outlined,
+                  title: structure.name,
+                  subtitle:
+                      '${structure.academicYear} - ${structure.className}${structure.sectionName == null ? '' : ' ${structure.sectionName}'}',
+                  trailing: Column(
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      MoneyText(structure.totalAmount, emphasized: true),
-                      PopupMenuButton<String>(
-                        tooltip: 'Structure actions',
-                        icon: const Icon(Icons.more_vert),
-                        itemBuilder: (context) => const [
-                          PopupMenuItem(
-                            value: 'assign',
-                            child: Text('Assign to class'),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          MoneyText(structure.totalAmount, emphasized: true),
+                          PopupMenuButton<String>(
+                            tooltip: 'Structure actions',
+                            icon: const Icon(Icons.more_vert),
+                            itemBuilder: (context) => const [
+                              PopupMenuItem(
+                                value: 'assign',
+                                child: Text('Assign to class'),
+                              ),
+                              PopupMenuItem(
+                                value: 'edit',
+                                child: Text('Edit'),
+                              ),
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Text('Delete'),
+                              ),
+                            ],
+                            onSelected: (value) {
+                              if (value == 'assign') {
+                                context.go(AppRoutes.newFeeAssignment);
+                              } else if (value == 'edit') {
+                                context.go(
+                                  AppRoutes.editFeeStructure(structure.id),
+                                );
+                              } else {
+                                _deleteStructure(context, structure);
+                              }
+                            },
                           ),
-                          PopupMenuItem(value: 'edit', child: Text('Edit')),
-                          PopupMenuItem(value: 'delete', child: Text('Delete')),
                         ],
-                        onSelected: (value) {
-                          if (value == 'assign') {
-                            context.go(AppRoutes.newFeeAssignment);
-                          } else if (value == 'edit') {
-                            context.go(
-                              AppRoutes.editFeeStructure(structure.id),
-                            );
-                          } else {
-                            _deleteStructure(context, ref, structure);
-                          }
-                        },
                       ),
+                      FeeStatusChip(status: structure.status),
                     ],
                   ),
-                  FeeStatusChip(status: structure.status),
-                ],
+                  onTap: () =>
+                      context.go(AppRoutes.editFeeStructure(structure.id)),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+            Card(
+              child: FeePaginationBar(
+                page: page.page,
+                size: page.size,
+                totalElements: page.totalElements,
+                totalPages: page.totalPages,
+                onPageChanged: _changePage,
               ),
-              onTap: () => context.go(AppRoutes.editFeeStructure(structure.id)),
-            );
-          },
+            ),
+          ],
         ),
       ),
       error: (error, _) => _ErrorBody(
         message: _message(error),
-        onRetry: () => ref.invalidate(feeStructuresProvider),
+        onRetry: () => ref.invalidate(feeStructuresPageProvider(_filter)),
       ),
       loading: () => const _LoadingBody(),
     );
@@ -493,7 +523,6 @@ class _StructureList extends ConsumerWidget {
 
   Future<void> _deleteStructure(
     BuildContext context,
-    WidgetRef ref,
     FeeStructureModel structure,
   ) async {
     final confirmed = await _confirm(context, 'Delete ${structure.name}?');
@@ -509,23 +538,38 @@ class _StructureList extends ConsumerWidget {
     result.when(
       success: (_) {
         ref.invalidate(feeStructuresProvider);
+        ref.invalidate(feeStructuresPageProvider(_filter));
         _snack(context, 'Fee structure deleted.');
       },
       failure: (failure) => _snack(context, failure.message),
     );
   }
+
+  void _changePage(int page) {
+    setState(() => _filter = _filter.copyWith(page: page));
+  }
 }
 
-class _AssignmentList extends ConsumerWidget {
+class _AssignmentList extends ConsumerStatefulWidget {
   const _AssignmentList();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    const filter = FeeListFilter();
-    final assignments = ref.watch(feeAssignmentsProvider(filter));
+  ConsumerState<_AssignmentList> createState() => _AssignmentListState();
+}
+
+class _AssignmentListState extends ConsumerState<_AssignmentList> {
+  static const _pageSize = 20;
+
+  FeeListFilter _filter = const FeeListFilter(size: _pageSize);
+  String? _paymentActionId;
+  String? _discountAssignmentId;
+
+  @override
+  Widget build(BuildContext context) {
+    final assignments = ref.watch(feeAssignmentsPageProvider(_filter));
 
     return assignments.when(
-      data: (items) => _ListSurface(
+      data: (page) => _ListSurface(
         title: 'Student fee assignments',
         action: Wrap(
           spacing: 8,
@@ -537,7 +581,7 @@ class _AssignmentList extends ConsumerWidget {
               label: const Text('Assign class fee'),
             ),
             OutlinedButton.icon(
-              onPressed: items.isEmpty
+              onPressed: page.content.isEmpty
                   ? null
                   : () => context.go(AppRoutes.feePayments),
               icon: const Icon(Icons.point_of_sale_outlined),
@@ -545,110 +589,191 @@ class _AssignmentList extends ConsumerWidget {
             ),
           ],
         ),
-        child: items.isEmpty
+        child: page.content.isEmpty
             ? const _AssignmentsEmptyState()
-            : _ResponsiveList(
-                emptyMessage: 'No fee assignments found.',
-                itemCount: items.length,
-                itemBuilder: (context, index) {
-                  final assignment = items[index];
-                  final completedPayments = assignment.payments
-                      .where((payment) => payment.status == 'COMPLETED')
-                      .toList(growable: false);
-                  final payment = completedPayments.isEmpty
-                      ? null
-                      : completedPayments.last;
-                  return _InfoCard(
-                    icon: Icons.assignment_ind_outlined,
-                    title: assignment.studentName,
-                    subtitle:
-                        '${assignment.admissionNumber} - '
-                        '${_sourceLabel(assignment.sourceType)} - '
-                        '${_assignmentContext(assignment)} - '
-                        '${assignment.feeStructureName}',
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Column(
+            : Column(
+                children: [
+                  _ResponsiveList(
+                    emptyMessage: 'No fee assignments found.',
+                    itemCount: page.content.length,
+                    itemBuilder: (context, index) {
+                      final assignment = page.content[index];
+                      final completedPayments = assignment.payments
+                          .where((payment) => payment.status == 'COMPLETED')
+                          .toList(growable: false);
+                      final payment = completedPayments.isEmpty
+                          ? null
+                          : completedPayments.last;
+                      final busy =
+                          _discountAssignmentId == assignment.id ||
+                          _paymentActionId == payment?.id;
+                      return _InfoCard(
+                        icon: Icons.assignment_ind_outlined,
+                        title: assignment.studentName,
+                        subtitle:
+                            '${assignment.admissionNumber} - '
+                            '${_sourceLabel(assignment.sourceType)} - '
+                            '${_assignmentContext(assignment)} - '
+                            '${assignment.feeStructureName}',
+                        trailing: Row(
                           mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            MoneyText(
-                              assignment.balanceAmount,
-                              emphasized: true,
-                            ),
-                            const SizedBox(height: 6),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              alignment: WrapAlignment.end,
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                FeeStatusChip(status: assignment.sourceType),
-                                FeeStatusChip(status: assignment.status),
+                                MoneyText(
+                                  assignment.balanceAmount,
+                                  emphasized: true,
+                                ),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  alignment: WrapAlignment.end,
+                                  children: [
+                                    FeeStatusChip(
+                                      status: assignment.sourceType,
+                                    ),
+                                    FeeStatusChip(status: assignment.status),
+                                  ],
+                                ),
                               ],
                             ),
-                          ],
-                        ),
-                        const SizedBox(width: 6),
-                        PopupMenuButton<String>(
-                          tooltip: 'Payment actions',
-                          icon: const Icon(Icons.more_vert),
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(
-                              value: 'collect',
-                              child: Text('Collect payment'),
-                            ),
-                            PopupMenuItem(
-                              value: 'reverse',
-                              enabled: payment != null,
-                              child: const Text('Reverse payment'),
-                            ),
-                            PopupMenuItem(
-                              value: 'void',
-                              enabled: payment != null,
-                              child: const Text('Void payment'),
-                            ),
-                            PopupMenuItem(
-                              value: 'refund',
-                              enabled: payment != null,
-                              child: const Text('Refund payment'),
-                            ),
-                          ],
-                          onSelected: (action) {
-                            if (action == 'collect') {
-                              context.go(
-                                AppRoutes.collectFeePaymentForAssignment(
-                                  assignment.id,
+                            const SizedBox(width: 6),
+                            PopupMenuButton<String>(
+                              tooltip: 'Payment actions',
+                              icon: busy
+                                  ? const SizedBox.square(
+                                      dimension: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.more_vert),
+                              itemBuilder: (context) => [
+                                const PopupMenuItem(
+                                  value: 'collect',
+                                  child: Text('Collect payment'),
                                 ),
-                              );
-                              return;
-                            }
-                            if (payment == null) {
-                              return;
-                            }
-                            _handlePaymentAction(
-                              context,
-                              ref,
-                              payment.id,
-                              action,
-                            );
-                          },
+                                PopupMenuItem(
+                                  value: 'discount',
+                                  enabled:
+                                      !busy &&
+                                      assignment.balanceAmount > 0 &&
+                                      assignment.status != 'CANCELLED',
+                                  child: const Text('Apply discount'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'reverse',
+                                  enabled: !busy && payment != null,
+                                  child: const Text('Reverse payment'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'void',
+                                  enabled: !busy && payment != null,
+                                  child: const Text('Void payment'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'refund',
+                                  enabled: !busy && payment != null,
+                                  child: const Text('Refund payment'),
+                                ),
+                              ],
+                              onSelected: (action) {
+                                if (action == 'collect') {
+                                  context.go(
+                                    AppRoutes.collectFeePaymentForAssignment(
+                                      assignment.id,
+                                    ),
+                                  );
+                                  return;
+                                }
+                                if (action == 'discount') {
+                                  _applyDiscount(assignment);
+                                  return;
+                                }
+                                if (payment == null) {
+                                  return;
+                                }
+                                _runPaymentAction(payment.id, action);
+                              },
+                            ),
+                          ],
                         ),
-                      ],
+                        onTap: () => context.go(
+                          AppRoutes.collectFeePaymentForAssignment(
+                            assignment.id,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    child: FeePaginationBar(
+                      page: page.page,
+                      size: page.size,
+                      totalElements: page.totalElements,
+                      totalPages: page.totalPages,
+                      onPageChanged: _changePage,
                     ),
-                    onTap: () => context.go(
-                      AppRoutes.collectFeePaymentForAssignment(assignment.id),
-                    ),
-                  );
-                },
+                  ),
+                ],
               ),
       ),
       error: (error, _) => _ErrorBody(
         message: _message(error),
-        onRetry: () => ref.invalidate(feeAssignmentsProvider(filter)),
+        onRetry: () => ref.invalidate(feeAssignmentsPageProvider(_filter)),
       ),
       loading: () => const _LoadingBody(),
     );
+  }
+
+  Future<void> _runPaymentAction(String paymentId, String action) async {
+    if (_paymentActionId != null) {
+      return;
+    }
+    setState(() => _paymentActionId = paymentId);
+    await _handlePaymentAction(
+      context,
+      ref,
+      paymentId,
+      action,
+      onSuccess: _refreshCurrentLists,
+    );
+    if (mounted) {
+      setState(() => _paymentActionId = null);
+    }
+  }
+
+  Future<void> _applyDiscount(StudentFeeAssignmentModel assignment) async {
+    if (_discountAssignmentId != null) {
+      return;
+    }
+    setState(() => _discountAssignmentId = assignment.id);
+    final applied = await _showDiscountDialog(context, ref, assignment);
+    if (mounted) {
+      setState(() => _discountAssignmentId = null);
+    }
+    if (applied) {
+      _refreshCurrentLists();
+    }
+  }
+
+  void _refreshCurrentLists() {
+    ref.invalidate(feeAssignmentsProvider(const FeeListFilter()));
+    ref.invalidate(feeAssignmentsPageProvider(_filter));
+    ref.invalidate(feeDefaultersProvider(const FeeDefaulterFilter()));
+    ref.invalidate(
+      feeDefaultersPageProvider(
+        const FeeDefaulterFilter(size: _pageSize),
+      ),
+    );
+  }
+
+  void _changePage(int page) {
+    setState(() => _filter = _filter.copyWith(page: page));
   }
 }
 
@@ -802,43 +927,79 @@ class _ReceiptHistoryState extends ConsumerState<_ReceiptHistory> {
   }
 }
 
-class _DefaulterList extends ConsumerWidget {
+class _DefaulterList extends ConsumerStatefulWidget {
   const _DefaulterList();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    const filter = FeeDefaulterFilter();
-    final defaulters = ref.watch(feeDefaultersProvider(filter));
+  ConsumerState<_DefaulterList> createState() => _DefaulterListState();
+}
+
+class _DefaulterListState extends ConsumerState<_DefaulterList> {
+  static const _pageSize = 20;
+
+  FeeDefaulterFilter _filter = const FeeDefaulterFilter(size: _pageSize);
+
+  @override
+  Widget build(BuildContext context) {
+    final defaulters = ref.watch(feeDefaultersPageProvider(_filter));
 
     return defaulters.when(
-      data: (items) => _ListSurface(
+      data: (page) => _ListSurface(
         title: 'Defaulter list',
-        child: _ResponsiveList(
-          emptyMessage: 'No defaulters found.',
-          itemCount: items.length,
-          itemBuilder: (context, index) {
-            final defaulter = items[index];
-            return _InfoCard(
-              icon: Icons.warning_amber_outlined,
-              title: defaulter.studentName,
-              subtitle:
-                  '${defaulter.admissionNumber} - ${defaulter.className}${defaulter.sectionName == null ? '' : ' ${defaulter.sectionName}'} - ${defaulter.overdueInstallments} overdue',
-              trailing: MoneyText(defaulter.balanceAmount, emphasized: true),
-              onTap: () => context.go(
-                AppRoutes.collectFeePaymentForAssignment(
-                  defaulter.assignmentId,
-                ),
+        child: Column(
+          children: [
+            _ResponsiveList(
+              emptyMessage: 'No defaulters found.',
+              itemCount: page.content.length,
+              itemBuilder: (context, index) {
+                final defaulter = page.content[index];
+                return _InfoCard(
+                  icon: Icons.warning_amber_outlined,
+                  title: defaulter.studentName,
+                  subtitle:
+                      '${defaulter.admissionNumber} - ${defaulter.academicYear} - ${defaulter.className}${defaulter.sectionName == null ? '' : ' ${defaulter.sectionName}'} - ${defaulter.sourceType}',
+                  trailing: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      MoneyText(defaulter.pendingAmount, emphasized: true),
+                      const SizedBox(height: 6),
+                      FeeStatusChip(
+                        status: defaulter.overdueDays > 0 ? 'OVERDUE' : 'DUE',
+                      ),
+                    ],
+                  ),
+                  onTap: () => context.go(
+                    AppRoutes.collectFeePaymentForAssignment(
+                      defaulter.assignmentId,
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+            Card(
+              child: FeePaginationBar(
+                page: page.page,
+                size: page.size,
+                totalElements: page.totalElements,
+                totalPages: page.totalPages,
+                onPageChanged: _changePage,
               ),
-            );
-          },
+            ),
+          ],
         ),
       ),
       error: (error, _) => _ErrorBody(
         message: _message(error),
-        onRetry: () => ref.invalidate(feeDefaultersProvider(filter)),
+        onRetry: () => ref.invalidate(feeDefaultersPageProvider(_filter)),
       ),
       loading: () => const _LoadingBody(),
     );
+  }
+
+  void _changePage(int page) {
+    setState(() => _filter = _filter.copyWith(page: page));
   }
 }
 
@@ -864,7 +1025,7 @@ class _ListSurface extends StatelessWidget {
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
             ),
-            ?action,
+            if (action != null) action!,
           ],
         ),
         const SizedBox(height: 16),
@@ -1019,6 +1180,11 @@ String? _required(String? value) {
   return null;
 }
 
+String? _blankToNull(String value) {
+  final text = value.trim();
+  return text.isEmpty ? null : text;
+}
+
 String _sourceLabel(String sourceType) {
   return switch (sourceType) {
     'HOSTEL' => 'Hostel Fees',
@@ -1058,8 +1224,9 @@ Future<void> _handlePaymentAction(
   BuildContext context,
   WidgetRef ref,
   String paymentId,
-  String action,
-) async {
+  String action, {
+  VoidCallback? onSuccess,
+}) async {
   final confirmed = await _confirm(
     context,
     '${action[0].toUpperCase()}${action.substring(1)} this payment?',
@@ -1080,10 +1247,201 @@ Future<void> _handlePaymentAction(
     success: (_) {
       ref.invalidate(feeAssignmentsProvider(const FeeListFilter()));
       ref.invalidate(feeDefaultersProvider(const FeeDefaulterFilter()));
+      onSuccess?.call();
       _snack(context, 'Payment action completed.');
     },
     failure: (failure) => _snack(context, failure.message),
   );
+}
+
+Future<bool> _showDiscountDialog(
+  BuildContext context,
+  WidgetRef ref,
+  StudentFeeAssignmentModel assignment,
+) async {
+  final formKey = GlobalKey<FormState>();
+  final value = TextEditingController();
+  final reason = TextEditingController();
+  final approvedBy = TextEditingController();
+  var discountType = 'WAIVER';
+  var calculationType = 'FLAT';
+  var saving = false;
+  var applied = false;
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) {
+      return StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          return AlertDialog(
+            title: Text('Discount / concession - ${assignment.studentName}'),
+            content: Form(
+              key: formKey,
+              child: SizedBox(
+                width: 520,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      initialValue: discountType,
+                      decoration: const InputDecoration(
+                        labelText: 'Discount type',
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'SCHOLARSHIP',
+                          child: Text('Scholarship'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'SIBLING',
+                          child: Text('Sibling'),
+                        ),
+                        DropdownMenuItem(value: 'STAFF', child: Text('Staff')),
+                        DropdownMenuItem(
+                          value: 'WAIVER',
+                          child: Text('Waiver'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'PROMOTIONAL',
+                          child: Text('Promotional'),
+                        ),
+                        DropdownMenuItem(value: 'OTHER', child: Text('Other')),
+                      ],
+                      onChanged: saving
+                          ? null
+                          : (value) {
+                              if (value != null) {
+                                setDialogState(() => discountType = value);
+                              }
+                            },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: calculationType,
+                      decoration: const InputDecoration(
+                        labelText: 'Calculation',
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'FLAT', child: Text('Flat')),
+                        DropdownMenuItem(
+                          value: 'PERCENTAGE',
+                          child: Text('Percentage'),
+                        ),
+                      ],
+                      onChanged: saving
+                          ? null
+                          : (value) {
+                              if (value != null) {
+                                setDialogState(() => calculationType = value);
+                              }
+                            },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: value,
+                      enabled: !saving,
+                      keyboardType: TextInputType.number,
+                      validator: (raw) {
+                        final number = double.tryParse(raw?.trim() ?? '');
+                        if (number == null || number <= 0) {
+                          return 'Enter a value above 0';
+                        }
+                        if (calculationType == 'PERCENTAGE' && number > 100) {
+                          return 'Enter 100 or less';
+                        }
+                        if (calculationType == 'FLAT' &&
+                            number > assignment.balanceAmount) {
+                          return 'Cannot exceed outstanding amount';
+                        }
+                        return null;
+                      },
+                      decoration: InputDecoration(
+                        labelText: calculationType == 'PERCENTAGE'
+                            ? 'Percentage'
+                            : 'Amount',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: reason,
+                      enabled: !saving,
+                      maxLines: 2,
+                      validator: _required,
+                      decoration: const InputDecoration(labelText: 'Reason'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: approvedBy,
+                      enabled: !saving,
+                      decoration: const InputDecoration(
+                        labelText: 'Approved by',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: saving
+                    ? null
+                    : () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton.icon(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        if (!(formKey.currentState?.validate() ?? false)) {
+                          return;
+                        }
+                        setDialogState(() => saving = true);
+                        final result = await ref
+                            .read(feesRepositoryProvider)
+                            .applyDiscount(assignment.id, {
+                              'discountType': discountType,
+                              'calculationType': calculationType,
+                              'value':
+                                  double.tryParse(value.text.trim()) ?? 0,
+                              'reason': reason.text.trim(),
+                              'approvedBy': _blankToNull(approvedBy.text),
+                            });
+                        if (!dialogContext.mounted) {
+                          return;
+                        }
+                        result.when(
+                          success: (_) {
+                            applied = true;
+                            Navigator.of(dialogContext).pop();
+                          },
+                          failure: (failure) {
+                            setDialogState(() => saving = false);
+                            _snack(dialogContext, failure.message);
+                          },
+                        );
+                      },
+                icon: saving
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.percent_outlined),
+                label: const Text('Apply'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  value.dispose();
+  reason.dispose();
+  approvedBy.dispose();
+  if (applied && context.mounted) {
+    _snack(context, 'Discount applied.');
+  }
+  return applied;
 }
 
 Future<void> _runFeeDownload(
@@ -1135,7 +1493,11 @@ Future<void> _runPickedFeeImport(
   result.when(
     success: (_) {
       ref.invalidate(feeStructuresProvider);
+      ref.invalidate(
+        feeStructuresPageProvider(const FeeStructureFilter(size: 20)),
+      );
       ref.invalidate(feeAssignmentsProvider(const FeeListFilter()));
+      ref.invalidate(feeAssignmentsPageProvider(const FeeListFilter(size: 20)));
       _snack(context, 'Fee import completed.');
     },
     failure: (failure) => _snack(context, failure.message),

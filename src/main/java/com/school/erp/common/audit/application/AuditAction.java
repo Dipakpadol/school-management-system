@@ -7,6 +7,7 @@ public final class AuditAction {
 	public static final String DELETE = "DELETE";
 	public static final String STATUS_CHANGE = "STATUS_CHANGE";
 	public static final String LOGIN = "LOGIN";
+	public static final String LOGIN_FAILED = "LOGIN_FAILED";
 	public static final String LOGOUT = "LOGOUT";
 	public static final String PAYMENT = "PAYMENT";
 	public static final String PAYMENT_REVERSAL = "PAYMENT_REVERSAL";

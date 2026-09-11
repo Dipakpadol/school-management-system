@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/network/page_payload.dart' as core;
 import '../../../../core/result/result.dart';
 import '../../../fees/data/models/fee_models.dart';
 import '../../../students/data/models/student_models.dart';
@@ -45,6 +46,25 @@ final hostelFeeStructuresProvider =
               academicYearId: filter.academicYearId,
               hostelId: filter.hostelId,
               roomType: filter.roomType,
+            ),
+      );
+    });
+
+final hostelFeeStructuresPageProvider =
+    FutureProvider.family<
+      core.PagePayload<HostelFeeStructureModel>,
+      HostelFeeStructureFilter
+    >((ref, filter) {
+      return _resolve(
+        ref
+            .watch(hostelRepositoryProvider)
+            .feeStructuresPage(
+              academicYearId: filter.academicYearId,
+              hostelId: filter.hostelId,
+              roomType: filter.roomType,
+              status: filter.status,
+              page: filter.page,
+              size: filter.size,
             ),
       );
     });
@@ -134,20 +154,54 @@ class HostelFeeStructureFilter {
     this.academicYearId,
     this.hostelId,
     this.roomType,
+    this.status,
+    this.page = 0,
+    this.size = 100,
   });
 
   final String? academicYearId;
   final String? hostelId;
   final String? roomType;
+  final String? status;
+  final int page;
+  final int size;
+
+  HostelFeeStructureFilter copyWith({
+    String? academicYearId,
+    String? hostelId,
+    String? roomType,
+    String? status,
+    int? page,
+    int? size,
+  }) {
+    return HostelFeeStructureFilter(
+      academicYearId: academicYearId ?? this.academicYearId,
+      hostelId: hostelId ?? this.hostelId,
+      roomType: roomType ?? this.roomType,
+      status: status ?? this.status,
+      page: page ?? this.page,
+      size: size ?? this.size,
+    );
+  }
 
   @override
   bool operator ==(Object other) {
     return other is HostelFeeStructureFilter &&
         other.academicYearId == academicYearId &&
         other.hostelId == hostelId &&
-        other.roomType == roomType;
+        other.roomType == roomType &&
+        other.status == status &&
+        other.page == page &&
+        other.size == size;
   }
 
   @override
-  int get hashCode => Object.hash(academicYearId, hostelId, roomType);
+  int get hashCode => Object.hash(
+    academicYearId,
+    hostelId,
+    roomType,
+    status,
+    page,
+    size,
+  );
 }

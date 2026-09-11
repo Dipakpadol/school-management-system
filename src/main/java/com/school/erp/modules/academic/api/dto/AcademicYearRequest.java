@@ -14,5 +14,7 @@ public record AcademicYearRequest(
 		@NotNull @Schema(example = "2026-04-01") LocalDate startDate,
 		@NotNull @Schema(example = "2027-03-31") LocalDate endDate,
 		@Schema(example = "true") boolean active,
+		@Schema(description = "Marks this year as the current operating academic year.", example = "false")
+		Boolean current,
 		@Size(max = 500) @Schema(example = "Regular academic session.") String description) {
 }

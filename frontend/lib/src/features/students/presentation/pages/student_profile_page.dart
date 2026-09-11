@@ -422,9 +422,12 @@ class _FeesTab extends ConsumerWidget {
                   items: {
                     'Student': item.studentName,
                     'Admission no.': item.admissionNumber,
-                    'Total assigned': _money(item.grossAmount),
+                    'Original amount': _money(item.grossAmount),
+                    'Discount': _money(item.discountAmount),
+                    'Late fee': _money(item.lateFeeAmount),
+                    'Payable': _money(item.payableAmount),
                     'Total paid': _money(item.paidAmount),
-                    'Total pending': _money(item.balanceAmount),
+                    'Outstanding': _money(item.balanceAmount),
                   },
                 ),
                 const SizedBox(height: 18),
@@ -542,14 +545,33 @@ class _FeeGroupSection extends StatelessWidget {
                   if (fee.installments.isNotEmpty)
                     'Due ${_dateLabel(fee.installments.first.dueDate)}',
                   _feeScopeLabel(fee),
+                  'Original ${_money(fee.grossAmount)}',
+                  'Discount ${_money(fee.discountAmount)}',
+                  'Late fee ${_money(fee.lateFeeAmount)}',
+                  'Payable ${_money(fee.payableAmount)}',
                   'Paid ${_money(fee.paidAmount)}',
-                  'Pending ${_money(fee.balanceAmount)}',
+                  'Outstanding ${_money(fee.balanceAmount)}',
                 ].where((value) => value.trim().isNotEmpty).join(' - '),
               ),
               trailing: _SmallBadge(label: fee.status),
             ),
           ExpandedGrid(
-            items: {'Paid': _money(paid), 'Pending': _money(pending)},
+            items: {
+              'Original': _money(
+                fees.fold(0.0, (sum, fee) => sum + fee.grossAmount),
+              ),
+              'Discount': _money(
+                fees.fold(0.0, (sum, fee) => sum + fee.discountAmount),
+              ),
+              'Late fee': _money(
+                fees.fold(0.0, (sum, fee) => sum + fee.lateFeeAmount),
+              ),
+              'Payable': _money(
+                fees.fold(0.0, (sum, fee) => sum + fee.payableAmount),
+              ),
+              'Paid': _money(paid),
+              'Outstanding': _money(pending),
+            },
           ),
         ],
       ],
@@ -1064,13 +1086,36 @@ Future<void> _showStudentTransportDialog(
                   ? const AsyncValue.data(<TransportPickupPointModel>[])
                   : ref.watch(transportPickupPointsProvider(selectedRouteId!));
               final routeItems = routes.maybeWhen(
-                data: (items) => items,
+                data: (items) => items
+                    .where(
+                      (route) =>
+                          route.status == 'ACTIVE' ||
+                          route.id == existingAssignment?.routeId,
+                    )
+                    .toList(growable: false),
                 orElse: () => const <TransportRouteModel>[],
               );
+              if (selectedRouteId != null &&
+                  routeItems.every((route) => route.id != selectedRouteId)) {
+                selectedRouteId = null;
+                selectedPickupPointId = null;
+              }
               final pickupItems = pickupPoints.maybeWhen(
-                data: (items) => items,
+                data: (items) => items
+                    .where(
+                      (point) =>
+                          point.status == 'ACTIVE' ||
+                          point.id == existingAssignment?.pickupPointId,
+                    )
+                    .toList(growable: false),
                 orElse: () => const <TransportPickupPointModel>[],
               );
+              if (selectedPickupPointId != null &&
+                  pickupItems.every(
+                    (point) => point.id != selectedPickupPointId,
+                  )) {
+                selectedPickupPointId = null;
+              }
               final selectedRoute = _transportRouteById(
                 routeItems,
                 selectedRouteId,
@@ -1531,6 +1576,7 @@ Future<void> _showStudentHostelAssignmentDialog(
                             studentHostelAllocationsProvider(student.id),
                           );
                           ref.invalidate(studentHostelFeesProvider(student.id));
+                          ref.invalidate(studentFeeSummaryProvider(student.id));
                           ref.invalidate(hostelRoomsProvider(academicYearId));
                           _snack(
                             context,
@@ -1617,6 +1663,7 @@ Future<void> _vacateStudentHostelAllocation(
                   }
                   ref.invalidate(studentHostelAllocationsProvider(student.id));
                   ref.invalidate(studentHostelFeesProvider(student.id));
+                  ref.invalidate(studentFeeSummaryProvider(student.id));
                   _snack(context, 'Hostel allocation vacated.');
                   Navigator.of(context).pop();
                 },
@@ -2854,6 +2901,7 @@ void _refreshStudentTransportState(
   String academicYearId,
 ) {
   ref.invalidate(studentProfileProvider(studentId));
+  ref.invalidate(studentFeeSummaryProvider(studentId));
   ref.invalidate(
     studentCurrentTransportAssignmentProvider(
       StudentTransportAssignmentKey(

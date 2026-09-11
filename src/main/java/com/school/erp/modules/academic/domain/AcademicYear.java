@@ -41,6 +41,9 @@ public class AcademicYear extends BaseEntity {
 	@Column(nullable = false)
 	private boolean active = true;
 
+	@Column(name = "is_current", nullable = false)
+	private boolean currentYear;
+
 	@Column(length = 500)
 	private String description;
 
@@ -69,6 +72,16 @@ public class AcademicYear extends BaseEntity {
 
 	public void deactivate() {
 		active = false;
+		currentYear = false;
+	}
+
+	public void markCurrent() {
+		currentYear = true;
+		active = true;
+	}
+
+	public void clearCurrent() {
+		currentYear = false;
 	}
 
 	private String normalizeCode(String value) {

@@ -6,6 +6,7 @@ class AcademicYearModel {
     required this.startDate,
     required this.endDate,
     required this.active,
+    required this.current,
     this.description,
   });
 
@@ -17,6 +18,7 @@ class AcademicYearModel {
       startDate: DateTime.parse(json['startDate'] as String),
       endDate: DateTime.parse(json['endDate'] as String),
       active: json['active'] as bool? ?? true,
+      current: json['current'] as bool? ?? false,
       description: json['description'] as String?,
     );
   }
@@ -27,6 +29,7 @@ class AcademicYearModel {
   final DateTime startDate;
   final DateTime endDate;
   final bool active;
+  final bool current;
   final String? description;
 }
 

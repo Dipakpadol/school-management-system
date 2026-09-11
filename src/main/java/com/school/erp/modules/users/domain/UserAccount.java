@@ -102,12 +102,18 @@ public class UserAccount extends BaseEntity {
 		roles.add(role);
 	}
 
+	public void removeRole(String roleName) {
+		String normalizedRoleName = Role.normalizeRoleName(roleName);
+		roles.removeIf(role -> role.getName().equals(normalizedRoleName));
+	}
+
 	public void removeRole(RoleName roleName) {
-		roles.removeIf(role -> role.getName().equals(roleName.name()));
+		removeRole(roleName.name());
 	}
 
 	public boolean hasRole(RoleName roleName) {
-		return roles.stream().anyMatch(role -> role.getName().equals(roleName.name()));
+		return roles.stream()
+				.anyMatch(role -> role.isActive() && role.getName().equals(roleName.name()));
 	}
 
 	public void replaceRoles(Set<Role> roles) {
@@ -155,7 +161,10 @@ public class UserAccount extends BaseEntity {
 	}
 
 	public boolean isLocked() {
-		return status == UserStatus.LOCKED || (lockedUntil != null && lockedUntil.isAfter(Instant.now()));
+		if (lockedUntil != null) {
+			return lockedUntil.isAfter(Instant.now());
+		}
+		return status == UserStatus.LOCKED;
 	}
 
 	public boolean canAuthenticate() {
@@ -174,6 +183,14 @@ public class UserAccount extends BaseEntity {
 			status = UserStatus.LOCKED;
 			lockedUntil = Instant.now().plus(lockDuration);
 		}
+	}
+
+	public boolean unlockIfTemporaryLockExpired() {
+		if (status == UserStatus.LOCKED && lockedUntil != null && !lockedUntil.isAfter(Instant.now())) {
+			activate();
+			return true;
+		}
+		return false;
 	}
 
 	public void changePassword(String passwordHash) {

@@ -11,6 +11,7 @@ import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../fees/presentation/controllers/fees_providers.dart';
+import '../../../fees/presentation/widgets/fee_widgets.dart';
 import '../../../students/data/models/student_models.dart';
 import '../../../students/presentation/controllers/students_providers.dart';
 import '../../data/models/hostel_models.dart';
@@ -27,11 +28,15 @@ class HostelManagementPage extends ConsumerStatefulWidget {
 }
 
 class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
+  static const _feePageSize = 20;
+
   String? _selectedAcademicYearId;
   String? _selectedHostelId;
   String? _selectedFeeAcademicYearId;
   String? _selectedFeeHostelId;
+  String? _selectedFeeStatus;
   String _feeRoomType = '';
+  int _feePage = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -125,11 +130,14 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                       ref.invalidate(hostelRoomsProvider(effectiveYearId));
                     }
                     ref.invalidate(
-                      hostelFeeStructuresProvider(
+                      hostelFeeStructuresPageProvider(
                         HostelFeeStructureFilter(
                           academicYearId: _selectedFeeAcademicYearId,
                           hostelId: _selectedFeeHostelId,
                           roomType: _feeRoomType,
+                          status: _selectedFeeStatus,
+                          page: _feePage,
+                          size: _feePageSize,
                         ),
                       ),
                     );
@@ -263,8 +271,11 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
       academicYearId: selectedFeeYearId,
       hostelId: selectedFeeHostelId,
       roomType: _feeRoomType,
+      status: _selectedFeeStatus,
+      page: _feePage,
+      size: _feePageSize,
     );
-    final structures = ref.watch(hostelFeeStructuresProvider(filter));
+    final structures = ref.watch(hostelFeeStructuresPageProvider(filter));
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -289,8 +300,10 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                     for (final year in years)
                       DropdownMenuItem(value: year.id, child: Text(year.name)),
                   ],
-                  onChanged: (value) =>
-                      setState(() => _selectedFeeAcademicYearId = value),
+                  onChanged: (value) => setState(() {
+                    _selectedFeeAcademicYearId = value;
+                    _feePage = 0;
+                  }),
                 ),
               ),
               SizedBox(
@@ -309,15 +322,40 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                         child: Text(hostel.name),
                       ),
                   ],
-                  onChanged: (value) =>
-                      setState(() => _selectedFeeHostelId = value),
+                  onChanged: (value) => setState(() {
+                    _selectedFeeHostelId = value;
+                    _feePage = 0;
+                  }),
                 ),
               ),
               SizedBox(
                 width: 220,
                 child: TextField(
                   decoration: const InputDecoration(labelText: 'Room type'),
-                  onChanged: (value) => setState(() => _feeRoomType = value),
+                  onChanged: (value) => setState(() {
+                    _feeRoomType = value;
+                    _feePage = 0;
+                  }),
+                ),
+              ),
+              SizedBox(
+                width: 220,
+                child: DropdownButtonFormField<String?>(
+                  initialValue: _selectedFeeStatus,
+                  decoration: const InputDecoration(labelText: 'Status'),
+                  items: const [
+                    DropdownMenuItem(value: null, child: Text('All statuses')),
+                    DropdownMenuItem(value: 'ACTIVE', child: Text('Active')),
+                    DropdownMenuItem(value: 'DRAFT', child: Text('Draft')),
+                    DropdownMenuItem(
+                      value: 'INACTIVE',
+                      child: Text('Inactive'),
+                    ),
+                  ],
+                  onChanged: (value) => setState(() {
+                    _selectedFeeStatus = value;
+                    _feePage = 0;
+                  }),
                 ),
               ),
               AppButton(
@@ -338,75 +376,97 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
           const SizedBox(height: 16),
           Expanded(
             child: structures.when(
-              data: (items) {
+              data: (page) {
+                final items = page.content;
                 if (items.isEmpty) {
                   return const _InlineEmpty(
                     icon: Icons.account_balance_wallet_outlined,
                     message: 'No hostel fee structures found.',
                   );
                 }
-                return AppDataTable<HostelFeeStructureModel>(
-                  items: items,
-                  columns: [
-                    AppTableColumn(
-                      label: 'Fee',
-                      cellBuilder: (_, item) => Text(item.feeStructureName),
-                    ),
-                    AppTableColumn(
-                      label: 'Hostel',
-                      cellBuilder: (_, item) => Text(item.hostelName),
-                    ),
-                    AppTableColumn(
-                      label: 'Scope',
-                      cellBuilder: (_, item) =>
-                          Text(item.roomNumber ?? item.roomType ?? 'All'),
-                    ),
-                    AppTableColumn(
-                      label: 'Category',
-                      cellBuilder: (_, item) => Text(item.feeCategoryName),
-                    ),
-                    AppTableColumn(
-                      label: 'Amount',
-                      numeric: true,
-                      cellBuilder: (_, item) => Text(_money(item.amount)),
-                    ),
-                    AppTableColumn(
-                      label: 'Due date',
-                      cellBuilder: (_, item) => Text(_dateLabel(item.dueDate)),
-                    ),
-                    AppTableColumn(
-                      label: 'Status',
-                      cellBuilder: (_, item) =>
-                          _StatusBadge(label: item.status),
-                    ),
-                    AppTableColumn(
-                      label: 'Actions',
-                      cellBuilder: (context, item) => Wrap(
-                        spacing: 2,
-                        children: [
-                          IconButton(
-                            tooltip: 'Assign fee',
-                            onPressed: () => _showAssignFeeDialog(item),
-                            icon: const Icon(Icons.person_add_alt_outlined),
+                return Column(
+                  children: [
+                    Expanded(
+                      child: AppDataTable<HostelFeeStructureModel>(
+                        items: items,
+                        columns: [
+                          AppTableColumn(
+                            label: 'Fee',
+                            cellBuilder: (_, item) =>
+                                Text(item.feeStructureName),
                           ),
-                          IconButton(
-                            tooltip: 'Edit',
-                            onPressed: () => _showFeeStructureDialog(
-                              years: years,
-                              hostels: hostels,
-                              initialAcademicYearId: item.academicYearId,
-                              initialHostelId: item.hostelId,
-                              structure: item,
+                          AppTableColumn(
+                            label: 'Hostel',
+                            cellBuilder: (_, item) => Text(item.hostelName),
+                          ),
+                          AppTableColumn(
+                            label: 'Scope',
+                            cellBuilder: (_, item) =>
+                                Text(item.roomNumber ?? item.roomType ?? 'All'),
+                          ),
+                          AppTableColumn(
+                            label: 'Category',
+                            cellBuilder: (_, item) =>
+                                Text(item.feeCategoryName),
+                          ),
+                          AppTableColumn(
+                            label: 'Amount',
+                            numeric: true,
+                            cellBuilder: (_, item) => Text(_money(item.amount)),
+                          ),
+                          AppTableColumn(
+                            label: 'Due date',
+                            cellBuilder: (_, item) =>
+                                Text(_dateLabel(item.dueDate)),
+                          ),
+                          AppTableColumn(
+                            label: 'Status',
+                            cellBuilder: (_, item) =>
+                                _StatusBadge(label: item.status),
+                          ),
+                          AppTableColumn(
+                            label: 'Actions',
+                            cellBuilder: (context, item) => Wrap(
+                              spacing: 2,
+                              children: [
+                                IconButton(
+                                  tooltip: 'Assign fee',
+                                  onPressed: () => _showAssignFeeDialog(item),
+                                  icon: const Icon(
+                                    Icons.person_add_alt_outlined,
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: 'Edit',
+                                  onPressed: () => _showFeeStructureDialog(
+                                    years: years,
+                                    hostels: hostels,
+                                    initialAcademicYearId: item.academicYearId,
+                                    initialHostelId: item.hostelId,
+                                    structure: item,
+                                  ),
+                                  icon: const Icon(Icons.edit_outlined),
+                                ),
+                                IconButton(
+                                  tooltip: 'Delete',
+                                  onPressed: () =>
+                                      _deleteFeeStructure(item, filter),
+                                  icon: const Icon(Icons.delete_outline),
+                                ),
+                              ],
                             ),
-                            icon: const Icon(Icons.edit_outlined),
-                          ),
-                          IconButton(
-                            tooltip: 'Delete',
-                            onPressed: () => _deleteFeeStructure(item, filter),
-                            icon: const Icon(Icons.delete_outline),
                           ),
                         ],
                       ),
+                    ),
+                    const Divider(height: 1),
+                    FeePaginationBar(
+                      page: page.page,
+                      size: page.size,
+                      totalElements: page.totalElements,
+                      totalPages: page.totalPages,
+                      onPageChanged: (page) =>
+                          setState(() => _feePage = page),
                     ),
                   ],
                 );
@@ -414,7 +474,7 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
               error: (error, _) => AppErrorState(
                 message: _message(error),
                 onRetry: () =>
-                    ref.invalidate(hostelFeeStructuresProvider(filter)),
+                    ref.invalidate(hostelFeeStructuresPageProvider(filter)),
               ),
               loading: () => const AppLoadingState(label: 'Loading fees'),
             ),
@@ -931,6 +991,22 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                             ref.invalidate(
                               hostelRoomsProvider(key.academicYearId),
                             );
+                            final studentId = selectedStudentId;
+                            if (studentId != null) {
+                              ref.invalidate(studentFeeSummaryProvider(studentId));
+                              ref.invalidate(
+                                studentCurrentHostelAllocationProvider(
+                                  StudentHostelAllocationKey(
+                                    studentId: studentId,
+                                    academicYearId: key.academicYearId,
+                                  ),
+                                ),
+                              );
+                              ref.invalidate(
+                                studentHostelAllocationsProvider(studentId),
+                              );
+                              ref.invalidate(studentHostelFeesProvider(studentId));
+                            }
                             _snack(context, 'Student assigned to hostel room.');
                             Navigator.of(context).pop();
                           },
@@ -1087,6 +1163,19 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                       success: (_) {
                         ref.invalidate(hostelRoomDetailsProvider(currentKey));
                         ref.invalidate(hostelRoomsProvider(academicYearId));
+                        ref.invalidate(studentFeeSummaryProvider(student.studentId));
+                        ref.invalidate(
+                          studentCurrentHostelAllocationProvider(
+                            StudentHostelAllocationKey(
+                              studentId: student.studentId,
+                              academicYearId: academicYearId,
+                            ),
+                          ),
+                        );
+                        ref.invalidate(
+                          studentHostelAllocationsProvider(student.studentId),
+                        );
+                        ref.invalidate(studentHostelFeesProvider(student.studentId));
                         _snack(context, 'Hostel room changed.');
                         Navigator.of(context).pop();
                       },
@@ -1145,6 +1234,19 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                   success: (_) {
                     ref.invalidate(hostelRoomDetailsProvider(key));
                     ref.invalidate(hostelRoomsProvider(key.academicYearId));
+                    ref.invalidate(studentFeeSummaryProvider(student.studentId));
+                    ref.invalidate(
+                      studentCurrentHostelAllocationProvider(
+                        StudentHostelAllocationKey(
+                          studentId: student.studentId,
+                          academicYearId: key.academicYearId,
+                        ),
+                      ),
+                    );
+                    ref.invalidate(
+                      studentHostelAllocationsProvider(student.studentId),
+                    );
+                    ref.invalidate(studentHostelFeesProvider(student.studentId));
                     _snack(context, 'Student vacated from room.');
                     Navigator.of(context).pop();
                   },
@@ -1450,6 +1552,18 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                             ),
                           ),
                         );
+                        ref.invalidate(
+                          hostelFeeStructuresPageProvider(
+                            HostelFeeStructureFilter(
+                              academicYearId: _selectedFeeAcademicYearId,
+                              hostelId: _selectedFeeHostelId,
+                              roomType: _feeRoomType,
+                              status: _selectedFeeStatus,
+                              page: _feePage,
+                              size: _feePageSize,
+                            ),
+                          ),
+                        );
                         _snack(context, 'Hostel fee saved.');
                         Navigator.of(context).pop();
                       },
@@ -1507,6 +1621,7 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
     result.when(
       success: (_) {
         ref.invalidate(hostelFeeStructuresProvider(filter));
+        ref.invalidate(hostelFeeStructuresPageProvider(filter));
         _snack(context, 'Hostel fee deleted.');
       },
       failure: (failure) => _snack(context, failure.message),
@@ -1593,6 +1708,11 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                     }
                     result.when(
                       success: (_) {
+                        final studentId = selectedStudentId;
+                        if (studentId != null) {
+                          ref.invalidate(studentFeeSummaryProvider(studentId));
+                          ref.invalidate(studentHostelFeesProvider(studentId));
+                        }
                         _snack(context, 'Hostel fee assigned.');
                         Navigator.of(context).pop();
                       },
@@ -1778,14 +1898,10 @@ class _RoomsPanel extends ConsumerWidget {
                       cellBuilder: (_, room) => Text(room.roomType),
                     ),
                     AppTableColumn(
-                      label: 'Capacity',
+                      label: 'Occupied / Capacity',
                       numeric: true,
-                      cellBuilder: (_, room) => Text('${room.capacity}'),
-                    ),
-                    AppTableColumn(
-                      label: 'Occupied',
-                      numeric: true,
-                      cellBuilder: (_, room) => Text('${room.occupiedCount}'),
+                      cellBuilder: (_, room) =>
+                          Text('${room.occupiedCount} / ${room.capacity}'),
                     ),
                     AppTableColumn(
                       label: 'Available',

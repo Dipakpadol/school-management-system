@@ -861,58 +861,95 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
     required VoidCallback onRemove,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 2,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 14),
-              child: Text(row.subjectName),
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  row.subjectName,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Remove subject',
+                onPressed: onRemove,
+                icon: const Icon(Icons.delete_outline),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 150,
-            child: OutlinedButton.icon(
-              onPressed: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: row.examDate,
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime(2100),
-                );
-                if (picked != null) {
-                  onDateChanged(picked);
-                }
-              },
-              icon: const Icon(Icons.calendar_today_outlined),
-              label: Text(_dateLabel(row.examDate)),
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 120,
-            child: TextField(
-              controller: row.maxMarks,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Max marks'),
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 130,
-            child: TextField(
-              controller: row.passingMarks,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Passing'),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Remove subject',
-            onPressed: onRemove,
-            icon: const Icon(Icons.delete_outline),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SizedBox(
+                width: 150,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: row.examDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      onDateChanged(picked);
+                    }
+                  },
+                  icon: const Icon(Icons.calendar_today_outlined),
+                  label: Text(_dateLabel(row.examDate)),
+                ),
+              ),
+              SizedBox(
+                width: 90,
+                child: TextField(
+                  controller: row.startTime,
+                  keyboardType: TextInputType.datetime,
+                  decoration: const InputDecoration(
+                    labelText: 'Start',
+                    hintText: 'HH:mm',
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 90,
+                child: TextField(
+                  controller: row.endTime,
+                  keyboardType: TextInputType.datetime,
+                  decoration: const InputDecoration(
+                    labelText: 'End',
+                    hintText: 'HH:mm',
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 130,
+                child: TextField(
+                  controller: row.room,
+                  decoration: const InputDecoration(labelText: 'Room'),
+                ),
+              ),
+              SizedBox(
+                width: 110,
+                child: TextField(
+                  controller: row.maxMarks,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Max marks'),
+                ),
+              ),
+              SizedBox(
+                width: 110,
+                child: TextField(
+                  controller: row.passingMarks,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Passing'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -948,6 +985,9 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
     for (final row in rows) {
       final maxMarks = double.tryParse(row.maxMarks.text.trim());
       final passingMarks = double.tryParse(row.passingMarks.text.trim());
+      final startTime = _blankToNull(row.startTime.text);
+      final endTime = _blankToNull(row.endTime.text);
+      final room = _blankToNull(row.room.text);
       if (maxMarks == null || maxMarks <= 0) {
         _snack('Enter valid max marks for ${row.subjectName}.');
         return null;
@@ -956,11 +996,30 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
         _snack('Passing marks cannot exceed max marks for ${row.subjectName}.');
         return null;
       }
+      if (!_validTime(startTime)) {
+        _snack('Enter start time as HH:mm for ${row.subjectName}.');
+        return null;
+      }
+      if (!_validTime(endTime)) {
+        _snack('Enter end time as HH:mm for ${row.subjectName}.');
+        return null;
+      }
+      final startMinutes = _timeMinutes(startTime);
+      final endMinutes = _timeMinutes(endTime);
+      if (startMinutes != null &&
+          endMinutes != null &&
+          endMinutes <= startMinutes) {
+        _snack('End time must be after start time for ${row.subjectName}.');
+        return null;
+      }
       subjects.add({
         'subjectId': row.subjectId,
         'examDate': _dateLabel(row.examDate),
+        if (startTime != null) 'startTime': startTime,
+        if (endTime != null) 'endTime': endTime,
+        if (room != null) 'room': room,
         'maxMarks': maxMarks,
-        'passingMarks': ?passingMarks,
+        if (passingMarks != null) 'passingMarks': passingMarks,
       });
     }
     return {
@@ -1137,9 +1196,15 @@ class _ScheduleSubjectDraft {
     required this.subjectId,
     required this.subjectName,
     required this.examDate,
+    required String startTime,
+    required String endTime,
+    required String room,
     required String maxMarks,
     required String passingMarks,
-  }) : maxMarks = TextEditingController(text: maxMarks),
+  }) : startTime = TextEditingController(text: startTime),
+       endTime = TextEditingController(text: endTime),
+       room = TextEditingController(text: room),
+       maxMarks = TextEditingController(text: maxMarks),
        passingMarks = TextEditingController(text: passingMarks);
 
   factory _ScheduleSubjectDraft.fromSubject(ExamSubjectModel subject) {
@@ -1147,6 +1212,9 @@ class _ScheduleSubjectDraft {
       subjectId: subject.subjectId,
       subjectName: subject.subjectName,
       examDate: DateTime.now(),
+      startTime: '',
+      endTime: '',
+      room: '',
       maxMarks: '',
       passingMarks: '',
     );
@@ -1157,6 +1225,9 @@ class _ScheduleSubjectDraft {
       subjectId: subject.subjectId,
       subjectName: subject.subjectName,
       examDate: subject.examDate,
+      startTime: _shortTime(subject.startTime),
+      endTime: _shortTime(subject.endTime),
+      room: subject.room ?? '',
       maxMarks: subject.maxMarks == 0
           ? ''
           : subject.maxMarks.toStringAsFixed(0),
@@ -1169,10 +1240,16 @@ class _ScheduleSubjectDraft {
   final String subjectId;
   final String subjectName;
   DateTime examDate;
+  final TextEditingController startTime;
+  final TextEditingController endTime;
+  final TextEditingController room;
   final TextEditingController maxMarks;
   final TextEditingController passingMarks;
 
   void dispose() {
+    startTime.dispose();
+    endTime.dispose();
+    room.dispose();
     maxMarks.dispose();
     passingMarks.dispose();
   }
@@ -1188,9 +1265,47 @@ String? _blankToNull(String value) {
   return value.trim().isEmpty ? null : value.trim();
 }
 
+String _shortTime(String? value) {
+  if (value == null || value.isEmpty) {
+    return '';
+  }
+  return value.length >= 5 ? value.substring(0, 5) : value;
+}
+
+bool _validTime(String? value) {
+  return value == null || _timeMinutes(value) != null;
+}
+
+int? _timeMinutes(String? value) {
+  if (value == null) {
+    return null;
+  }
+  final parts = value.split(':');
+  if (parts.length < 2) {
+    return null;
+  }
+  final hour = int.tryParse(parts[0]);
+  final minute = int.tryParse(parts[1]);
+  if (hour == null || minute == null) {
+    return null;
+  }
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    return null;
+  }
+  return hour * 60 + minute;
+}
+
 String _scheduleSubjectSummary(ExamScheduleSubjectModel subject) {
   final passing = subject.passingMarks == null
       ? ''
       : ', Pass ${subject.passingMarks!.toStringAsFixed(0)}';
-  return '${subject.subjectName} ${_dateLabel(subject.examDate)} Max ${subject.maxMarks.toStringAsFixed(0)}$passing';
+  final start = _shortTime(subject.startTime);
+  final end = _shortTime(subject.endTime);
+  final time = start.isEmpty && end.isEmpty
+      ? ''
+      : ', ${start.isEmpty ? '-' : start}-${end.isEmpty ? '-' : end}';
+  final room = _blankToNull(subject.room ?? '') == null
+      ? ''
+      : ', ${subject.room!.trim()}';
+  return '${subject.subjectName} ${_dateLabel(subject.examDate)}$time$room Max ${subject.maxMarks.toStringAsFixed(0)}$passing';
 }

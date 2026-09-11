@@ -52,7 +52,9 @@ public class JwtService {
 	public List<String> roles(UserAccount user) {
 		Set<String> roles = new TreeSet<>();
 		for (Role role : user.getRoles()) {
-			roles.add(role.getName());
+			if (role.isActive()) {
+				roles.add(role.getName());
+			}
 		}
 		return List.copyOf(roles);
 	}
@@ -60,8 +62,13 @@ public class JwtService {
 	public List<String> permissions(UserAccount user) {
 		Set<String> permissions = new TreeSet<>();
 		for (Role role : user.getRoles()) {
+			if (!role.isActive()) {
+				continue;
+			}
 			for (Permission permission : role.getPermissions()) {
-				permissions.add(permission.getCode());
+				if (permission.isActive()) {
+					permissions.add(permission.getCode());
+				}
 			}
 		}
 		return List.copyOf(permissions);

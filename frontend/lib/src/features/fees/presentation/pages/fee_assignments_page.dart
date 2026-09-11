@@ -22,13 +22,18 @@ class FeeAssignmentsPage extends ConsumerStatefulWidget {
 }
 
 class _FeeAssignmentsPageState extends ConsumerState<FeeAssignmentsPage> {
+  static const int _pageSize = 20;
+
   final _searchController = TextEditingController();
 
   String? _academicYearId;
   String? _classId;
   String? _sectionId;
+  String? _feeCategoryId;
+  String? _feeStructureId;
+  String? _sourceType;
   String? _status;
-  FeeListFilter _filter = const FeeListFilter();
+  FeeListFilter _filter = const FeeListFilter(size: _pageSize);
 
   @override
   void dispose() {
@@ -39,7 +44,7 @@ class _FeeAssignmentsPageState extends ConsumerState<FeeAssignmentsPage> {
   @override
   Widget build(BuildContext context) {
     final years = ref.watch(academicYearsProvider);
-    final assignments = ref.watch(feeAssignmentsProvider(_filter));
+    final assignments = ref.watch(feeAssignmentsPageProvider(_filter));
 
     return AdminShell(
       title: 'Fee Assignments',
@@ -56,7 +61,8 @@ class _FeeAssignmentsPageState extends ConsumerState<FeeAssignmentsPage> {
           _Header(
             onBack: () => context.go(AppRoutes.fees),
             onNew: () => context.go(AppRoutes.newFeeAssignment),
-            onRefresh: () => ref.invalidate(feeAssignmentsProvider(_filter)),
+            onRefresh: () =>
+                ref.invalidate(feeAssignmentsPageProvider(_filter)),
           ),
           const SizedBox(height: 12),
           years.when(
@@ -69,10 +75,14 @@ class _FeeAssignmentsPageState extends ConsumerState<FeeAssignmentsPage> {
           ),
           const SizedBox(height: 16),
           assignments.when(
-            data: _AssignmentsTable.new,
+            data: (page) => _AssignmentsTable(
+              page: page,
+              onPageChanged: _changePage,
+            ),
             error: (error, _) => AppErrorState(
               message: _message(error),
-              onRetry: () => ref.invalidate(feeAssignmentsProvider(_filter)),
+              onRetry: () =>
+                  ref.invalidate(feeAssignmentsPageProvider(_filter)),
             ),
             loading: () => const AppLoadingState(label: 'Loading assignments'),
           ),
@@ -88,6 +98,17 @@ class _FeeAssignmentsPageState extends ConsumerState<FeeAssignmentsPage> {
     final sections = _classId == null
         ? null
         : ref.watch(sectionsByClassProvider(_classId!));
+    final categories = ref.watch(feeCategoriesProvider);
+    final structures = ref.watch(
+      feeStructuresPageProvider(
+        FeeStructureFilter(
+          academicYearId: _academicYearId,
+          classId: _classId,
+          status: 'ACTIVE',
+          size: 100,
+        ),
+      ),
+    );
 
     return Card(
       child: Padding(
@@ -118,14 +139,15 @@ class _FeeAssignmentsPageState extends ConsumerState<FeeAssignmentsPage> {
                           child: Text(year.name),
                         ),
                     ],
-                    onChanged: (value) {
-                      setState(() {
-                        _academicYearId = value;
-                        _classId = null;
-                        _sectionId = null;
-                      });
-                    },
-                  ),
+                            onChanged: (value) {
+                              setState(() {
+                                _academicYearId = value;
+                                _classId = null;
+                                _sectionId = null;
+                                _feeStructureId = null;
+                              });
+                            },
+                          ),
                 ),
                 _FieldBox(
                   child: classes == null
@@ -166,6 +188,7 @@ class _FeeAssignmentsPageState extends ConsumerState<FeeAssignmentsPage> {
                               setState(() {
                                 _classId = value;
                                 _sectionId = null;
+                                _feeStructureId = null;
                               });
                             },
                           ),
@@ -225,6 +248,117 @@ class _FeeAssignmentsPageState extends ConsumerState<FeeAssignmentsPage> {
                           ),
                           loading: () => const LinearProgressIndicator(),
                         ),
+                ),
+                _FieldBox(
+                  child: categories.when(
+                    data: (items) => DropdownButtonFormField<String?>(
+                      initialValue: _feeCategoryId,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Fee category',
+                        prefixIcon: Icon(Icons.category_outlined),
+                      ),
+                      items: [
+                        const DropdownMenuItem(
+                          value: null,
+                          child: Text('All categories'),
+                        ),
+                        for (final category in items)
+                          DropdownMenuItem(
+                            value: category.id,
+                            child: Text(category.name),
+                          ),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _feeCategoryId = value;
+                          _feeStructureId = null;
+                        });
+                      },
+                    ),
+                    error: (error, _) => _InlineError(
+                      message: _message(error),
+                      onRetry: () => ref.invalidate(feeCategoriesProvider),
+                    ),
+                    loading: () => const LinearProgressIndicator(),
+                  ),
+                ),
+                _FieldBox(
+                  child: structures.when(
+                    data: (page) {
+                      final items = _feeCategoryId == null
+                          ? page.content
+                          : page.content
+                                .where(
+                                  (structure) => structure.items.any(
+                                    (item) =>
+                                        item.categoryId == _feeCategoryId,
+                                  ),
+                                )
+                                .toList(growable: false);
+                      final selected = items.any(
+                        (structure) => structure.id == _feeStructureId,
+                      )
+                          ? _feeStructureId
+                          : null;
+                      return DropdownButtonFormField<String?>(
+                        initialValue: selected,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Fee structure',
+                          prefixIcon: Icon(Icons.account_tree_outlined),
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('All structures'),
+                          ),
+                          for (final structure in items)
+                            DropdownMenuItem(
+                              value: structure.id,
+                              child: Text(structure.name),
+                            ),
+                        ],
+                        onChanged: (value) {
+                          setState(() => _feeStructureId = value);
+                        },
+                      );
+                    },
+                    error: (error, _) => _InlineError(
+                      message: _message(error),
+                      onRetry: () => ref.invalidate(
+                        feeStructuresPageProvider(
+                          FeeStructureFilter(
+                            academicYearId: _academicYearId,
+                            classId: _classId,
+                            status: 'ACTIVE',
+                            size: 100,
+                          ),
+                        ),
+                      ),
+                    ),
+                    loading: () => const LinearProgressIndicator(),
+                  ),
+                ),
+                _FieldBox(
+                  child: DropdownButtonFormField<String?>(
+                    initialValue: _sourceType,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Fee source',
+                      prefixIcon: Icon(Icons.account_tree_outlined),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: null, child: Text('All sources')),
+                      DropdownMenuItem(value: 'CLASS', child: Text('Class')),
+                      DropdownMenuItem(value: 'HOSTEL', child: Text('Hostel')),
+                      DropdownMenuItem(
+                        value: 'TRANSPORT',
+                        child: Text('Transport'),
+                      ),
+                    ],
+                    onChanged: (value) => setState(() => _sourceType = value),
+                  ),
                 ),
                 _FieldBox(
                   child: DropdownButtonFormField<String?>(
@@ -301,8 +435,13 @@ class _FeeAssignmentsPageState extends ConsumerState<FeeAssignmentsPage> {
         academicYearId: _academicYearId,
         classId: _classId,
         sectionId: _sectionId,
+        feeCategoryId: _feeCategoryId,
+        feeStructureId: _feeStructureId,
+        sourceType: _sourceType,
         status: _status,
         query: _blankToNull(_searchController.text),
+        page: 0,
+        size: _pageSize,
       );
     });
   }
@@ -312,10 +451,17 @@ class _FeeAssignmentsPageState extends ConsumerState<FeeAssignmentsPage> {
       _academicYearId = null;
       _classId = null;
       _sectionId = null;
+      _feeCategoryId = null;
+      _feeStructureId = null;
+      _sourceType = null;
       _status = null;
       _searchController.clear();
-      _filter = const FeeListFilter();
+      _filter = const FeeListFilter(size: _pageSize);
     });
+  }
+
+  void _changePage(int page) {
+    setState(() => _filter = _filter.copyWith(page: page));
   }
 }
 
@@ -381,12 +527,17 @@ class _Header extends StatelessWidget {
 }
 
 class _AssignmentsTable extends StatelessWidget {
-  const _AssignmentsTable(this.items);
+  const _AssignmentsTable({
+    required this.page,
+    required this.onPageChanged,
+  });
 
-  final List<StudentFeeAssignmentModel> items;
+  final PagePayload<StudentFeeAssignmentModel> page;
+  final ValueChanged<int> onPageChanged;
 
   @override
   Widget build(BuildContext context) {
+    final items = page.content;
     if (items.isEmpty) {
       return const Card(
         child: Padding(
@@ -398,61 +549,74 @@ class _AssignmentsTable extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: AppDataTable<StudentFeeAssignmentModel>(
-          items: items,
-          onRowTap: (assignment) => context.go(
-            AppRoutes.collectFeePaymentForAssignment(assignment.id),
-          ),
-          columns: [
-            AppTableColumn(
-              label: 'Student',
-              cellBuilder: (_, item) => _TwoLine(
-                title: item.studentName,
-                subtitle: item.admissionNumber,
+        child: Column(
+          children: [
+            AppDataTable<StudentFeeAssignmentModel>(
+              items: items,
+              onRowTap: (assignment) => context.go(
+                AppRoutes.collectFeePaymentForAssignment(assignment.id),
               ),
+              columns: [
+                AppTableColumn(
+                  label: 'Student',
+                  cellBuilder: (_, item) => _TwoLine(
+                    title: item.studentName,
+                    subtitle: item.admissionNumber,
+                  ),
+                ),
+                AppTableColumn(
+                  label: 'Academic year',
+                  cellBuilder: (_, item) => Text(item.academicYear),
+                ),
+                AppTableColumn(
+                  label: 'Class',
+                  cellBuilder: (_, item) => Text(item.className),
+                ),
+                AppTableColumn(
+                  label: 'Section',
+                  cellBuilder: (_, item) => Text(item.sectionName ?? '-'),
+                ),
+                AppTableColumn(
+                  label: 'Fee structure',
+                  cellBuilder: (_, item) => _TwoLine(
+                    title: item.feeStructureName,
+                    subtitle: item.feeCategoryName,
+                  ),
+                ),
+                AppTableColumn(
+                  label: 'Source',
+                  cellBuilder: (_, item) =>
+                      FeeStatusChip(status: item.sourceType),
+                ),
+                AppTableColumn(
+                  label: 'Amount',
+                  numeric: true,
+                  cellBuilder: (_, item) => MoneyText(item.grossAmount),
+                ),
+                AppTableColumn(
+                  label: 'Paid',
+                  numeric: true,
+                  cellBuilder: (_, item) => MoneyText(item.paidAmount),
+                ),
+                AppTableColumn(
+                  label: 'Pending',
+                  numeric: true,
+                  cellBuilder: (_, item) =>
+                      MoneyText(item.balanceAmount, emphasized: true),
+                ),
+                AppTableColumn(
+                  label: 'Status',
+                  cellBuilder: (_, item) => FeeStatusChip(status: item.status),
+                ),
+              ],
             ),
-            AppTableColumn(
-              label: 'Academic year',
-              cellBuilder: (_, item) => Text(item.academicYear),
-            ),
-            AppTableColumn(
-              label: 'Class',
-              cellBuilder: (_, item) => Text(item.className),
-            ),
-            AppTableColumn(
-              label: 'Section',
-              cellBuilder: (_, item) => Text(item.sectionName ?? '-'),
-            ),
-            AppTableColumn(
-              label: 'Fee structure',
-              cellBuilder: (_, item) => _TwoLine(
-                title: item.feeStructureName,
-                subtitle: item.feeCategoryName,
-              ),
-            ),
-            AppTableColumn(
-              label: 'Source',
-              cellBuilder: (_, item) => FeeStatusChip(status: item.sourceType),
-            ),
-            AppTableColumn(
-              label: 'Amount',
-              numeric: true,
-              cellBuilder: (_, item) => MoneyText(item.grossAmount),
-            ),
-            AppTableColumn(
-              label: 'Paid',
-              numeric: true,
-              cellBuilder: (_, item) => MoneyText(item.paidAmount),
-            ),
-            AppTableColumn(
-              label: 'Pending',
-              numeric: true,
-              cellBuilder: (_, item) =>
-                  MoneyText(item.balanceAmount, emphasized: true),
-            ),
-            AppTableColumn(
-              label: 'Status',
-              cellBuilder: (_, item) => FeeStatusChip(status: item.status),
+            const Divider(height: 1),
+            FeePaginationBar(
+              page: page.page,
+              size: page.size,
+              totalElements: page.totalElements,
+              totalPages: page.totalPages,
+              onPageChanged: onPageChanged,
             ),
           ],
         ),

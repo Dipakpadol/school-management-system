@@ -80,6 +80,11 @@ public class AcademicHierarchyService {
 		return mapper.toAcademicYearResponse(loadAcademicYear(academicYearId));
 	}
 
+	@Transactional(readOnly = true)
+	public AcademicYearResponse getCurrentAcademicYear() {
+		return mapper.toAcademicYearResponse(resolveCurrentAcademicYear());
+	}
+
 	@Transactional
 	public AcademicYearResponse createAcademicYear(AcademicYearRequest request) {
 		validateAcademicYearRequest(request, null);
@@ -92,6 +97,7 @@ public class AcademicHierarchyService {
 		}
 		AcademicYear academicYear = new AcademicYear(code, request.name(), request.startDate(), request.endDate());
 		academicYear.update(code, request.name(), request.startDate(), request.endDate(), request.active(), request.description());
+		applyCurrentFlag(academicYear, request.current(), null);
 		AcademicYearResponse response = mapper.toAcademicYearResponse(academicYearRepository.save(academicYear));
 		audit("AcademicYear", response.id(), "CREATE", null, response);
 		return response;
@@ -114,8 +120,25 @@ public class AcademicHierarchyService {
 					throw new BusinessException(ErrorCode.CONFLICT, "Academic year name already exists: " + request.name());
 				});
 		academicYear.update(code, request.name(), request.startDate(), request.endDate(), request.active(), request.description());
+		applyCurrentFlag(academicYear, request.current(), academicYearId);
 		AcademicYearResponse response = mapper.toAcademicYearResponse(academicYear);
 		audit("AcademicYear", academicYearId, "UPDATE", oldValue, response);
+		return response;
+	}
+
+	@Transactional
+	public AcademicYearResponse setCurrentAcademicYear(UUID academicYearId) {
+		AcademicYear academicYear = loadAcademicYear(academicYearId);
+		AcademicYearResponse oldValue = mapper.toAcademicYearResponse(academicYear);
+		if (!academicYear.isActive()) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Only an active academic year can be marked current.");
+		}
+		academicYearRepository.clearCurrentYearExcept(academicYearId);
+		academicYear.markCurrent();
+		AcademicYearResponse response = mapper.toAcademicYearResponse(academicYear);
+		audit("AcademicYear", academicYearId, "CURRENT_CHANGED", oldValue, response);
 		return response;
 	}
 
@@ -128,6 +151,7 @@ public class AcademicHierarchyService {
 					ErrorCode.BUSINESS_RULE_VIOLATION,
 					"Academic year has classes. Delete or move classes before deleting the academic year.");
 		}
+		academicYear.clearCurrent();
 		academicYear.softDelete(currentActor());
 		audit("AcademicYear", academicYearId, "DELETE", oldValue, Map.of("deleted", true, "academicYearId", academicYearId));
 		return mapper.toAcademicYearResponse(academicYear);
@@ -238,10 +262,10 @@ public class AcademicHierarchyService {
 	public DivisionResponse deleteDivision(UUID divisionId) {
 		SectionEntity section = loadSection(divisionId);
 		DivisionResponse oldValue = toDivisionResponse(section);
-		if (studentClassAssignmentRepository.countActiveBySectionId(divisionId) > 0) {
+		if (studentClassAssignmentRepository.countBySectionId(divisionId) > 0) {
 			throw new BusinessException(
 					ErrorCode.BUSINESS_RULE_VIOLATION,
-					"Division has active students. Move students before deleting the division.");
+					"Division has student assignment history. Move or archive assignments before deleting the division.");
 		}
 		section.softDelete(currentActor());
 		audit("Division", divisionId, "DELETE", oldValue, Map.of("deleted", true, "divisionId", divisionId));
@@ -495,6 +519,11 @@ public class AcademicHierarchyService {
 		if (request.startDate().isAfter(request.endDate())) {
 			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Academic year start date must be before end date.");
 		}
+		if (Boolean.TRUE.equals(request.current()) && !request.active()) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Only an active academic year can be marked current.");
+		}
 		if (request.active() && academicYearRepository.existsOverlappingActiveYear(request.startDate(), request.endDate(), excludedId)) {
 			throw new BusinessException(
 					ErrorCode.CONFLICT,
@@ -532,6 +561,34 @@ public class AcademicHierarchyService {
 
 	private String academicYearCode(AcademicYearRequest request) {
 		return StringUtils.hasText(request.code()) ? request.code().trim() : request.name().trim();
+	}
+
+	private AcademicYear resolveCurrentAcademicYear() {
+		LocalDate today = LocalDate.now();
+		return academicYearRepository.findFirstByCurrentYearTrueAndDeletedFalseOrderByStartDateDescNameAsc()
+				.or(() -> academicYearRepository
+						.findFirstByActiveTrueAndStartDateLessThanEqualAndEndDateGreaterThanEqualAndDeletedFalseOrderByStartDateDescNameAsc(
+								today,
+								today))
+				.or(() -> academicYearRepository.findFirstByActiveTrueAndDeletedFalseOrderByStartDateDescNameAsc())
+				.orElseThrow(() -> new ResourceNotFoundException("Current academic year", today));
+	}
+
+	private void applyCurrentFlag(AcademicYear academicYear, Boolean current, UUID excludedId) {
+		if (current == null) {
+			return;
+		}
+		if (current) {
+			if (!academicYear.isActive()) {
+				throw new BusinessException(
+						ErrorCode.BUSINESS_RULE_VIOLATION,
+						"Only an active academic year can be marked current.");
+			}
+			academicYearRepository.clearCurrentYearExcept(excludedId);
+			academicYear.markCurrent();
+			return;
+		}
+		academicYear.clearCurrent();
 	}
 
 	private String classCode(ClassRequest request) {

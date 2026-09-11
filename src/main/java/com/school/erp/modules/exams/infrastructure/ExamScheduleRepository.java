@@ -1,5 +1,7 @@
 package com.school.erp.modules.exams.infrastructure;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -73,6 +75,55 @@ public interface ExamScheduleRepository extends BaseRepository<ExamSchedule, UUI
 			@Param("sectionId") UUID sectionId,
 			@Param("examTypeId") UUID examTypeId,
 			@Param("subjectId") UUID subjectId,
+			@Param("excludedId") UUID excludedId);
+
+	@Query("""
+			select count(subjectRow) > 0
+			from ExamSchedule schedule
+			join schedule.subjects subjectRow
+			where schedule.deleted = false
+			  and subjectRow.deleted = false
+			  and schedule.academicYear.id = :academicYearId
+			  and schedule.classEntity.id = :classId
+			  and schedule.section.id = :sectionId
+			  and schedule.examType.id = :examTypeId
+			  and subjectRow.subject.id = :subjectId
+			  and (:excludedId is null or schedule.id <> :excludedId)
+			""")
+	boolean existsDuplicateSubject(
+			@Param("academicYearId") UUID academicYearId,
+			@Param("classId") UUID classId,
+			@Param("sectionId") UUID sectionId,
+			@Param("examTypeId") UUID examTypeId,
+			@Param("subjectId") UUID subjectId,
+			@Param("excludedId") UUID excludedId);
+
+	@Query("""
+			select count(subjectRow) > 0
+			from ExamSchedule schedule
+			join schedule.subjects subjectRow
+			where schedule.deleted = false
+			  and subjectRow.deleted = false
+			  and schedule.academicYear.id = :academicYearId
+			  and schedule.classEntity.id = :classId
+			  and schedule.section.id = :sectionId
+			  and subjectRow.examDate = :examDate
+			  and (:excludedId is null or schedule.id <> :excludedId)
+			  and (
+					:startTime is null
+					or :endTime is null
+					or subjectRow.startTime is null
+					or subjectRow.endTime is null
+					or (:startTime < subjectRow.endTime and :endTime > subjectRow.startTime)
+			  )
+			""")
+	boolean existsSubjectSlotConflict(
+			@Param("academicYearId") UUID academicYearId,
+			@Param("classId") UUID classId,
+			@Param("sectionId") UUID sectionId,
+			@Param("examDate") LocalDate examDate,
+			@Param("startTime") LocalTime startTime,
+			@Param("endTime") LocalTime endTime,
 			@Param("excludedId") UUID excludedId);
 
 	long countByExamTypeIdAndDeletedFalse(UUID examTypeId);

@@ -142,6 +142,9 @@ class ExamScheduleSubjectModel {
     required this.subjectName,
     required this.examDate,
     required this.maxMarks,
+    this.startTime,
+    this.endTime,
+    this.room,
     this.passingMarks,
   });
 
@@ -151,6 +154,9 @@ class ExamScheduleSubjectModel {
       subjectId: json['subjectId'] as String? ?? '',
       subjectName: json['subjectName'] as String? ?? '',
       examDate: _parseDate(json['examDate']),
+      startTime: json['startTime'] as String?,
+      endTime: json['endTime'] as String?,
+      room: json['room'] as String?,
       maxMarks: _parseDouble(json['maxMarks']),
       passingMarks: _parseNullableDouble(json['passingMarks']),
     );
@@ -162,6 +168,9 @@ class ExamScheduleSubjectModel {
       subjectId: json['subjectId'] as String? ?? '',
       subjectName: json['subjectName'] as String? ?? '',
       examDate: _parseDate(json['examDate']),
+      startTime: json['startTime'] as String?,
+      endTime: json['endTime'] as String?,
+      room: json['room'] as String?,
       maxMarks: _parseDouble(json['maxMarks']),
       passingMarks: _parseNullableDouble(json['passingMarks']),
     );
@@ -171,6 +180,9 @@ class ExamScheduleSubjectModel {
   final String subjectId;
   final String subjectName;
   final DateTime examDate;
+  final String? startTime;
+  final String? endTime;
+  final String? room;
   final double maxMarks;
   final double? passingMarks;
 }

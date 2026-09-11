@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/network/page_payload.dart' as core;
 import '../../../../core/result/result.dart';
 import '../../../students/data/models/student_models.dart';
 import '../../data/models/transport_models.dart';
@@ -54,6 +55,25 @@ final transportFeeStructuresProvider =
       );
     });
 
+final transportFeeStructuresPageProvider =
+    FutureProvider.family<
+      core.PagePayload<TransportFeeStructureModel>,
+      TransportFeeStructuresKey
+    >((ref, key) {
+      return _resolve(
+        ref
+            .watch(transportRepositoryProvider)
+            .feeStructuresPage(
+              academicYearId: key.academicYearId,
+              routeId: key.routeId,
+              pickupPointId: key.pickupPointId,
+              status: key.status,
+              page: key.page,
+              size: key.size,
+            ),
+      );
+    });
+
 final transportVehicleDetailsProvider =
     FutureProvider.family<
       TransportVehicleDetailsModel,
@@ -84,12 +104,34 @@ class TransportFeeStructuresKey {
     this.routeId,
     this.pickupPointId,
     this.status,
+    this.page = 0,
+    this.size = 100,
   });
 
   final String? academicYearId;
   final String? routeId;
   final String? pickupPointId;
   final String? status;
+  final int page;
+  final int size;
+
+  TransportFeeStructuresKey copyWith({
+    String? academicYearId,
+    String? routeId,
+    String? pickupPointId,
+    String? status,
+    int? page,
+    int? size,
+  }) {
+    return TransportFeeStructuresKey(
+      academicYearId: academicYearId ?? this.academicYearId,
+      routeId: routeId ?? this.routeId,
+      pickupPointId: pickupPointId ?? this.pickupPointId,
+      status: status ?? this.status,
+      page: page ?? this.page,
+      size: size ?? this.size,
+    );
+  }
 
   @override
   bool operator ==(Object other) {
@@ -97,12 +139,14 @@ class TransportFeeStructuresKey {
         other.academicYearId == academicYearId &&
         other.routeId == routeId &&
         other.pickupPointId == pickupPointId &&
-        other.status == status;
+        other.status == status &&
+        other.page == page &&
+        other.size == size;
   }
 
   @override
   int get hashCode =>
-      Object.hash(academicYearId, routeId, pickupPointId, status);
+      Object.hash(academicYearId, routeId, pickupPointId, status, page, size);
 }
 
 Future<T> _resolve<T>(Future<Result<T>> resultFuture) async {

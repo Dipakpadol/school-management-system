@@ -7,7 +7,10 @@ import java.util.UUID;
 import com.school.erp.common.domain.BaseRepository;
 import com.school.erp.modules.hostel.domain.HostelRoom;
 
+import jakarta.persistence.LockModeType;
+
 import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,6 +19,11 @@ public interface HostelRoomRepository extends BaseRepository<HostelRoom, UUID> {
 	@EntityGraph(attributePaths = { "hostel", "beds" })
 	@Query("select distinct room from HostelRoom room where room.id = :id and room.deleted = false")
 	Optional<HostelRoom> findDetailedByIdAndDeletedFalse(@Param("id") UUID id);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@EntityGraph(attributePaths = { "hostel", "beds" })
+	@Query("select distinct room from HostelRoom room where room.id = :id and room.deleted = false")
+	Optional<HostelRoom> lockDetailedByIdAndDeletedFalse(@Param("id") UUID id);
 
 	List<HostelRoom> findByActiveTrueAndDeletedFalseOrderByHostelNameAscRoomNumberAsc();
 

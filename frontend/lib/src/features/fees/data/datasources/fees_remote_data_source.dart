@@ -54,6 +54,8 @@ class FeesRemoteDataSource {
     String? academicYearId,
     String? classId,
     String? status,
+    int page = 0,
+    int size = 20,
   }) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.feeStructures,
@@ -62,6 +64,8 @@ class FeesRemoteDataSource {
           'academicYearId': academicYearId,
         if (classId != null && classId.isNotEmpty) 'classId': classId,
         if (status != null && status.isNotEmpty) 'status': status,
+        'page': page,
+        'size': size,
       },
     );
     return PagePayload.fromJson(
@@ -109,8 +113,13 @@ class FeesRemoteDataSource {
     String? academicYearId,
     String? classId,
     String? sectionId,
+    String? feeCategoryId,
+    String? feeStructureId,
+    String? sourceType,
     String? status,
     String? query,
+    int page = 0,
+    int size = 20,
   }) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.feeAssignments,
@@ -119,10 +128,17 @@ class FeesRemoteDataSource {
           'academicYearId': academicYearId,
         if (classId != null && classId.isNotEmpty) 'classId': classId,
         if (sectionId != null && sectionId.isNotEmpty) 'sectionId': sectionId,
+        if (feeCategoryId != null && feeCategoryId.isNotEmpty)
+          'feeCategoryId': feeCategoryId,
+        if (feeStructureId != null && feeStructureId.isNotEmpty)
+          'feeStructureId': feeStructureId,
+        if (sourceType != null && sourceType.isNotEmpty)
+          'sourceType': sourceType,
         if (status != null && status.isNotEmpty) 'status': status,
         if (query != null && query.trim().isNotEmpty)
           'studentName': query.trim(),
-        'size': 100,
+        'page': page,
+        'size': size,
       },
     );
     return PagePayload.fromJson(
@@ -198,6 +214,17 @@ class FeesRemoteDataSource {
     return FeeReceiptModel.fromJson(_unwrapData(response.data));
   }
 
+  Future<StudentFeeAssignmentModel> applyDiscount(
+    String assignmentId,
+    Map<String, dynamic> payload,
+  ) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      ApiPaths.feeAssignmentDiscounts(assignmentId),
+      data: payload,
+    );
+    return StudentFeeAssignmentModel.fromJson(_unwrapData(response.data));
+  }
+
   Future<StudentFeeSummaryModel> studentSummary(
     String studentId, {
     String? academicYearId,
@@ -268,6 +295,8 @@ class FeesRemoteDataSource {
     String? sourceType,
     String? asOf,
     String? query,
+    int page = 0,
+    int size = 20,
   }) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.feeDefaulters,
@@ -281,7 +310,8 @@ class FeesRemoteDataSource {
         if (asOf != null && asOf.isNotEmpty) 'dueDate': asOf,
         if (query != null && query.trim().isNotEmpty)
           'studentName': query.trim(),
-        'size': 100,
+        'page': page,
+        'size': size,
       },
     );
     return PagePayload.fromJson(

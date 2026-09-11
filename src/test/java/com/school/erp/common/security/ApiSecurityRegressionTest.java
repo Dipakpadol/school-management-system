@@ -37,13 +37,18 @@ class ApiSecurityRegressionTest {
 
 	@ParameterizedTest
 	@ValueSource(strings = {
-			"/api/v1/auth/me",
 			"/api/v1/students",
 			"/api/v1/fees/categories"
 	})
 	void protectedReadRoutesRejectAuthenticatedUsersWithoutRequiredRolesOrPermissions(String path) throws Exception {
 		mockMvc.perform(api(get(path)).with(user("limited-user")))
 				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void meAllowsAuthenticatedUsersWithoutModulePermissions() throws Exception {
+		mockMvc.perform(api(get("/api/v1/auth/me")).with(user("limited-user")))
+				.andExpect(status().isOk());
 	}
 
 	@Test

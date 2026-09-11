@@ -37,6 +37,7 @@ public class AcademicHierarchyMapper {
 				academicYear.getStartDate(),
 				academicYear.getEndDate(),
 				academicYear.isActive(),
+				academicYear.isCurrentYear(),
 				academicYear.getDescription());
 	}
 

@@ -6,17 +6,23 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import com.school.erp.common.audit.application.AuditLogEvent;
 import com.school.erp.common.audit.application.AuditLogService;
+import com.school.erp.common.exception.BusinessException;
+import com.school.erp.common.exception.ErrorCode;
 import com.school.erp.common.exception.ResourceNotFoundException;
 import com.school.erp.modules.users.api.dto.UpdateRolePermissionsRequest;
 import com.school.erp.modules.users.domain.Permission;
+import com.school.erp.modules.users.domain.PermissionStatus;
 import com.school.erp.modules.users.domain.Role;
 import com.school.erp.modules.users.domain.RoleName;
+import com.school.erp.modules.users.domain.UserAccount;
+import com.school.erp.modules.auth.infrastructure.RefreshTokenRepository;
 import com.school.erp.modules.users.infrastructure.PermissionRepository;
 import com.school.erp.modules.users.infrastructure.RoleRepository;
 import com.school.erp.modules.users.infrastructure.UserAccountRepository;
@@ -44,6 +50,9 @@ class UserServiceRolePermissionsTest {
 	private PermissionRepository permissionRepository;
 
 	@Mock
+	private RefreshTokenRepository refreshTokenRepository;
+
+	@Mock
 	private PasswordEncoder passwordEncoder;
 
 	@Mock
@@ -57,6 +66,7 @@ class UserServiceRolePermissionsTest {
 				userAccountRepository,
 				roleRepository,
 				permissionRepository,
+				refreshTokenRepository,
 				passwordEncoder,
 				new UserMapper(),
 				auditLogService);
@@ -129,6 +139,48 @@ class UserServiceRolePermissionsTest {
 				.isInstanceOf(ResourceNotFoundException.class);
 	}
 
+	@Test
+	void updateRolePermissionsRejectsInactivePermissionsOnLegacyEndpoint() {
+		Permission inactivePermission = permission("USERS_UPDATE", "Update users");
+		inactivePermission.update("USERS_UPDATE", "Update users", "USERS", "Update users", PermissionStatus.INACTIVE);
+		Role admin = customRole("CUSTOM_ADMIN");
+
+		when(roleRepository.findByIdAndDeletedFalse(admin.getId())).thenReturn(Optional.of(admin));
+		when(permissionRepository.findAllById(any())).thenReturn(List.of(inactivePermission));
+
+		assertThatThrownBy(() -> userService.updateRolePermissions(
+				admin.getId(),
+				new UpdateRolePermissionsRequest(List.of(inactivePermission.getId()))))
+				.isInstanceOf(BusinessException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.BUSINESS_RULE_VIOLATION);
+	}
+
+	@Test
+	void assignRoleAcceptsCustomRoleNames() {
+		UserAccount user = user();
+		Role customRole = customRole("Library Assistant");
+
+		when(userAccountRepository.findWithRolesByIdAndDeletedFalse(user.getId())).thenReturn(Optional.of(user));
+		when(roleRepository.findByNameIgnoreCaseAndDeletedFalse("LIBRARY_ASSISTANT")).thenReturn(Optional.of(customRole));
+
+		var response = userService.assignRole(user.getId(), "Library Assistant");
+
+		assertThat(response.roles()).extracting("roleName").containsExactly("LIBRARY_ASSISTANT");
+		verify(auditLogService).record(any(AuditLogEvent.class));
+	}
+
+	@Test
+	void deactivateRevokesRefreshTokens() {
+		UserAccount user = user();
+		when(userAccountRepository.findWithRolesByIdAndDeletedFalse(user.getId())).thenReturn(Optional.of(user));
+
+		userService.deactivate(user.getId());
+
+		verify(refreshTokenRepository).revokeActiveTokensForUser(any(UUID.class), any(Instant.class));
+		assertThat(user.isActive()).isFalse();
+	}
+
 	private Role role(RoleName roleName) {
 		Role role = new Role(roleName, roleName.name(), roleName.name());
 		ReflectionTestUtils.setField(role, "id", UUID.randomUUID());
@@ -145,5 +197,16 @@ class UserServiceRolePermissionsTest {
 		Permission permission = new Permission(code, name, name);
 		ReflectionTestUtils.setField(permission, "id", UUID.randomUUID());
 		return permission;
+	}
+
+	private UserAccount user() {
+		UserAccount user = new UserAccount(
+				"admin@school.test",
+				"admin",
+				"hash",
+				"Admin",
+				"User");
+		ReflectionTestUtils.setField(user, "id", UUID.randomUUID());
+		return user;
 	}
 }

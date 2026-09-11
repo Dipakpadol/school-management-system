@@ -1,3 +1,4 @@
+import '../../../../core/network/page_payload.dart' as core;
 import '../../../../core/result/result.dart';
 import '../../../students/data/models/student_models.dart';
 import '../../data/models/transport_models.dart';
@@ -49,6 +50,16 @@ abstract interface class TransportRepository {
     String? routeId,
     String? pickupPointId,
     String? status,
+  });
+
+  Future<Result<core.PagePayload<TransportFeeStructureModel>>>
+  feeStructuresPage({
+    String? academicYearId,
+    String? routeId,
+    String? pickupPointId,
+    String? status,
+    int page = 0,
+    int size = 20,
   });
 
   Future<Result<TransportFeeStructureModel>> createFeeStructure(

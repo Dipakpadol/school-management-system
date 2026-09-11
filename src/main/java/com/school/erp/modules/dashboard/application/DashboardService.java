@@ -16,6 +16,7 @@ import com.school.erp.modules.dashboard.api.dto.DashboardSummaryResponse;
 import com.school.erp.modules.dashboard.api.dto.DashboardSummaryResponse.BirthdayTodayResponse;
 import com.school.erp.modules.dashboard.api.dto.DashboardSummaryResponse.RecentActivityResponse;
 import com.school.erp.modules.dashboard.api.dto.TodayAttendanceResponse;
+import com.school.erp.modules.fees.domain.FeeAssignmentStatus;
 import com.school.erp.modules.fees.infrastructure.FeeReportTotals;
 import com.school.erp.modules.fees.infrastructure.StudentFeeAssignmentRepository;
 import com.school.erp.modules.students.domain.Student;
@@ -75,7 +76,10 @@ public class DashboardService {
 				"parent users",
 				() -> userAccountRepository.countByRoleNamesAndDeletedFalse(List.of(RoleName.PARENT.name())));
 
-		FeeReportTotals feeTotals = safeValue("fee totals", studentFeeAssignmentRepository::summarizeAll, null);
+		FeeReportTotals feeTotals = safeValue(
+				"fee totals",
+				() -> studentFeeAssignmentRepository.summarizeAll(FeeAssignmentStatus.CANCELLED),
+				null);
 		TodayAttendanceResponse todayAttendance = todayAttendance(null, null, null);
 
 		return new DashboardSummaryResponse(

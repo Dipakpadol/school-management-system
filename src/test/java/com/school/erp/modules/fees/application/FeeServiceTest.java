@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.school.erp.common.api.PageRequestDto;
 import com.school.erp.common.audit.application.AuditLogService;
 import com.school.erp.common.exception.BusinessException;
 import com.school.erp.common.exception.ErrorCode;
@@ -23,12 +24,14 @@ import com.school.erp.modules.academic.domain.ClassEntity;
 import com.school.erp.modules.fees.api.dto.ClassFeeAssignmentRequest;
 import com.school.erp.modules.fees.api.dto.ClassFeeAssignmentResponse;
 import com.school.erp.modules.fees.api.dto.AssessLateFeeRequest;
+import com.school.erp.modules.fees.api.dto.DefaulterSearchRequest;
 import com.school.erp.modules.fees.api.dto.FeeDiscountRequest;
 import com.school.erp.modules.fees.api.dto.FeeReceiptResponse;
 import com.school.erp.modules.fees.api.dto.FeeStructureInstallmentRequest;
 import com.school.erp.modules.fees.api.dto.FeeStructureItemRequest;
 import com.school.erp.modules.fees.api.dto.FeeStructureRequest;
 import com.school.erp.modules.fees.api.dto.FeeStructureResponse;
+import com.school.erp.modules.fees.api.dto.PaymentActionRequest;
 import com.school.erp.modules.fees.api.dto.PaymentCollectionRequest;
 import com.school.erp.modules.fees.api.dto.StudentFeeAssignmentRequest;
 import com.school.erp.modules.fees.api.dto.StudentFeeAssignmentResponse;
@@ -36,7 +39,10 @@ import com.school.erp.modules.fees.domain.DiscountCalculationType;
 import com.school.erp.modules.fees.domain.DiscountType;
 import com.school.erp.modules.fees.domain.FeeAssignmentStatus;
 import com.school.erp.modules.fees.domain.FeeCategory;
+import com.school.erp.modules.fees.domain.FeePayment;
+import com.school.erp.modules.fees.domain.FeePaymentStatus;
 import com.school.erp.modules.fees.domain.FeeReceipt;
+import com.school.erp.modules.fees.domain.FeeReceiptStatus;
 import com.school.erp.modules.fees.domain.FeeStructure;
 import com.school.erp.modules.fees.domain.FeeStructureStatus;
 import com.school.erp.modules.fees.domain.ClassFeeAssignment;
@@ -61,6 +67,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -403,7 +410,10 @@ class FeeServiceTest {
 				classEntity.getId(),
 				com.school.erp.modules.fees.domain.ClassFeeAssignmentStatus.ACTIVE))
 				.thenReturn(List.of(classAssignment));
-		when(assignmentRepository.existsByStudentIdAndFeeStructureIdAndDeletedFalse(student.getId(), tuition.getId()))
+		when(assignmentRepository.existsByStudentIdAndFeeStructureIdAndStatusNotAndDeletedFalse(
+				student.getId(),
+				tuition.getId(),
+				FeeAssignmentStatus.CANCELLED))
 				.thenReturn(false);
 		when(assignmentRepository.save(any(StudentFeeAssignment.class))).thenAnswer(invocation -> {
 			StudentFeeAssignment assignment = invocation.getArgument(0);
@@ -462,6 +472,196 @@ class FeeServiceTest {
 		assertThat(assignment.getStatus()).isEqualTo(FeeAssignmentStatus.PAID);
 		assertThat(assignment.getPayments()).hasSize(1);
 		assertThat(assignment.getPayments().iterator().next().getAllocations()).hasSize(2);
+	}
+
+	@Test
+	void reversePaymentRestoresBalanceCancelsReceiptAndPreservesPaymentHistory() {
+		StudentFeeAssignment assignment = assignment();
+		when(assignmentRepository.findDetailedByIdAndDeletedFalse(assignment.getId())).thenReturn(Optional.of(assignment));
+		stubReceiptSave();
+		feeService.collectPayment(
+				assignment.getId(),
+				new PaymentCollectionRequest(
+						money("5000.00"),
+						LocalDate.of(2026, 6, 20),
+						PaymentMode.CASH,
+						null,
+						"Rajesh Sharma",
+						"accountant@school.test",
+						null,
+						false));
+		setIds(assignment);
+		FeePayment payment = assignment.getPayments().iterator().next();
+		when(feePaymentRepository.findDetailedByIdAndDeletedFalse(payment.getId())).thenReturn(Optional.of(payment));
+
+		StudentFeeAssignmentResponse response = feeService.reversePayment(
+				payment.getId(),
+				new PaymentActionRequest("Duplicate counter entry", LocalDate.of(2026, 6, 21), "accounts.manager"));
+
+		assertThat(response.paidAmount()).isZero();
+		assertThat(response.balanceAmount()).isEqualByComparingTo("30000.00");
+		assertThat(assignment.getPayments()).hasSize(1);
+		assertThat(payment.getAllocations()).hasSize(1);
+		assertThat(payment.getStatus()).isEqualTo(FeePaymentStatus.REVERSED);
+		assertThat(payment.getReceipt().getStatus()).isEqualTo(FeeReceiptStatus.CANCELLED);
+	}
+
+	@Test
+	void refundPaymentRestoresPaidBalanceAndKeepsLedgerRows() {
+		StudentFeeAssignment assignment = assignment();
+		when(assignmentRepository.findDetailedByIdAndDeletedFalse(assignment.getId())).thenReturn(Optional.of(assignment));
+		stubReceiptSave();
+		feeService.collectPayment(
+				assignment.getId(),
+				new PaymentCollectionRequest(
+						money("30000.00"),
+						LocalDate.of(2026, 6, 20),
+						PaymentMode.CASH,
+						null,
+						"Rajesh Sharma",
+						"accountant@school.test",
+						null,
+						false));
+		setIds(assignment);
+		FeePayment payment = assignment.getPayments().iterator().next();
+		when(feePaymentRepository.findDetailedByIdAndDeletedFalse(payment.getId())).thenReturn(Optional.of(payment));
+
+		StudentFeeAssignmentResponse response = feeService.refundPayment(
+				payment.getId(),
+				new PaymentActionRequest("Parent refund approved", LocalDate.of(2026, 6, 21), "accounts.manager"));
+
+		assertThat(response.paidAmount()).isZero();
+		assertThat(response.balanceAmount()).isEqualByComparingTo("30000.00");
+		assertThat(assignment.getPayments()).hasSize(1);
+		assertThat(payment.getAllocations()).hasSize(2);
+		assertThat(payment.getStatus()).isEqualTo(FeePaymentStatus.REFUNDED);
+		assertThat(payment.getReceipt().getStatus()).isEqualTo(FeeReceiptStatus.CANCELLED);
+	}
+
+	@Test
+	void applyDiscountAfterPartialPaymentSkipsAlreadyPaidInstallments() {
+		StudentFeeAssignment assignment = assignment();
+		when(assignmentRepository.findDetailedByIdAndDeletedFalse(assignment.getId())).thenReturn(Optional.of(assignment));
+		stubReceiptSave();
+
+		feeService.collectPayment(
+				assignment.getId(),
+				new PaymentCollectionRequest(
+						money("15000.00"),
+						LocalDate.of(2026, 6, 20),
+						PaymentMode.CASH,
+						null,
+						"Rajesh Sharma",
+						"accountant@school.test",
+						null,
+						false));
+
+		StudentFeeAssignmentResponse discounted = feeService.applyDiscount(
+				assignment.getId(),
+				new FeeDiscountRequest(
+						null,
+						DiscountType.SIBLING,
+						DiscountCalculationType.FLAT,
+						money("5000.00"),
+						"Sibling concession",
+						"principal@school.test"));
+
+		assertThat(discounted.discountAmount()).isEqualByComparingTo("5000.00");
+		assertThat(discounted.balanceAmount()).isEqualByComparingTo("10000.00");
+		assertThat(discounted.installments().get(0).discountAmount()).isZero();
+		assertThat(discounted.installments().get(1).discountAmount()).isEqualByComparingTo("5000.00");
+	}
+
+	@Test
+	void applyDiscountRejectsFullyPaidAssignment() {
+		StudentFeeAssignment assignment = assignment();
+		when(assignmentRepository.findDetailedByIdAndDeletedFalse(assignment.getId())).thenReturn(Optional.of(assignment));
+		stubReceiptSave();
+		feeService.collectPayment(
+				assignment.getId(),
+				new PaymentCollectionRequest(
+						money("30000.00"),
+						LocalDate.of(2026, 6, 20),
+						PaymentMode.CASH,
+						null,
+						"Rajesh Sharma",
+						"accountant@school.test",
+						null,
+						false));
+
+		assertThatThrownBy(() -> feeService.applyDiscount(
+				assignment.getId(),
+				new FeeDiscountRequest(
+						null,
+						DiscountType.SCHOLARSHIP,
+						DiscountCalculationType.FLAT,
+						money("1.00"),
+						"Late scholarship",
+						"principal@school.test")))
+				.isInstanceOf(BusinessException.class)
+				.hasMessage("No outstanding fee balance is available for discount.")
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.BUSINESS_RULE_VIOLATION);
+	}
+
+	@Test
+	void cancelledAssignmentRejectsFinancialMutations() {
+		StudentFeeAssignment assignment = assignment();
+		when(assignmentRepository.findDetailedByIdAndDeletedFalse(assignment.getId())).thenReturn(Optional.of(assignment));
+		feeService.cancelAssignment(assignment.getId());
+
+		assertThatThrownBy(() -> feeService.collectPayment(
+				assignment.getId(),
+				new PaymentCollectionRequest(
+						money("100.00"),
+						LocalDate.of(2026, 6, 20),
+						PaymentMode.CASH,
+						null,
+						"Rajesh Sharma",
+						"accountant@school.test",
+						null,
+						false)))
+				.isInstanceOf(BusinessException.class)
+				.hasMessage("Cancelled fee assignments cannot collect payments.");
+		assertThatThrownBy(() -> feeService.applyDiscount(
+				assignment.getId(),
+				new FeeDiscountRequest(
+						null,
+						DiscountType.SCHOLARSHIP,
+						DiscountCalculationType.FLAT,
+						money("100.00"),
+						"Cancelled",
+						"principal@school.test")))
+				.isInstanceOf(BusinessException.class)
+				.hasMessage("Cancelled fee assignments cannot apply discounts.");
+		assertThatThrownBy(() -> feeService.assessLateFees(assignment.getId(), new AssessLateFeeRequest(LocalDate.of(2026, 6, 20))))
+				.isInstanceOf(BusinessException.class)
+				.hasMessage("Cancelled fee assignments cannot assess late fees.");
+	}
+
+	@Test
+	void cancelAndDeleteRejectAssignmentsWithPaymentHistory() {
+		StudentFeeAssignment assignment = assignment();
+		when(assignmentRepository.findDetailedByIdAndDeletedFalse(assignment.getId())).thenReturn(Optional.of(assignment));
+		stubReceiptSave();
+		feeService.collectPayment(
+				assignment.getId(),
+				new PaymentCollectionRequest(
+						money("100.00"),
+						LocalDate.of(2026, 6, 20),
+						PaymentMode.CASH,
+						null,
+						"Rajesh Sharma",
+						"accountant@school.test",
+						null,
+						false));
+
+		assertThatThrownBy(() -> feeService.cancelAssignment(assignment.getId()))
+				.isInstanceOf(BusinessException.class)
+				.hasMessage("Fee assignments with payment history cannot be cancelled. Reverse, void, or refund payments first.");
+		assertThatThrownBy(() -> feeService.deleteAssignment(assignment.getId()))
+				.isInstanceOf(BusinessException.class)
+				.hasMessage("Fee assignments with payment history cannot be deleted. Reverse, void, or refund payments first.");
 	}
 
 	@Test
@@ -648,6 +848,64 @@ class FeeServiceTest {
 
 		assertThat(response.lateFeeAmount()).isEqualByComparingTo("50.00");
 		assertThat(response.balanceAmount()).isEqualByComparingTo("30050.00");
+	}
+
+	@Test
+	void findDefaultersPassesSectionIdForCanonicalEnrollmentFiltering() {
+		UUID academicYearId = UUID.randomUUID();
+		UUID classId = UUID.randomUUID();
+		UUID sectionId = UUID.randomUUID();
+		when(assignmentRepository.findDefaulters(
+				any(),
+				any(),
+				any(),
+				any(),
+				any(),
+				any(),
+				any(),
+				any(),
+				any(),
+				any(),
+				any(),
+				any(),
+				any(),
+				any(),
+				any()))
+				.thenReturn(Page.empty());
+
+		feeService.findDefaulters(
+				new DefaulterSearchRequest(
+						LocalDate.of(2026, 7, 1),
+						null,
+						academicYearId,
+						classId,
+						sectionId,
+						null,
+						null,
+						null,
+						null,
+						null,
+						null),
+				new PageRequestDto(0, 20, null, null));
+
+		ArgumentCaptor<UUID> sectionIdCaptor = ArgumentCaptor.forClass(UUID.class);
+		verify(assignmentRepository).findDefaulters(
+				any(),
+				any(),
+				any(),
+				sectionIdCaptor.capture(),
+				any(),
+				any(),
+				any(),
+				any(),
+				any(),
+				any(),
+				any(),
+				any(),
+				any(),
+				any(),
+				any());
+		assertThat(sectionIdCaptor.getValue()).isEqualTo(sectionId);
 	}
 
 	private FeeStructureRequest structureRequest(UUID categoryId, boolean activate) {

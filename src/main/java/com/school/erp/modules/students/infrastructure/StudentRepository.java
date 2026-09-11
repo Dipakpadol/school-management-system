@@ -64,4 +64,18 @@ public interface StudentRepository extends BaseRepository<Student, UUID>, JpaSpe
 			order by student.firstName asc, student.lastName asc, student.admissionNumber asc
 			""")
 	List<Student> findActiveStudentsByClassId(@Param("classId") UUID classId);
+
+	@EntityGraph(attributePaths = { "parents", "parents.parent", "classAssignments" })
+	@Query("""
+			select distinct student
+			from Student student
+			join student.parents mapping
+			join mapping.parent parent
+			where student.deleted = false
+			  and mapping.deleted = false
+			  and parent.deleted = false
+			  and parent.userAccountId = :userAccountId
+			order by student.firstName asc, student.lastName asc, student.admissionNumber asc
+			""")
+	List<Student> findChildrenByParentUserAccountId(@Param("userAccountId") UUID userAccountId);
 }

@@ -45,3 +45,7 @@ frontend/build/
 frontend/coverage/
 
 .metadata/*
+
+### Local audit tooling and disposable databases ###
+.audit-tools/
+.audit-runtime/

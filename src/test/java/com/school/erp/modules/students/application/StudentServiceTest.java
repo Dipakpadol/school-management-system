@@ -21,7 +21,6 @@ import com.school.erp.modules.academic.application.AcademicHierarchyService;
 import com.school.erp.modules.academic.domain.AcademicYear;
 import com.school.erp.modules.academic.domain.ClassEntity;
 import com.school.erp.modules.academic.domain.SectionEntity;
-import com.school.erp.modules.fees.application.FeeService;
 import com.school.erp.modules.fees.application.StudentFeeAutoAssignmentService;
 import com.school.erp.modules.hostel.application.HostelService;
 import com.school.erp.modules.transport.application.TransportService;
@@ -39,12 +38,14 @@ import com.school.erp.modules.students.domain.Gender;
 import com.school.erp.modules.students.domain.ParentGuardian;
 import com.school.erp.modules.students.domain.ParentRelation;
 import com.school.erp.modules.students.domain.Student;
+import com.school.erp.modules.students.domain.StudentClassAssignment;
 import com.school.erp.modules.students.domain.StudentStatus;
 import com.school.erp.modules.students.infrastructure.ParentGuardianRepository;
 import com.school.erp.modules.students.infrastructure.StudentClassAssignmentRepository;
 import com.school.erp.modules.students.infrastructure.StudentRepository;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -56,6 +57,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -72,9 +76,6 @@ class StudentServiceTest {
 
 	@Mock
 	private AcademicHierarchyService academicHierarchyService;
-
-	@Mock
-	private FeeService feeService;
 
 	@Mock
 	private StudentFeeAutoAssignmentService feeAutoAssignmentService;
@@ -101,7 +102,6 @@ class StudentServiceTest {
 				parentGuardianRepository,
 				studentClassAssignmentRepository,
 				academicHierarchyService,
-				feeService,
 				feeAutoAssignmentService,
 				hostelService,
 				transportService,
@@ -115,6 +115,11 @@ class StudentServiceTest {
 		setId(classEntity);
 		setId(sectionA);
 		setId(sectionB);
+	}
+
+	@AfterEach
+	void clearSecurityContext() {
+		SecurityContextHolder.clearContext();
 	}
 
 	@Test
@@ -215,6 +220,33 @@ class StudentServiceTest {
 	}
 
 	@Test
+	void addParentReusesPhoneOnlyParentWhenNameMatches() {
+		Student student = student();
+		ParentGuardian existingParent = new ParentGuardian(
+				"Rajesh",
+				"Sharma",
+				null,
+				"+919812345678");
+		setId(existingParent);
+		when(studentRepository.findProfileByIdAndDeletedFalse(student.getId())).thenReturn(Optional.of(student));
+		when(parentGuardianRepository.findByPhoneNumberAndDeletedFalse("+919812345678"))
+				.thenReturn(List.of(existingParent));
+
+		StudentResponse response = studentService.addParent(
+				student.getId(),
+				new ParentMappingRequest(
+						ParentRelation.FATHER,
+						true,
+						true,
+						true,
+						phoneOnlyParentRequest()));
+
+		assertThat(response.parents()).hasSize(1);
+		assertThat(response.parents().getFirst().parentId()).isEqualTo(existingParent.getId());
+		verify(parentGuardianRepository, never()).save(any(ParentGuardian.class));
+	}
+
+	@Test
 	void admitStudentRejectsDuplicateAdmissionNumber() {
 		when(studentRepository.existsByAdmissionNumberIgnoreCaseAndDeletedFalse("ADM-2026-0001")).thenReturn(true);
 
@@ -263,6 +295,85 @@ class StudentServiceTest {
 				.filter(assignment -> !assignment.isActive())
 				.findFirst())
 				.hasValueSatisfying(assignment -> assertThat(assignment.getEffectiveTo()).isEqualTo(LocalDate.of(2026, 4, 30)));
+		verify(feeAutoAssignmentService).reconcileStudentFees(studentId, academicYear.getId());
+	}
+
+	@Test
+	void assignClassSectionSameDayDoesNotCreateInvalidHistoricalRange() {
+		UUID studentId = UUID.randomUUID();
+		Student student = student();
+		StudentClassAssignment previous = student.assignClassSection(
+				academicYear,
+				classEntity,
+				sectionA,
+				"23",
+				LocalDate.of(2026, 4, 1));
+		ReflectionTestUtils.setField(student, "id", studentId);
+		when(studentRepository.findProfileByIdAndDeletedFalse(studentId)).thenReturn(Optional.of(student));
+		mockHierarchy(sectionB);
+		when(studentClassAssignmentRepository.existsActiveRollNumber(
+				academicYear.getId(),
+				classEntity.getId(),
+				sectionB.getId(),
+				"24",
+				null))
+				.thenReturn(false);
+
+		studentService.assignClassSection(
+				studentId,
+				new ClassSectionAssignmentRequest(null, null, null, "2026-2027", "Class 6", "B", "24", LocalDate.of(2026, 4, 1)));
+
+		assertThat(previous.isActive()).isFalse();
+		assertThat(previous.getEffectiveTo()).isEqualTo(LocalDate.of(2026, 4, 1));
+		verify(feeAutoAssignmentService).reconcileStudentFees(studentId, academicYear.getId());
+	}
+
+	@Test
+	void updateClassAssignmentRejectsInactiveHistoricalAssignment() {
+		UUID studentId = UUID.randomUUID();
+		Student student = student();
+		StudentClassAssignment previous = student.assignClassSection(
+				academicYear,
+				classEntity,
+				sectionA,
+				"23",
+				LocalDate.of(2026, 4, 1));
+		setId(previous);
+		StudentClassAssignment current = student.assignClassSection(
+				academicYear,
+				classEntity,
+				sectionB,
+				"24",
+				LocalDate.of(2026, 5, 1));
+		setId(current);
+		ReflectionTestUtils.setField(student, "id", studentId);
+		when(studentRepository.findProfileByIdAndDeletedFalse(studentId)).thenReturn(Optional.of(student));
+
+		assertThatThrownBy(() -> studentService.updateClassAssignment(
+				studentId,
+				previous.getId(),
+				new ClassSectionAssignmentRequest(null, null, null, "2026-2027", "Class 6", "A", "23", LocalDate.of(2026, 6, 1))))
+				.isInstanceOf(BusinessException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.BUSINESS_RULE_VIOLATION);
+	}
+
+	@Test
+	void getMyChildrenReturnsStudentsLinkedToAuthenticatedParent() {
+		UUID userId = UUID.randomUUID();
+		Student student = student();
+		student.assignClassSection(academicYear, classEntity, sectionA, "23", LocalDate.of(2026, 4, 1));
+		when(studentRepository.findChildrenByParentUserAccountId(userId)).thenReturn(List.of(student));
+		SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+				userId.toString(),
+				"n/a",
+				AuthorityUtils.createAuthorityList("STUDENTS_READ")));
+
+		var response = studentService.getMyChildren();
+
+		assertThat(response).hasSize(1);
+		assertThat(response.getFirst().admissionNumber()).isEqualTo("ADM-2026-0001");
+		assertThat(response.getFirst().className()).isEqualTo("Class 6");
 	}
 
 	@Test
@@ -362,6 +473,23 @@ class StudentServiceTest {
 				"Rajesh",
 				"Sharma",
 				"rajesh.sharma@example.com",
+				"+919812345678",
+				null,
+				"Software Engineer",
+				"12 MG Road",
+				null,
+				"Bengaluru",
+				"Karnataka",
+				"560001",
+				"India",
+				null);
+	}
+
+	private ParentGuardianRequest phoneOnlyParentRequest() {
+		return new ParentGuardianRequest(
+				"Rajesh",
+				"Sharma",
+				null,
 				"+919812345678",
 				null,
 				"Software Engineer",

@@ -12,6 +12,8 @@ import '../../../../core/widgets/app_loading_state.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../fees/data/models/fee_models.dart';
 import '../../../fees/data/repositories/fees_repository_impl.dart';
+import '../../../fees/presentation/controllers/fees_providers.dart';
+import '../../../fees/presentation/widgets/fee_widgets.dart';
 import '../../../students/data/models/student_models.dart';
 import '../../../students/presentation/controllers/students_providers.dart';
 import '../../data/models/transport_models.dart';
@@ -28,7 +30,13 @@ class TransportManagementPage extends ConsumerStatefulWidget {
 
 class _TransportManagementPageState
     extends ConsumerState<TransportManagementPage> {
+  static const _transportFeePageSize = 20;
+
   String? _selectedAcademicYearId;
+  String? _selectedTransportFeeRouteId;
+  String? _selectedTransportFeePickupPointId;
+  String? _selectedTransportFeeStatus;
+  int _transportFeePage = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +62,32 @@ class _TransportManagementPageState
     );
   }
 
+  void _selectAcademicYear(String? id) {
+    setState(() {
+      _selectedAcademicYearId = id;
+      _selectedTransportFeeRouteId = null;
+      _selectedTransportFeePickupPointId = null;
+      _transportFeePage = 0;
+    });
+  }
+
+  TransportFeeStructuresKey _transportFeeFilter(String academicYearId) {
+    return TransportFeeStructuresKey(
+      academicYearId: academicYearId,
+      routeId: _selectedTransportFeeRouteId,
+      pickupPointId: _selectedTransportFeePickupPointId,
+      status: _selectedTransportFeeStatus,
+      page: _transportFeePage,
+      size: _transportFeePageSize,
+    );
+  }
+
+  void _invalidateTransportFeeProviders(String academicYearId) {
+    final filter = _transportFeeFilter(academicYearId);
+    ref.invalidate(transportFeeStructuresProvider(filter));
+    ref.invalidate(transportFeeStructuresPageProvider(filter));
+  }
+
   Widget _buildContent(List<AcademicYearModel> years) {
     final effectiveYearId = _validId(
       _selectedAcademicYearId,
@@ -62,7 +96,12 @@ class _TransportManagementPageState
     if (_selectedAcademicYearId != effectiveYearId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          setState(() => _selectedAcademicYearId = effectiveYearId);
+          setState(() {
+            _selectedAcademicYearId = effectiveYearId;
+            _selectedTransportFeeRouteId = null;
+            _selectedTransportFeePickupPointId = null;
+            _transportFeePage = 0;
+          });
         }
       });
     }
@@ -99,13 +138,7 @@ class _TransportManagementPageState
                         transportVehiclesProvider(effectiveYearId),
                       );
                       ref.invalidate(transportRoutesProvider(effectiveYearId));
-                      ref.invalidate(
-                        transportFeeStructuresProvider(
-                          TransportFeeStructuresKey(
-                            academicYearId: effectiveYearId,
-                          ),
-                        ),
-                      );
+                      _invalidateTransportFeeProviders(effectiveYearId);
                     }
                   },
                   icon: const Icon(Icons.refresh_outlined),
@@ -121,8 +154,7 @@ class _TransportManagementPageState
                 _BusesTab(
                   years: years,
                   selectedYearId: effectiveYearId,
-                  onYearChanged: (id) =>
-                      setState(() => _selectedAcademicYearId = id),
+                  onYearChanged: _selectAcademicYear,
                   onAdd: () => _showVehicleDialog(effectiveYearId),
                   onEdit: (vehicle) =>
                       _showVehicleDialog(effectiveYearId, vehicle),
@@ -136,8 +168,7 @@ class _TransportManagementPageState
                 _RoutesTab(
                   years: years,
                   selectedYearId: effectiveYearId,
-                  onYearChanged: (id) =>
-                      setState(() => _selectedAcademicYearId = id),
+                  onYearChanged: _selectAcademicYear,
                   onAdd: () => _showRouteDialog(effectiveYearId),
                   onEdit: (route) => _showRouteDialog(effectiveYearId, route),
                   onDelete: _deleteRoute,
@@ -146,8 +177,27 @@ class _TransportManagementPageState
                 _TransportFeesTab(
                   years: years,
                   selectedYearId: effectiveYearId,
-                  onYearChanged: (id) =>
-                      setState(() => _selectedAcademicYearId = id),
+                  selectedRouteId: _selectedTransportFeeRouteId,
+                  selectedPickupPointId: _selectedTransportFeePickupPointId,
+                  selectedStatus: _selectedTransportFeeStatus,
+                  page: _transportFeePage,
+                  pageSize: _transportFeePageSize,
+                  onYearChanged: _selectAcademicYear,
+                  onRouteChanged: (id) => setState(() {
+                    _selectedTransportFeeRouteId = id;
+                    _selectedTransportFeePickupPointId = null;
+                    _transportFeePage = 0;
+                  }),
+                  onPickupPointChanged: (id) => setState(() {
+                    _selectedTransportFeePickupPointId = id;
+                    _transportFeePage = 0;
+                  }),
+                  onStatusChanged: (status) => setState(() {
+                    _selectedTransportFeeStatus = status;
+                    _transportFeePage = 0;
+                  }),
+                  onPageChanged: (page) =>
+                      setState(() => _transportFeePage = page),
                   onAdd: () => _showTransportFeeDialog(effectiveYearId),
                   onEdit: (fee) =>
                       _showTransportFeeDialog(effectiveYearId, fee),
@@ -377,7 +427,10 @@ class _TransportManagementPageState
       _snack(errorMessage!);
       return;
     }
-    if (routes.isEmpty) {
+    final selectableRoutes = routes
+        .where((route) => route.status == 'ACTIVE' || route.id == fee?.routeId)
+        .toList(growable: false);
+    if (selectableRoutes.isEmpty) {
       _snack('Create a route before adding transport fees.');
       return;
     }
@@ -390,7 +443,7 @@ class _TransportManagementPageState
       context: context,
       builder: (context) => _TransportFeeDialog(
         academicYearId: academicYearId,
-        routes: routes,
+        routes: selectableRoutes,
         categories: categories,
         fee: fee,
       ),
@@ -406,11 +459,7 @@ class _TransportManagementPageState
     }
     saved.when(
       success: (_) {
-        ref.invalidate(
-          transportFeeStructuresProvider(
-            TransportFeeStructuresKey(academicYearId: academicYearId),
-          ),
-        );
+        _invalidateTransportFeeProviders(academicYearId);
         _snack(fee == null ? 'Transport fee created.' : 'Transport fee saved.');
       },
       failure: (failure) => _snack(failure.message),
@@ -429,11 +478,7 @@ class _TransportManagementPageState
     }
     result.when(
       success: (_) {
-        ref.invalidate(
-          transportFeeStructuresProvider(
-            TransportFeeStructuresKey(academicYearId: fee.academicYearId),
-          ),
-        );
+        _invalidateTransportFeeProviders(fee.academicYearId);
         _snack('Transport fee deleted.');
       },
       failure: (failure) => _snack(failure.message),
@@ -515,9 +560,19 @@ class _TransportManagementPageState
       return;
     }
     saved.when(
-      success: (_) {
+      success: (assignment) {
         ref.invalidate(transportVehicleDetailsProvider(key));
         ref.invalidate(transportVehiclesProvider(key.academicYearId));
+        ref.invalidate(studentProfileProvider(assignment.studentId));
+        ref.invalidate(studentFeeSummaryProvider(assignment.studentId));
+        ref.invalidate(
+          studentCurrentTransportAssignmentProvider(
+            StudentTransportAssignmentKey(
+              studentId: assignment.studentId,
+              academicYearId: assignment.academicYearId,
+            ),
+          ),
+        );
         _snack('Student assigned to transport.');
       },
       failure: (failure) => _snack(failure.message),
@@ -547,9 +602,19 @@ class _TransportManagementPageState
       return;
     }
     saved.when(
-      success: (_) {
+      success: (assignment) {
         ref.invalidate(transportVehicleDetailsProvider(key));
         ref.invalidate(transportVehiclesProvider(key.academicYearId));
+        ref.invalidate(studentProfileProvider(assignment.studentId));
+        ref.invalidate(studentFeeSummaryProvider(assignment.studentId));
+        ref.invalidate(
+          studentCurrentTransportAssignmentProvider(
+            StudentTransportAssignmentKey(
+              studentId: assignment.studentId,
+              academicYearId: assignment.academicYearId,
+            ),
+          ),
+        );
         _snack('Transport changed.');
       },
       failure: (failure) => _snack(failure.message),
@@ -576,6 +641,16 @@ class _TransportManagementPageState
       success: (_) {
         ref.invalidate(transportVehicleDetailsProvider(key));
         ref.invalidate(transportVehiclesProvider(key.academicYearId));
+        ref.invalidate(studentProfileProvider(assignment.studentId));
+        ref.invalidate(studentFeeSummaryProvider(assignment.studentId));
+        ref.invalidate(
+          studentCurrentTransportAssignmentProvider(
+            StudentTransportAssignmentKey(
+              studentId: assignment.studentId,
+              academicYearId: key.academicYearId,
+            ),
+          ),
+        );
         _snack('Transport removed.');
       },
       failure: (failure) => _snack(failure.message),
@@ -872,7 +947,16 @@ class _TransportFeesTab extends ConsumerWidget {
   const _TransportFeesTab({
     required this.years,
     required this.selectedYearId,
+    required this.selectedRouteId,
+    required this.selectedPickupPointId,
+    required this.selectedStatus,
+    required this.page,
+    required this.pageSize,
     required this.onYearChanged,
+    required this.onRouteChanged,
+    required this.onPickupPointChanged,
+    required this.onStatusChanged,
+    required this.onPageChanged,
     required this.onAdd,
     required this.onEdit,
     required this.onDelete,
@@ -880,7 +964,16 @@ class _TransportFeesTab extends ConsumerWidget {
 
   final List<AcademicYearModel> years;
   final String? selectedYearId;
+  final String? selectedRouteId;
+  final String? selectedPickupPointId;
+  final String? selectedStatus;
+  final int page;
+  final int pageSize;
   final ValueChanged<String?> onYearChanged;
+  final ValueChanged<String?> onRouteChanged;
+  final ValueChanged<String?> onPickupPointChanged;
+  final ValueChanged<String?> onStatusChanged;
+  final ValueChanged<int> onPageChanged;
   final VoidCallback onAdd;
   final ValueChanged<TransportFeeStructureModel> onEdit;
   final ValueChanged<TransportFeeStructureModel> onDelete;
@@ -889,24 +982,197 @@ class _TransportFeesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final key = selectedYearId == null
         ? null
-        : TransportFeeStructuresKey(academicYearId: selectedYearId);
+        : TransportFeeStructuresKey(
+            academicYearId: selectedYearId,
+            routeId: selectedRouteId,
+            pickupPointId: selectedPickupPointId,
+            status: selectedStatus,
+            page: page,
+            size: pageSize,
+          );
     final fees = key == null
         ? null
-        : ref.watch(transportFeeStructuresProvider(key));
+        : ref.watch(transportFeeStructuresPageProvider(key));
+    final routes = selectedYearId == null
+        ? null
+        : ref.watch(transportRoutesProvider(selectedYearId!));
+    final pickupPoints = selectedRouteId == null
+        ? null
+        : ref.watch(transportPickupPointsProvider(selectedRouteId!));
 
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          _YearToolbar(
-            years: years,
-            selectedYearId: selectedYearId,
-            onChanged: onYearChanged,
-            action: AppButton(
-              label: 'Add fee',
-              icon: Icons.add_outlined,
-              onPressed: selectedYearId == null ? null : onAdd,
-            ),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SizedBox(
+                width: 260,
+                child: DropdownButtonFormField<String>(
+                  initialValue: selectedYearId,
+                  decoration: const InputDecoration(labelText: 'Academic year'),
+                  items: [
+                    for (final year in years)
+                      DropdownMenuItem(value: year.id, child: Text(year.name)),
+                  ],
+                  onChanged: onYearChanged,
+                ),
+              ),
+              SizedBox(
+                width: 260,
+                child: routes == null
+                    ? const InputDecorator(
+                        decoration: InputDecoration(labelText: 'Route'),
+                        child: Text('-'),
+                      )
+                    : routes.when(
+                        data: (items) {
+                          final effectiveRouteId =
+                              _knownTransportRouteId(items, selectedRouteId);
+                          if (selectedRouteId != null &&
+                              effectiveRouteId == null) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              onRouteChanged(null);
+                            });
+                          }
+                          return DropdownButtonFormField<String?>(
+                            initialValue: effectiveRouteId,
+                            decoration: const InputDecoration(
+                              labelText: 'Route',
+                            ),
+                            isExpanded: true,
+                            items: [
+                              const DropdownMenuItem(
+                                value: null,
+                                child: Text('All routes'),
+                              ),
+                              for (final route in items)
+                                DropdownMenuItem(
+                                  value: route.id,
+                                  child: Text(
+                                    '${route.routeCode} - ${route.routeName}',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                            ],
+                            onChanged: onRouteChanged,
+                          );
+                        },
+                        error: (error, _) => AppErrorState(
+                          message: _message(error),
+                          onRetry: () => ref.invalidate(
+                            transportRoutesProvider(selectedYearId!),
+                          ),
+                        ),
+                        loading: () => const AppLoadingState(
+                          label: 'Loading routes',
+                        ),
+                      ),
+              ),
+              SizedBox(
+                width: 240,
+                child: pickupPoints == null
+                    ? DropdownButtonFormField<String?>(
+                        initialValue: null,
+                        decoration: const InputDecoration(
+                          labelText: 'Pickup point',
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: null,
+                            child: Text('All pickup points'),
+                          ),
+                        ],
+                        onChanged: null,
+                      )
+                    : pickupPoints.when(
+                        data: (items) {
+                          final effectivePickupPointId =
+                              _knownTransportPickupPointId(
+                                items,
+                                selectedPickupPointId,
+                              );
+                          if (selectedPickupPointId != null &&
+                              effectivePickupPointId == null) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              onPickupPointChanged(null);
+                            });
+                          }
+                          return DropdownButtonFormField<String?>(
+                            initialValue: effectivePickupPointId,
+                            decoration: const InputDecoration(
+                              labelText: 'Pickup point',
+                            ),
+                            isExpanded: true,
+                            items: [
+                              const DropdownMenuItem(
+                                value: null,
+                                child: Text('All pickup points'),
+                              ),
+                              for (final point in items)
+                                DropdownMenuItem(
+                                  value: point.id,
+                                  child: Text(
+                                    point.pointName,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                            ],
+                            onChanged: onPickupPointChanged,
+                          );
+                        },
+                        error: (error, _) => AppErrorState(
+                          message: _message(error),
+                          onRetry: () => ref.invalidate(
+                            transportPickupPointsProvider(selectedRouteId!),
+                          ),
+                        ),
+                        loading: () => const AppLoadingState(
+                          label: 'Loading pickup points',
+                        ),
+                      ),
+              ),
+              SizedBox(
+                width: 220,
+                child: DropdownButtonFormField<String?>(
+                  initialValue: selectedStatus,
+                  decoration: const InputDecoration(labelText: 'Status'),
+                  items: const [
+                    DropdownMenuItem(value: null, child: Text('All statuses')),
+                    DropdownMenuItem(value: 'ACTIVE', child: Text('Active')),
+                    DropdownMenuItem(value: 'DRAFT', child: Text('Draft')),
+                    DropdownMenuItem(
+                      value: 'INACTIVE',
+                      child: Text('Inactive'),
+                    ),
+                  ],
+                  onChanged: onStatusChanged,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Refresh transport fees',
+                onPressed: key == null
+                    ? null
+                    : () {
+                        ref.invalidate(transportRoutesProvider(selectedYearId!));
+                        if (selectedRouteId != null) {
+                          ref.invalidate(
+                            transportPickupPointsProvider(selectedRouteId!),
+                          );
+                        }
+                        ref.invalidate(transportFeeStructuresPageProvider(key));
+                      },
+                icon: const Icon(Icons.refresh_outlined),
+              ),
+              AppButton(
+                label: 'Add fee',
+                icon: Icons.add_outlined,
+                onPressed: selectedYearId == null ? null : onAdd,
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           Expanded(
@@ -916,72 +1182,90 @@ class _TransportFeesTab extends ConsumerWidget {
                     message: 'Select an academic year.',
                   )
                 : fees.when(
-                    data: (items) {
+                    data: (pageData) {
+                      final items = pageData.content;
                       if (items.isEmpty) {
                         return const _InlineEmpty(
                           icon: Icons.payments_outlined,
                           message: 'No transport fee structures found.',
                         );
                       }
-                      return AppDataTable<TransportFeeStructureModel>(
-                        items: items,
-                        columns: [
-                          AppTableColumn(
-                            label: 'Route',
-                            cellBuilder: (_, item) =>
-                                Text('${item.routeCode} - ${item.routeName}'),
-                          ),
-                          AppTableColumn(
-                            label: 'Pickup',
-                            cellBuilder: (_, item) =>
-                                Text(item.pickupPointName ?? 'All points'),
-                          ),
-                          AppTableColumn(
-                            label: 'Category',
-                            cellBuilder: (_, item) =>
-                                Text(item.feeCategoryName),
-                          ),
-                          AppTableColumn(
-                            label: 'Amount',
-                            numeric: true,
-                            cellBuilder: (_, item) => Text(_money(item.amount)),
-                          ),
-                          AppTableColumn(
-                            label: 'Due',
-                            cellBuilder: (_, item) =>
-                                Text(_nullableDateLabel(item.dueDate)),
-                          ),
-                          AppTableColumn(
-                            label: 'Installments',
-                            numeric: true,
-                            cellBuilder: (_, item) => Text(
-                              item.installmentAllowed
-                                  ? '${item.numberOfInstallments}'
-                                  : '-',
-                            ),
-                          ),
-                          AppTableColumn(
-                            label: 'Status',
-                            cellBuilder: (_, item) =>
-                                _StatusBadge(label: item.status),
-                          ),
-                          AppTableColumn(
-                            label: 'Actions',
-                            cellBuilder: (_, item) => Wrap(
-                              spacing: 2,
-                              children: [
-                                IconButton(
-                                  tooltip: 'Edit',
-                                  onPressed: () => onEdit(item),
-                                  icon: const Icon(Icons.edit_outlined),
+                      return Column(
+                        children: [
+                          Expanded(
+                            child: AppDataTable<TransportFeeStructureModel>(
+                              items: items,
+                              columns: [
+                                AppTableColumn(
+                                  label: 'Route',
+                                  cellBuilder: (_, item) => Text(
+                                    '${item.routeCode} - ${item.routeName}',
+                                  ),
                                 ),
-                                IconButton(
-                                  tooltip: 'Delete',
-                                  onPressed: () => onDelete(item),
-                                  icon: const Icon(Icons.delete_outline),
+                                AppTableColumn(
+                                  label: 'Pickup',
+                                  cellBuilder: (_, item) => Text(
+                                    item.pickupPointName ?? 'All points',
+                                  ),
+                                ),
+                                AppTableColumn(
+                                  label: 'Category',
+                                  cellBuilder: (_, item) =>
+                                      Text(item.feeCategoryName),
+                                ),
+                                AppTableColumn(
+                                  label: 'Amount',
+                                  numeric: true,
+                                  cellBuilder: (_, item) =>
+                                      Text(_money(item.amount)),
+                                ),
+                                AppTableColumn(
+                                  label: 'Due',
+                                  cellBuilder: (_, item) =>
+                                      Text(_nullableDateLabel(item.dueDate)),
+                                ),
+                                AppTableColumn(
+                                  label: 'Installments',
+                                  numeric: true,
+                                  cellBuilder: (_, item) => Text(
+                                    item.installmentAllowed
+                                        ? '${item.numberOfInstallments}'
+                                        : '-',
+                                  ),
+                                ),
+                                AppTableColumn(
+                                  label: 'Status',
+                                  cellBuilder: (_, item) =>
+                                      _StatusBadge(label: item.status),
+                                ),
+                                AppTableColumn(
+                                  label: 'Actions',
+                                  cellBuilder: (_, item) => Wrap(
+                                    spacing: 2,
+                                    children: [
+                                      IconButton(
+                                        tooltip: 'Edit',
+                                        onPressed: () => onEdit(item),
+                                        icon: const Icon(Icons.edit_outlined),
+                                      ),
+                                      IconButton(
+                                        tooltip: 'Delete',
+                                        onPressed: () => onDelete(item),
+                                        icon: const Icon(Icons.delete_outline),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
+                          ),
+                          const Divider(height: 1),
+                          FeePaginationBar(
+                            page: pageData.page,
+                            size: pageData.size,
+                            totalElements: pageData.totalElements,
+                            totalPages: pageData.totalPages,
+                            onPageChanged: onPageChanged,
                           ),
                         ],
                       );
@@ -989,7 +1273,7 @@ class _TransportFeesTab extends ConsumerWidget {
                     error: (error, _) => AppErrorState(
                       message: _message(error),
                       onRetry: () =>
-                          ref.invalidate(transportFeeStructuresProvider(key!)),
+                          ref.invalidate(transportFeeStructuresPageProvider(key!)),
                     ),
                     loading: () =>
                         const AppLoadingState(label: 'Loading transport fees'),
@@ -1567,8 +1851,15 @@ class _TransportFeeDialogState extends ConsumerState<_TransportFeeDialog> {
                     ? const SizedBox.shrink()
                     : pickupPoints.when(
                         data: (items) {
+                          final selectablePoints = items
+                              .where(
+                                (point) =>
+                                    point.status == 'ACTIVE' ||
+                                    point.id == widget.fee?.pickupPointId,
+                              )
+                              .toList(growable: false);
                           if (_pickupPointId != null &&
-                              items.every(
+                              selectablePoints.every(
                                 (point) => point.id != _pickupPointId,
                               )) {
                             _pickupPointId = null;
@@ -1583,7 +1874,7 @@ class _TransportFeeDialogState extends ConsumerState<_TransportFeeDialog> {
                                 value: null,
                                 child: Text('All pickup points'),
                               ),
-                              for (final point in items)
+                              for (final point in selectablePoints)
                                 DropdownMenuItem(
                                   value: point.id,
                                   child: Text(point.pointName),
@@ -1825,6 +2116,9 @@ class _VehicleDialogState extends State<_VehicleDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final selectableDrivers = widget.drivers
+        .where((driver) => driver.status == 'ACTIVE' || driver.id == _driverId)
+        .toList(growable: false);
     return AlertDialog(
       title: Text(widget.vehicle == null ? 'Add vehicle' : 'Edit vehicle'),
       content: Form(
@@ -1854,7 +2148,7 @@ class _VehicleDialogState extends State<_VehicleDialog> {
                       value: null,
                       child: Text('No driver'),
                     ),
-                    for (final driver in widget.drivers)
+                    for (final driver in selectableDrivers)
                       DropdownMenuItem(
                         value: driver.id,
                         child: Text(driver.displayName),
@@ -1929,6 +2223,11 @@ class _RouteDialogState extends State<_RouteDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final selectableVehicles = widget.vehicles
+        .where(
+          (vehicle) => vehicle.status == 'ACTIVE' || vehicle.id == _vehicleId,
+        )
+        .toList(growable: false);
     return AlertDialog(
       title: Text(widget.route == null ? 'Add route' : 'Edit route'),
       content: Form(
@@ -1952,7 +2251,7 @@ class _RouteDialogState extends State<_RouteDialog> {
                       value: null,
                       child: Text('No vehicle'),
                     ),
-                    for (final vehicle in widget.vehicles)
+                    for (final vehicle in selectableVehicles)
                       DropdownMenuItem(
                         value: vehicle.id,
                         child: Text(vehicle.vehicleNumber),
@@ -2105,8 +2404,25 @@ class _StudentTransportDialogState
   @override
   Widget build(BuildContext context) {
     final students = ref.watch(studentsProvider);
+    final routeItems = widget.details.routes
+        .where(
+          (route) =>
+              route.status == 'ACTIVE' ||
+              route.id == widget.assignment?.routeId,
+        )
+        .toList(growable: false);
+    if (_routeId != null &&
+        routeItems.every((route) => route.id != _routeId)) {
+      _routeId = null;
+      _pickupPointId = null;
+    }
     final routePoints = widget.details.pickupPoints
         .where((point) => point.routeId == _routeId)
+        .where(
+          (point) =>
+              point.status == 'ACTIVE' ||
+              point.id == widget.assignment?.pickupPointId,
+        )
         .toList();
     if (_pickupPointId != null &&
         routePoints.every((point) => point.id != _pickupPointId)) {
@@ -2155,7 +2471,7 @@ class _StudentTransportDialogState
                   initialValue: _routeId,
                   decoration: const InputDecoration(labelText: 'Route'),
                   items: [
-                    for (final route in widget.details.routes)
+                    for (final route in routeItems)
                       DropdownMenuItem(
                         value: route.id,
                         child: Text(route.routeName),
@@ -2426,6 +2742,28 @@ String? _dateValidator(String? value) {
 String? _blankToNull(String value) {
   final text = value.trim();
   return text.isEmpty ? null : text;
+}
+
+String? _knownTransportRouteId(
+  List<TransportRouteModel> routes,
+  String? routeId,
+) {
+  if (routeId == null) {
+    return null;
+  }
+  return routes.any((route) => route.id == routeId) ? routeId : null;
+}
+
+String? _knownTransportPickupPointId(
+  List<TransportPickupPointModel> points,
+  String? pickupPointId,
+) {
+  if (pickupPointId == null) {
+    return null;
+  }
+  return points.any((point) => point.id == pickupPointId)
+      ? pickupPointId
+      : null;
 }
 
 String _message(Object error) {

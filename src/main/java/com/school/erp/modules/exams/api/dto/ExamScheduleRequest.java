@@ -2,6 +2,7 @@ package com.school.erp.modules.exams.api.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,6 +22,9 @@ public record ExamScheduleRequest(
 		@Valid List<ExamScheduleSubjectRequest> subjects,
 		UUID subjectId,
 		LocalDate examDate,
+		LocalTime startTime,
+		LocalTime endTime,
+		@Size(max = 120) String room,
 		@DecimalMin(value = "0.01") BigDecimal maxMarks,
 		@DecimalMin(value = "0.00") BigDecimal passingMarks,
 		ExamScheduleStatus status,

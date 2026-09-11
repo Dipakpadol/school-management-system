@@ -24,6 +24,11 @@ public interface StudentFeeAssignmentRepository
 
 	boolean existsByStudentIdAndFeeStructureIdAndDeletedFalse(UUID studentId, UUID feeStructureId);
 
+	boolean existsByStudentIdAndFeeStructureIdAndStatusNotAndDeletedFalse(
+			UUID studentId,
+			UUID feeStructureId,
+			FeeAssignmentStatus status);
+
 	boolean existsByFeeStructureIdAndDeletedFalse(UUID feeStructureId);
 
 	@Query("""
@@ -73,6 +78,21 @@ public interface StudentFeeAssignmentRepository
 			@Param("cancelledStatus") FeeAssignmentStatus cancelledStatus);
 
 	Optional<StudentFeeAssignment> findByStudentIdAndFeeStructureIdAndDeletedFalse(UUID studentId, UUID feeStructureId);
+
+	@EntityGraph(attributePaths = {
+			"student",
+			"feeStructure",
+			"installments",
+			"discounts",
+			"payments",
+			"payments.receipt",
+			"payments.allocations",
+			"payments.allocations.installment"
+	})
+	List<StudentFeeAssignment> findByStudentIdAndAcademicYearEntityIdAndSourceTypeAndDeletedFalseOrderByAssignedDateDesc(
+			UUID studentId,
+			UUID academicYearId,
+			FeeScope sourceType);
 
 	List<StudentFeeAssignment> findByStudentIdAndDeletedFalseOrderByAssignedDateDesc(UUID studentId);
 
@@ -137,6 +157,20 @@ public interface StudentFeeAssignmentRepository
 					  and assignment.balanceAmount >= :minimumBalance
 					  and (:academicYearId is null or assignment.academicYearEntity.id = :academicYearId)
 					  and (:classId is null or assignment.classEntity.id = :classId)
+					  and (:sectionId is null or exists (
+					    select 1
+					    from StudentClassAssignment classAssignment
+					    where classAssignment.deleted = false
+					      and classAssignment.active = true
+					      and classAssignment.student.id = student.id
+					      and classAssignment.sectionEntity.id = :sectionId
+					      and (:academicYearId is null or classAssignment.academicYearEntity.id = :academicYearId)
+					      and (:classId is null or classAssignment.classEntity.id = :classId)
+					      and (:academicYearId is not null or assignment.academicYearEntity is null
+					        or classAssignment.academicYearEntity.id = assignment.academicYearEntity.id)
+					      and (:classId is not null or assignment.classEntity is null
+					        or classAssignment.classEntity.id = assignment.classEntity.id)
+					  ))
 					  and (:sourceType is null or assignment.sourceType = :sourceType)
 					  and (:academicYear is null or lower(assignment.academicYear) = lower(:academicYear))
 					  and (:className is null or lower(assignment.className) = lower(:className))
@@ -159,6 +193,20 @@ public interface StudentFeeAssignmentRepository
 					  and assignment.balanceAmount >= :minimumBalance
 					  and (:academicYearId is null or assignment.academicYearEntity.id = :academicYearId)
 					  and (:classId is null or assignment.classEntity.id = :classId)
+					  and (:sectionId is null or exists (
+					    select 1
+					    from StudentClassAssignment classAssignment
+					    where classAssignment.deleted = false
+					      and classAssignment.active = true
+					      and classAssignment.student.id = student.id
+					      and classAssignment.sectionEntity.id = :sectionId
+					      and (:academicYearId is null or classAssignment.academicYearEntity.id = :academicYearId)
+					      and (:classId is null or classAssignment.classEntity.id = :classId)
+					      and (:academicYearId is not null or assignment.academicYearEntity is null
+					        or classAssignment.academicYearEntity.id = assignment.academicYearEntity.id)
+					      and (:classId is not null or assignment.classEntity is null
+					        or classAssignment.classEntity.id = assignment.classEntity.id)
+					  ))
 					  and (:sourceType is null or assignment.sourceType = :sourceType)
 					  and (:academicYear is null or lower(assignment.academicYear) = lower(:academicYear))
 					  and (:className is null or lower(assignment.className) = lower(:className))
@@ -172,6 +220,7 @@ public interface StudentFeeAssignmentRepository
 			@Param("asOf") LocalDate asOf,
 			@Param("academicYearId") UUID academicYearId,
 			@Param("classId") UUID classId,
+			@Param("sectionId") UUID sectionId,
 			@Param("academicYear") String academicYear,
 			@Param("className") String className,
 			@Param("sectionName") String sectionName,
@@ -194,8 +243,9 @@ public interface StudentFeeAssignmentRepository
 			  coalesce(sum(assignment.balanceAmount), 0) as balanceAmount
 			from StudentFeeAssignment assignment
 			where assignment.deleted = false
+			  and assignment.status <> :excludedStatus
 			""")
-	FeeReportTotals summarizeAll();
+	FeeReportTotals summarizeAll(@Param("excludedStatus") FeeAssignmentStatus excludedStatus);
 
 	@Query("""
 			select
@@ -207,6 +257,7 @@ public interface StudentFeeAssignmentRepository
 			  coalesce(sum(assignment.balanceAmount), 0) as balanceAmount
 			from StudentFeeAssignment assignment
 			where assignment.deleted = false
+			  and assignment.status <> :excludedStatus
 			  and (:academicYear is null or lower(assignment.academicYear) = lower(:academicYear))
 			  and (:className is null or lower(assignment.className) = lower(:className))
 			  and (:sectionName is null or lower(assignment.sectionName) = lower(:sectionName))
@@ -216,5 +267,6 @@ public interface StudentFeeAssignmentRepository
 			@Param("academicYear") String academicYear,
 			@Param("className") String className,
 			@Param("sectionName") String sectionName,
-			@Param("status") FeeAssignmentStatus status);
+			@Param("status") FeeAssignmentStatus status,
+			@Param("excludedStatus") FeeAssignmentStatus excludedStatus);
 }

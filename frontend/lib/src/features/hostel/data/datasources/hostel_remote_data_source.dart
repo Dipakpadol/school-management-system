@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/api_paths.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/page_payload.dart' as core;
 import '../../../fees/data/models/fee_models.dart';
 import '../../../students/data/models/student_models.dart';
 import '../models/hostel_models.dart';
@@ -204,6 +205,23 @@ class HostelRemoteDataSource {
     String? hostelId,
     String? roomType,
   }) async {
+    return (await feeStructuresPage(
+      academicYearId: academicYearId,
+      hostelId: hostelId,
+      roomType: roomType,
+      page: 0,
+      size: 100,
+    )).content;
+  }
+
+  Future<core.PagePayload<HostelFeeStructureModel>> feeStructuresPage({
+    String? academicYearId,
+    String? hostelId,
+    String? roomType,
+    String? status,
+    int page = 0,
+    int size = 20,
+  }) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.hostelFeeStructures,
       queryParameters: {
@@ -212,9 +230,15 @@ class HostelRemoteDataSource {
         if (hostelId != null && hostelId.isNotEmpty) 'hostelId': hostelId,
         if (roomType != null && roomType.trim().isNotEmpty)
           'roomType': roomType.trim(),
+        if (status != null && status.isNotEmpty) 'status': status,
+        'page': page,
+        'size': size,
       },
     );
-    return _unwrapList(response.data, HostelFeeStructureModel.fromJson);
+    return core.PagePayload.fromJson(
+      _unwrapData(response.data),
+      HostelFeeStructureModel.fromJson,
+    );
   }
 
   Future<HostelFeeStructureModel> createFeeStructure(

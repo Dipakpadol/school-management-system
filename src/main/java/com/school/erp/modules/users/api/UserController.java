@@ -164,7 +164,7 @@ public class UserController {
 	}
 
 	@GetMapping("/roles/{roleId}/permissions")
-	@PreAuthorize("hasAuthority('USERS_READ') or hasAuthority('SETTINGS_READ')")
+	@PreAuthorize("hasAuthority('USERS_READ')")
 	@Operation(summary = "Get role permission matrix")
 	public ResponseEntity<ApiResponse<RolePermissionMatrixResponse>> rolePermissions(
 			@PathVariable UUID roleId,
@@ -173,7 +173,7 @@ public class UserController {
 	}
 
 	@PutMapping("/roles/{roleId}/permissions")
-	@PreAuthorize("hasAuthority('USERS_UPDATE') or hasAuthority('SETTINGS_UPDATE')")
+	@PreAuthorize("hasAuthority('USERS_UPDATE')")
 	@Operation(summary = "Update role permissions")
 	public ResponseEntity<ApiResponse<RolePermissionMatrixResponse>> updateRolePermissions(
 			@PathVariable UUID roleId,

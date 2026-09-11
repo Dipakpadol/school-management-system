@@ -11,10 +11,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record StudentFeeGroupResponse(
 		FeeScope sourceType,
 		String label,
-		BigDecimal grossAmount,
-		BigDecimal discountAmount,
-		BigDecimal lateFeeAmount,
-		BigDecimal paidAmount,
-		BigDecimal balanceAmount,
+	BigDecimal grossAmount,
+	BigDecimal discountAmount,
+	BigDecimal lateFeeAmount,
+	BigDecimal payableAmount,
+	BigDecimal paidAmount,
+	BigDecimal balanceAmount,
 		List<StudentFeeAssignmentResponse> assignments) {
 }

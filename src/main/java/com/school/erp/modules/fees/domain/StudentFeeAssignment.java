@@ -187,6 +187,16 @@ public class StudentFeeAssignment extends BaseEntity {
 		recalculate();
 	}
 
+	public BigDecimal getDiscountableBalance() {
+		return installments.stream()
+				.map(StudentFeeInstallment::discountableBalance)
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+	}
+
+	public BigDecimal getPayableAmount() {
+		return grossAmount.subtract(discountAmount).add(lateFeeAmount).max(BigDecimal.ZERO);
+	}
+
 	public void assessLateFees(Iterable<LateFeeRule> rules, LocalDate asOf) {
 		for (StudentFeeInstallment installment : orderedInstallments()) {
 			if (installment.isSettledOrCancelled()) {
@@ -246,6 +256,7 @@ public class StudentFeeAssignment extends BaseEntity {
 	public void cancel() {
 		status = FeeAssignmentStatus.CANCELLED;
 		installments.forEach(StudentFeeInstallment::cancel);
+		recalculate();
 	}
 
 	public void recalculate() {

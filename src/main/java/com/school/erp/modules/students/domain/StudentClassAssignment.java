@@ -108,6 +108,14 @@ public class StudentClassAssignment extends BaseEntity {
 		this.effectiveTo = effectiveTo;
 	}
 
+	public void deactivateBefore(LocalDate nextEffectiveFrom) {
+		LocalDate previousEffectiveTo = nextEffectiveFrom == null ? null : nextEffectiveFrom.minusDays(1);
+		if (previousEffectiveTo != null && effectiveFrom != null && previousEffectiveTo.isBefore(effectiveFrom)) {
+			previousEffectiveTo = effectiveFrom;
+		}
+		deactivate(previousEffectiveTo);
+	}
+
 	public void update(
 			String academicYear,
 			String className,

@@ -27,6 +27,7 @@ import com.school.erp.common.importexport.TemplateGeneratorService;
 import com.school.erp.modules.users.api.dto.RoleResponse;
 import com.school.erp.modules.users.api.dto.UserCreateRequest;
 import com.school.erp.modules.users.api.dto.UserResponse;
+import com.school.erp.modules.users.domain.Role;
 import com.school.erp.modules.users.domain.RoleName;
 import com.school.erp.modules.users.infrastructure.UserAccountRepository;
 
@@ -42,7 +43,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class UserImportExportService {
 
-	private static final Set<RoleName> DOMAIN_MANAGED_ROLES = Set.of(RoleName.STUDENT, RoleName.TEACHER);
+	private static final Set<String> DOMAIN_MANAGED_ROLES = Set.of(RoleName.STUDENT.name(), RoleName.TEACHER.name());
 
 	public static final List<String> USER_COLUMNS = List.of(
 			"email",
@@ -188,29 +189,27 @@ public class UserImportExportService {
 				parseRoles(values, 0, new ArrayList<>()));
 	}
 
-	private Set<RoleName> parseRoles(Map<String, String> values, int rowNumber, List<ImportErrorDto> errors) {
+	private Set<String> parseRoles(Map<String, String> values, int rowNumber, List<ImportErrorDto> errors) {
 		String raw = value(values, "roles");
 		if (!StringUtils.hasText(raw)) {
 			return Set.of();
 		}
-		Set<RoleName> roles = new LinkedHashSet<>();
+		Set<String> roles = new LinkedHashSet<>();
 		for (String token : raw.split("[|,]")) {
 			if (!StringUtils.hasText(token)) {
 				continue;
 			}
-			try {
-				RoleName roleName = RoleName.valueOf(token.trim().toUpperCase());
-				if (DOMAIN_MANAGED_ROLES.contains(roleName)) {
-					errors.add(new ImportErrorDto(
-							rowNumber,
-							"roles",
-							"Student and Teacher users must be created from their domain management modules."));
-				}
-				roles.add(roleName);
+			String roleName = Role.normalizeRoleName(token);
+			if (!StringUtils.hasText(roleName)) {
+				continue;
 			}
-			catch (IllegalArgumentException ex) {
-				errors.add(new ImportErrorDto(rowNumber, "roles", "Unsupported role: " + token.trim()));
+			if (DOMAIN_MANAGED_ROLES.contains(roleName)) {
+				errors.add(new ImportErrorDto(
+						rowNumber,
+						"roles",
+						"Student and Teacher users must be created from their domain management modules."));
 			}
+			roles.add(roleName);
 		}
 		if (roles.isEmpty()) {
 			errors.add(new ImportErrorDto(rowNumber, "roles", "At least one role is required."));

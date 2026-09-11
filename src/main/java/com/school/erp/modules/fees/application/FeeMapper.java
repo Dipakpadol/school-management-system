@@ -122,6 +122,7 @@ public class FeeMapper {
 				assignment.getGrossAmount(),
 				assignment.getDiscountAmount(),
 				assignment.getLateFeeAmount(),
+				assignment.getPayableAmount(),
 				assignment.getPaidAmount(),
 				assignment.getBalanceAmount(),
 				assignment.getGrossAmount(),

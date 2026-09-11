@@ -5,6 +5,7 @@ import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -151,6 +152,7 @@ public class ExamService {
 			throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Exam type is inactive.");
 		}
 		List<ResolvedScheduleSubject> subjects = resolveScheduleSubjects(request);
+		validateScheduleConflicts(hierarchy, request.examTypeId(), subjects, null);
 		ExamSchedule schedule = new ExamSchedule(
 				hierarchy.academicYear(),
 				hierarchy.classEntity(),
@@ -160,7 +162,14 @@ public class ExamService {
 				request.status(),
 				request.description());
 		for (ResolvedScheduleSubject subject : subjects) {
-			schedule.addSubject(subject.subject(), subject.examDate(), subject.maxMarks(), subject.passingMarks());
+			schedule.addSubject(
+					subject.subject(),
+					subject.examDate(),
+					subject.startTime(),
+					subject.endTime(),
+					subject.room(),
+					subject.maxMarks(),
+					subject.passingMarks());
 		}
 		schedule.syncLegacySubjectFields();
 		ExamSchedule saved = examScheduleRepository.save(schedule);
@@ -179,6 +188,11 @@ public class ExamService {
 		validateScheduleRequestMatchesExisting(schedule, request);
 		ExamType examType = loadType(request.examTypeId());
 		List<ResolvedScheduleSubject> requestedSubjects = resolveScheduleSubjects(request);
+		validateScheduleConflicts(
+				new Hierarchy(schedule.getAcademicYear(), schedule.getClassEntity(), schedule.getSection()),
+				request.examTypeId(),
+				requestedSubjects,
+				scheduleId);
 		schedule.update(normalizeExamName(request.examName(), examType), request.status(), request.description());
 		syncScheduleSubjects(schedule, requestedSubjects);
 		schedule.syncLegacySubjectFields();
@@ -509,6 +523,9 @@ public class ExamService {
 			resolved.add(new ResolvedScheduleSubject(
 					subject,
 					subjectRequest.examDate(),
+					subjectRequest.startTime(),
+					subjectRequest.endTime(),
+					trimToNull(subjectRequest.room()),
 					subjectRequest.maxMarks(),
 					subjectRequest.passingMarks()));
 		}
@@ -523,6 +540,9 @@ public class ExamService {
 			return List.of(new ExamScheduleSubjectRequest(
 					request.subjectId(),
 					request.examDate(),
+					request.startTime(),
+					request.endTime(),
+					request.room(),
 					request.maxMarks(),
 					request.passingMarks()));
 		}
@@ -539,9 +559,74 @@ public class ExamService {
 		if (request.maxMarks() == null || request.maxMarks().compareTo(BigDecimal.ZERO) <= 0) {
 			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Max marks must be greater than 0.");
 		}
+		if (request.passingMarks() != null && request.passingMarks().compareTo(BigDecimal.ZERO) < 0) {
+			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Passing marks cannot be negative.");
+		}
 		if (request.passingMarks() != null && request.passingMarks().compareTo(request.maxMarks()) > 0) {
 			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Passing marks cannot be greater than max marks.");
 		}
+		if (request.startTime() != null && request.endTime() != null && !request.endTime().isAfter(request.startTime())) {
+			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Exam end time must be after start time.");
+		}
+	}
+
+	private void validateScheduleConflicts(
+			Hierarchy hierarchy,
+			UUID examTypeId,
+			List<ResolvedScheduleSubject> subjects,
+			UUID excludedScheduleId) {
+		validateInternalSubjectSlotConflicts(subjects);
+		for (ResolvedScheduleSubject subject : subjects) {
+			if (examScheduleRepository.existsDuplicateSubject(
+					hierarchy.academicYear().getId(),
+					hierarchy.classEntity().getId(),
+					hierarchy.section().getId(),
+					examTypeId,
+					subject.subject().getId(),
+					excludedScheduleId)) {
+				throw new BusinessException(
+						ErrorCode.CONFLICT,
+						"Subject is already scheduled for this exam type, class, and division.");
+			}
+			if (examScheduleRepository.existsSubjectSlotConflict(
+					hierarchy.academicYear().getId(),
+					hierarchy.classEntity().getId(),
+					hierarchy.section().getId(),
+					subject.examDate(),
+					subject.startTime(),
+					subject.endTime(),
+					excludedScheduleId)) {
+				throw new BusinessException(
+						ErrorCode.CONFLICT,
+						"Exam schedule conflicts with another subject slot for the selected class and division.");
+			}
+		}
+	}
+
+	private void validateInternalSubjectSlotConflicts(List<ResolvedScheduleSubject> subjects) {
+		for (int first = 0; first < subjects.size(); first++) {
+			for (int second = first + 1; second < subjects.size(); second++) {
+				if (sameDateConflict(subjects.get(first), subjects.get(second))) {
+					throw new BusinessException(
+							ErrorCode.CONFLICT,
+							"Exam subjects in the same schedule cannot overlap on the same date.");
+				}
+			}
+		}
+	}
+
+	private boolean sameDateConflict(ResolvedScheduleSubject first, ResolvedScheduleSubject second) {
+		if (!Objects.equals(first.examDate(), second.examDate())) {
+			return false;
+		}
+		return timeConflict(first.startTime(), first.endTime(), second.startTime(), second.endTime());
+	}
+
+	private boolean timeConflict(LocalTime firstStart, LocalTime firstEnd, LocalTime secondStart, LocalTime secondEnd) {
+		if (firstStart == null || firstEnd == null || secondStart == null || secondEnd == null) {
+			return true;
+		}
+		return firstStart.isBefore(secondEnd) && firstEnd.isAfter(secondStart);
 	}
 
 	private void syncScheduleSubjects(ExamSchedule schedule, List<ResolvedScheduleSubject> requestedSubjects) {
@@ -567,6 +652,9 @@ public class ExamService {
 				ExamScheduleSubject added = schedule.addSubject(
 						requested.subject(),
 						requested.examDate(),
+						requested.startTime(),
+						requested.endTime(),
+						requested.room(),
 						requested.maxMarks(),
 						requested.passingMarks());
 				audit("ExamScheduleSubject", added.getId(), "SUBJECT_ADDED", null, toScheduleSubjectResponse(added));
@@ -575,8 +663,21 @@ public class ExamService {
 				ExamScheduleSubjectResponse oldValue = toScheduleSubjectResponse(existing);
 				boolean maxChanged = different(existing.getMaxMarks(), requested.maxMarks());
 				boolean passingChanged = different(existing.getPassingMarks(), requested.passingMarks());
-				existing.update(requested.examDate(), requested.maxMarks(), requested.passingMarks());
+				boolean slotChanged = !Objects.equals(existing.getExamDate(), requested.examDate())
+						|| !Objects.equals(existing.getStartTime(), requested.startTime())
+						|| !Objects.equals(existing.getEndTime(), requested.endTime())
+						|| !Objects.equals(trimToNull(existing.getRoom()), requested.room());
+				existing.update(
+						requested.examDate(),
+						requested.startTime(),
+						requested.endTime(),
+						requested.room(),
+						requested.maxMarks(),
+						requested.passingMarks());
 				ExamScheduleSubjectResponse newValue = toScheduleSubjectResponse(existing);
+				if (slotChanged) {
+					audit("ExamScheduleSubject", existing.getId(), "SCHEDULE_SLOT_UPDATED", oldValue, newValue);
+				}
 				if (maxChanged) {
 					audit("ExamScheduleSubject", existing.getId(), "MAX_MARKS_UPDATED", oldValue, newValue);
 				}
@@ -599,6 +700,13 @@ public class ExamService {
 			return value.trim();
 		}
 		return examType.getName();
+	}
+
+	private String trimToNull(String value) {
+		if (!StringUtils.hasText(value)) {
+			return null;
+		}
+		return value.trim();
 	}
 
 	private ExamType loadType(UUID examTypeId) {
@@ -641,6 +749,9 @@ public class ExamService {
 				firstSubject == null ? null : firstSubject.subjectId(),
 				firstSubject == null ? null : firstSubject.subjectName(),
 				firstSubject == null ? null : firstSubject.examDate(),
+				firstSubject == null ? null : firstSubject.startTime(),
+				firstSubject == null ? null : firstSubject.endTime(),
+				firstSubject == null ? null : firstSubject.room(),
 				firstSubject == null ? null : firstSubject.maxMarks(),
 				firstSubject == null ? null : firstSubject.passingMarks(),
 				schedule.getStatus(),
@@ -653,6 +764,9 @@ public class ExamService {
 				subject.getSubject().getId(),
 				subject.getSubject().getName(),
 				subject.getExamDate(),
+				subject.getStartTime(),
+				subject.getEndTime(),
+				subject.getRoom(),
 				subject.getMaxMarks(),
 				subject.getPassingMarks());
 	}
@@ -1107,6 +1221,9 @@ public class ExamService {
 	private record ResolvedScheduleSubject(
 			Subject subject,
 			LocalDate examDate,
+			LocalTime startTime,
+			LocalTime endTime,
+			String room,
 			BigDecimal maxMarks,
 			BigDecimal passingMarks) {
 	}

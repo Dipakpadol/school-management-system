@@ -15,6 +15,7 @@ import com.school.erp.common.audit.application.AuditLogService;
 import com.school.erp.common.exception.BusinessException;
 import com.school.erp.common.exception.ErrorCode;
 import com.school.erp.common.exception.ResourceNotFoundException;
+import com.school.erp.modules.auth.infrastructure.RefreshTokenRepository;
 import com.school.erp.modules.users.api.dto.AdminResetPasswordRequest;
 import com.school.erp.modules.users.api.dto.PermissionResponse;
 import com.school.erp.modules.users.api.dto.RolePermissionMatrixResponse;
@@ -55,6 +56,7 @@ public class UserService {
 	private final UserAccountRepository userAccountRepository;
 	private final RoleRepository roleRepository;
 	private final PermissionRepository permissionRepository;
+	private final RefreshTokenRepository refreshTokenRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final UserMapper userMapper;
 	private final AuditLogService auditLogService;
@@ -87,6 +89,7 @@ public class UserService {
 	@Transactional
 	public UserResponse update(UUID userId, UserUpdateRequest request) {
 		UserAccount user = load(userId);
+		validateSuperAdminTargetMutation(user, "Only SUPER_ADMIN can update SUPER_ADMIN users.");
 		UserResponse oldValue = userMapper.toResponse(user);
 		validateUnique(request.email(), request.username(), request.phoneNumber(), userId);
 		validateSuperAdminRole(request.roles());
@@ -157,6 +160,7 @@ public class UserService {
 	@Transactional
 	public UserResponse activate(UUID userId) {
 		UserAccount user = load(userId);
+		validateSuperAdminTargetMutation(user, "Only SUPER_ADMIN can activate SUPER_ADMIN users.");
 		UserResponse oldValue = userMapper.toResponse(user);
 		user.activate();
 		UserResponse response = userMapper.toResponse(user);
@@ -168,18 +172,21 @@ public class UserService {
 	public UserResponse deactivate(UUID userId) {
 		preventSelfMutation(userId, "Cannot deactivate your own user.");
 		UserAccount user = load(userId);
+		validateSuperAdminTargetMutation(user, "Only SUPER_ADMIN can deactivate SUPER_ADMIN users.");
 		UserResponse oldValue = userMapper.toResponse(user);
 		user.deactivate();
+		refreshTokenRepository.revokeActiveTokensForUser(userId, Instant.now());
 		UserResponse response = userMapper.toResponse(user);
 		audit(userId, "STATUS_CHANGE", oldValue, response);
 		return response;
 	}
 
 	@Transactional
-	public UserResponse assignRole(UUID userId, RoleName roleName) {
-		validateSuperAdminRole(Set.of(roleName));
-		validateNoDomainManagedRoles(Set.of(roleName));
+	public UserResponse assignRole(UUID userId, String roleName) {
+		validateSuperAdminRole(java.util.Collections.singleton(roleName));
+		validateNoDomainManagedRoles(java.util.Collections.singleton(roleName));
 		UserAccount user = load(userId);
+		validateSuperAdminTargetMutation(user, "Only SUPER_ADMIN can update SUPER_ADMIN users.");
 		UserResponse oldValue = userMapper.toResponse(user);
 		user.addRole(resolveRole(roleName));
 		UserResponse response = userMapper.toResponse(user);
@@ -188,9 +195,11 @@ public class UserService {
 	}
 
 	@Transactional
-	public UserResponse removeRole(UUID userId, RoleName roleName) {
+	public UserResponse removeRole(UUID userId, String roleName) {
 		preventSelfMutation(userId, "Cannot remove roles from your own user.");
+		validateSuperAdminRole(java.util.Collections.singleton(roleName));
 		UserAccount user = load(userId);
+		validateSuperAdminTargetMutation(user, "Only SUPER_ADMIN can update SUPER_ADMIN users.");
 		if (user.getRoles().size() <= 1) {
 			throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "At least one role is required.");
 		}
@@ -207,7 +216,9 @@ public class UserService {
 			throw new BusinessException(ErrorCode.PASSWORD_POLICY_VIOLATION, "Password confirmation does not match.");
 		}
 		UserAccount user = load(userId);
+		validateSuperAdminTargetMutation(user, "Only SUPER_ADMIN can reset SUPER_ADMIN passwords.");
 		user.changePassword(passwordEncoder.encode(request.newPassword()));
+		refreshTokenRepository.revokeActiveTokensForUser(userId, Instant.now());
 		audit(userId, "PASSWORD_RESET", null, Map.of("resetAt", Instant.now(), "userId", userId));
 	}
 
@@ -215,8 +226,10 @@ public class UserService {
 	public void delete(UUID userId) {
 		preventSelfMutation(userId, "Cannot delete your own user.");
 		UserAccount user = load(userId);
+		validateSuperAdminTargetMutation(user, "Only SUPER_ADMIN can delete SUPER_ADMIN users.");
 		UserResponse oldValue = userMapper.toResponse(user);
 		user.softDelete(currentActor());
+		refreshTokenRepository.revokeActiveTokensForUser(userId, Instant.now());
 		audit(userId, "DELETE", oldValue, Map.of("deleted", true, "userId", userId));
 	}
 
@@ -244,12 +257,20 @@ public class UserService {
 		if (!missingIds.isEmpty()) {
 			throw new ResourceNotFoundException("Permission", missingIds);
 		}
+		permissions.stream()
+				.filter(permission -> !permission.isActive())
+				.findFirst()
+				.ifPresent(permission -> {
+					throw new BusinessException(
+							ErrorCode.BUSINESS_RULE_VIOLATION,
+							"Inactive permission cannot be assigned: " + permission.getCode());
+				});
 		return permissions.stream()
 				.sorted(Comparator.comparing(Permission::getCode))
 				.collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
 	}
 
-	private Set<Role> resolveRoles(Set<RoleName> roleNames) {
+	private Set<Role> resolveRoles(Set<String> roleNames) {
 		if (roleNames == null || roleNames.isEmpty()) {
 			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "At least one role is required.");
 		}
@@ -258,9 +279,19 @@ public class UserService {
 		return roles;
 	}
 
-	private Role resolveRole(RoleName roleName) {
-		return roleRepository.findByNameIgnoreCaseAndDeletedFalse(roleName.name())
-				.orElseThrow(() -> new ResourceNotFoundException("Role", roleName));
+	private Role resolveRole(String roleName) {
+		String normalizedRoleName = Role.normalizeRoleName(roleName);
+		if (!StringUtils.hasText(normalizedRoleName)) {
+			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Role is required.");
+		}
+		Role role = roleRepository.findByNameIgnoreCaseAndDeletedFalse(normalizedRoleName)
+				.orElseThrow(() -> new ResourceNotFoundException("Role", normalizedRoleName));
+		if (!role.isActive()) {
+			throw new BusinessException(
+					ErrorCode.BUSINESS_RULE_VIOLATION,
+					"Inactive role cannot be assigned: " + role.getName());
+		}
+		return role;
 	}
 
 	private void validateUnique(String email, String username, String phoneNumber, UUID existingUserId) {
@@ -291,14 +322,14 @@ public class UserService {
 		}
 	}
 
-	private void validateSuperAdminRole(Set<RoleName> roles) {
-		if (roles != null && roles.contains(RoleName.SUPER_ADMIN) && !currentUserHasRole("ROLE_SUPER_ADMIN")) {
+	private void validateSuperAdminRole(Set<String> roles) {
+		if (normalizedRoles(roles).contains(RoleName.SUPER_ADMIN.name()) && !currentUserHasRole("ROLE_SUPER_ADMIN")) {
 			throw new BusinessException(ErrorCode.FORBIDDEN, "Only SUPER_ADMIN can assign SUPER_ADMIN role.");
 		}
 	}
 
-	private void validateNoDomainManagedRoles(Set<RoleName> roles) {
-		if (roles == null || roles.stream().map(RoleName::name).noneMatch(DOMAIN_MANAGED_ROLES::contains)) {
+	private void validateNoDomainManagedRoles(Set<String> roles) {
+		if (normalizedRoles(roles).stream().noneMatch(DOMAIN_MANAGED_ROLES::contains)) {
 			return;
 		}
 		throw new BusinessException(
@@ -306,18 +337,35 @@ public class UserService {
 				"Student and Teacher user accounts must be initiated from Student Management or Teacher Management.");
 	}
 
-	private void validateDomainManagedRoleUpdate(UserAccount user, Set<RoleName> requestedRoles) {
-		if (requestedRoles == null || requestedRoles.stream().noneMatch(DOMAIN_MANAGED_ROLES::contains)) {
+	private void validateDomainManagedRoleUpdate(UserAccount user, Set<String> requestedRoles) {
+		Set<String> normalizedRequestedRoles = normalizedRoles(requestedRoles);
+		if (normalizedRequestedRoles.stream().noneMatch(DOMAIN_MANAGED_ROLES::contains)) {
 			return;
 		}
 		Set<String> existingRoles = user.getRoles().stream()
 				.map(Role::getName)
 				.collect(java.util.stream.Collectors.toSet());
-		boolean introducesDomainRole = requestedRoles.stream()
-				.filter(role -> DOMAIN_MANAGED_ROLES.contains(role.name()))
-				.anyMatch(roleName -> !existingRoles.contains(roleName.name()));
+		boolean introducesDomainRole = normalizedRequestedRoles.stream()
+				.filter(DOMAIN_MANAGED_ROLES::contains)
+				.anyMatch(roleName -> !existingRoles.contains(roleName));
 		if (introducesDomainRole) {
 			validateNoDomainManagedRoles(requestedRoles);
+		}
+	}
+
+	private Set<String> normalizedRoles(Set<String> roles) {
+		if (roles == null) {
+			return Set.of();
+		}
+		return roles.stream()
+				.map(Role::normalizeRoleName)
+				.filter(StringUtils::hasText)
+				.collect(java.util.stream.Collectors.toSet());
+	}
+
+	private void validateSuperAdminTargetMutation(UserAccount user, String message) {
+		if (user.hasRole(RoleName.SUPER_ADMIN) && !currentUserHasRole("ROLE_SUPER_ADMIN")) {
+			throw new BusinessException(ErrorCode.FORBIDDEN, message);
 		}
 	}
 

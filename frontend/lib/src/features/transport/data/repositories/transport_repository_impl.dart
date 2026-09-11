@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/network/page_payload.dart' as core;
 import '../../../../core/result/result.dart';
 import '../../../students/data/models/student_models.dart';
 import '../../domain/repositories/transport_repository.dart';
@@ -95,6 +96,26 @@ class TransportRepositoryImpl implements TransportRepository {
       routeId: routeId,
       pickupPointId: pickupPointId,
       status: status,
+    ),
+  );
+
+  @override
+  Future<Result<core.PagePayload<TransportFeeStructureModel>>>
+  feeStructuresPage({
+    String? academicYearId,
+    String? routeId,
+    String? pickupPointId,
+    String? status,
+    int page = 0,
+    int size = 20,
+  }) => _guard(
+    () => _remote.feeStructuresPage(
+      academicYearId: academicYearId,
+      routeId: routeId,
+      pickupPointId: pickupPointId,
+      status: status,
+      page: page,
+      size: size,
     ),
   );
 

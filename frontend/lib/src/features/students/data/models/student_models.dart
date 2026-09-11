@@ -6,6 +6,7 @@ class AcademicYearModel {
     required this.startDate,
     required this.endDate,
     required this.active,
+    required this.current,
   });
 
   factory AcademicYearModel.fromJson(Map<String, dynamic> json) {
@@ -16,6 +17,7 @@ class AcademicYearModel {
       startDate: DateTime.parse(json['startDate'] as String),
       endDate: DateTime.parse(json['endDate'] as String),
       active: json['active'] as bool? ?? true,
+      current: json['current'] as bool? ?? false,
     );
   }
 
@@ -25,6 +27,7 @@ class AcademicYearModel {
   final DateTime startDate;
   final DateTime endDate;
   final bool active;
+  final bool current;
 }
 
 class SchoolClassModel {

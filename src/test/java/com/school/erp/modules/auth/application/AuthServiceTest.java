@@ -3,6 +3,7 @@ package com.school.erp.modules.auth.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -73,6 +74,9 @@ class AuthServiceTest {
 	@Mock
 	private AuditLogService auditLogService;
 
+	@Mock
+	private AuthenticationFailureService authenticationFailureService;
+
 	private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 	private final SecureTokenService secureTokenService = new SecureTokenService();
 	private AuthService authService;
@@ -97,6 +101,7 @@ class AuthServiceTest {
 				jwtService,
 				secureTokenService,
 				authMapper,
+				authenticationFailureService,
 				new AuthProperties(5, Duration.ofMinutes(15), RoleName.PARENT, UserStatus.ACTIVE),
 				jwtProperties,
 				eventPublisher,
@@ -133,18 +138,53 @@ class AuthServiceTest {
 	@Test
 	void loginRecordsFailedAttemptWhenAuthenticationFails() {
 		UserAccount user = user("Password123");
+		ClientRequestInfo client = new ClientRequestInfo("127.0.0.1", "JUnit");
 		when(userAccountRepository.findByEmailIgnoreCaseAndDeletedFalse("admin@school.test")).thenReturn(Optional.of(user));
 		when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
 				.thenThrow(new BadCredentialsException("bad credentials"));
 
 		assertThatThrownBy(() -> authService.login(
 				new LoginRequest("admin@school.test", "wrong-password"),
-				new ClientRequestInfo("127.0.0.1", "JUnit")))
+				client))
 				.isInstanceOf(BusinessException.class)
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.INVALID_CREDENTIALS);
 
-		assertThat(user.getFailedLoginAttempts()).isEqualTo(1);
+		verify(authenticationFailureService).recordFailedLogin("admin@school.test", client);
+	}
+
+	@Test
+	void loginRecordsFailedAttemptForUnknownUsersWithoutAuthenticating() {
+		ClientRequestInfo client = new ClientRequestInfo("127.0.0.1", "JUnit");
+		when(userAccountRepository.findByEmailIgnoreCaseAndDeletedFalse("missing@school.test")).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> authService.login(
+				new LoginRequest("missing@school.test", "wrong-password"),
+				client))
+				.isInstanceOf(BusinessException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.INVALID_CREDENTIALS);
+
+		verify(authenticationFailureService).recordFailedLogin("missing@school.test", client);
+		verify(authenticationManager, never()).authenticate(any(UsernamePasswordAuthenticationToken.class));
+	}
+
+	@Test
+	void loginRejectsDisabledUsersBeforePasswordAuthentication() {
+		UserAccount user = user("Password123");
+		user.deactivate();
+		ClientRequestInfo client = new ClientRequestInfo("127.0.0.1", "JUnit");
+		when(userAccountRepository.findByEmailIgnoreCaseAndDeletedFalse("admin@school.test")).thenReturn(Optional.of(user));
+
+		assertThatThrownBy(() -> authService.login(
+				new LoginRequest("admin@school.test", "Password123"),
+				client))
+				.isInstanceOf(BusinessException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.UNAUTHORIZED);
+
+		verify(authenticationFailureService).recordBlockedLogin(user, "ACCOUNT_DISABLED", client);
+		verify(authenticationManager, never()).authenticate(any(UsernamePasswordAuthenticationToken.class));
 	}
 
 	@Test

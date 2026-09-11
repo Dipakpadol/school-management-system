@@ -44,6 +44,7 @@ public record StudentFeeAssignmentResponse(
 		BigDecimal grossAmount,
 		BigDecimal discountAmount,
 		BigDecimal lateFeeAmount,
+		BigDecimal payableAmount,
 		BigDecimal paidAmount,
 		BigDecimal balanceAmount,
 		BigDecimal amount,

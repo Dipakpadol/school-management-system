@@ -167,11 +167,7 @@ public class AuditLogService {
 	private String currentIpAddress() {
 		if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
 			HttpServletRequest request = attributes.getRequest();
-			String forwardedFor = request.getHeader("X-Forwarded-For");
-			String ipAddress = StringUtils.hasText(forwardedFor)
-					? forwardedFor.split(",")[0].trim()
-					: request.getRemoteAddr();
-			return truncate(ipAddress, 80);
+			return truncate(request.getRemoteAddr(), 80);
 		}
 		return null;
 	}

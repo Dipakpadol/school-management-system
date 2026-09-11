@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -155,6 +156,36 @@ class ExamServiceTest {
 	}
 
 	@Test
+	void createScheduleIncludesSubjectTimeAndRoom() {
+		stubHierarchy();
+		when(examTypeRepository.findByIdAndDeletedFalse(examType.getId())).thenReturn(Optional.of(examType));
+		when(divisionSubjectRepository.existsBySectionIdAndSubjectIdAndDeletedFalse(section.getId(), math.getId())).thenReturn(true);
+		when(academicHierarchyService.loadSubject(math.getId())).thenReturn(math);
+		when(examScheduleRepository.save(any(ExamSchedule.class))).thenAnswer(invocation -> {
+			ExamSchedule saved = invocation.getArgument(0);
+			setId(saved);
+			saved.activeSubjects().forEach(this::setId);
+			return saved;
+		});
+
+		var response = examService.createSchedule(scheduleRequest(List.of(
+				subject(
+						math,
+						LocalDate.of(2026, 8, 10),
+						LocalTime.of(9, 0),
+						LocalTime.of(11, 0),
+						"Room 12",
+						"50.00",
+						"18.00"))));
+
+		assertThat(response.subjects().getFirst().startTime()).isEqualTo(LocalTime.of(9, 0));
+		assertThat(response.subjects().getFirst().endTime()).isEqualTo(LocalTime.of(11, 0));
+		assertThat(response.subjects().getFirst().room()).isEqualTo("Room 12");
+		assertThat(response.startTime()).isEqualTo(LocalTime.of(9, 0));
+		assertThat(response.room()).isEqualTo("Room 12");
+	}
+
+	@Test
 	void createScheduleRejectsEmptySubjectsList() {
 		stubHierarchy();
 		when(examTypeRepository.findByIdAndDeletedFalse(examType.getId())).thenReturn(Optional.of(examType));
@@ -190,6 +221,55 @@ class ExamServiceTest {
 				.isInstanceOf(BusinessException.class)
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.VALIDATION_ERROR);
+	}
+
+	@Test
+	void createScheduleRejectsInvalidSubjectTimeRange() {
+		stubHierarchy();
+		when(examTypeRepository.findByIdAndDeletedFalse(examType.getId())).thenReturn(Optional.of(examType));
+
+		assertThatThrownBy(() -> examService.createSchedule(scheduleRequest(List.of(
+				subject(
+						math,
+						LocalDate.of(2026, 8, 10),
+						LocalTime.of(11, 0),
+						LocalTime.of(10, 0),
+						"Room 12",
+						"50.00",
+						"18.00")))))
+				.isInstanceOf(BusinessException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.VALIDATION_ERROR);
+	}
+
+	@Test
+	void createScheduleRejectsExistingSlotConflict() {
+		stubHierarchy();
+		when(examTypeRepository.findByIdAndDeletedFalse(examType.getId())).thenReturn(Optional.of(examType));
+		when(divisionSubjectRepository.existsBySectionIdAndSubjectIdAndDeletedFalse(section.getId(), math.getId())).thenReturn(true);
+		when(academicHierarchyService.loadSubject(math.getId())).thenReturn(math);
+		when(examScheduleRepository.existsSubjectSlotConflict(
+				academicYear.getId(),
+				classEntity.getId(),
+				section.getId(),
+				LocalDate.of(2026, 8, 10),
+				LocalTime.of(9, 0),
+				LocalTime.of(11, 0),
+				null))
+				.thenReturn(true);
+
+		assertThatThrownBy(() -> examService.createSchedule(scheduleRequest(List.of(
+				subject(
+						math,
+						LocalDate.of(2026, 8, 10),
+						LocalTime.of(9, 0),
+						LocalTime.of(11, 0),
+						"Room 12",
+						"50.00",
+						"18.00")))))
+				.isInstanceOf(BusinessException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.CONFLICT);
 	}
 
 	@Test
@@ -391,14 +471,31 @@ class ExamServiceTest {
 				null,
 				null,
 				null,
+				null,
+				null,
+				null,
 				ExamScheduleStatus.SCHEDULED,
 				null);
 	}
 
 	private ExamScheduleSubjectRequest subject(Subject subject, LocalDate examDate, String maxMarks, String passingMarks) {
+		return subject(subject, examDate, null, null, null, maxMarks, passingMarks);
+	}
+
+	private ExamScheduleSubjectRequest subject(
+			Subject subject,
+			LocalDate examDate,
+			LocalTime startTime,
+			LocalTime endTime,
+			String room,
+			String maxMarks,
+			String passingMarks) {
 		return new ExamScheduleSubjectRequest(
 				subject.getId(),
 				examDate,
+				startTime,
+				endTime,
+				room,
 				new BigDecimal(maxMarks),
 				passingMarks == null ? null : new BigDecimal(passingMarks));
 	}
@@ -419,6 +516,9 @@ class ExamServiceTest {
 			examSchedule.addSubject(
 					selected,
 					subjectRequest.examDate(),
+					subjectRequest.startTime(),
+					subjectRequest.endTime(),
+					subjectRequest.room(),
 					subjectRequest.maxMarks(),
 					subjectRequest.passingMarks());
 		}

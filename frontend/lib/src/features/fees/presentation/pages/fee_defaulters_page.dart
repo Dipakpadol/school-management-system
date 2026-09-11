@@ -22,6 +22,8 @@ class FeeDefaultersPage extends ConsumerStatefulWidget {
 }
 
 class _FeeDefaultersPageState extends ConsumerState<FeeDefaultersPage> {
+  static const int _pageSize = 20;
+
   final _asOfController = TextEditingController();
   final _searchController = TextEditingController();
 
@@ -36,7 +38,7 @@ class _FeeDefaultersPageState extends ConsumerState<FeeDefaultersPage> {
   void initState() {
     super.initState();
     _asOfController.text = _dateLabel(DateTime.now());
-    _filter = FeeDefaulterFilter(asOf: _asOfController.text);
+    _filter = FeeDefaulterFilter(asOf: _asOfController.text, size: _pageSize);
   }
 
   @override
@@ -49,7 +51,7 @@ class _FeeDefaultersPageState extends ConsumerState<FeeDefaultersPage> {
   @override
   Widget build(BuildContext context) {
     final years = ref.watch(academicYearsProvider);
-    final defaulters = ref.watch(feeDefaultersProvider(_filter));
+    final defaulters = ref.watch(feeDefaultersPageProvider(_filter));
 
     return AdminShell(
       title: 'Fee Defaulters',
@@ -79,10 +81,14 @@ class _FeeDefaultersPageState extends ConsumerState<FeeDefaultersPage> {
           ),
           const SizedBox(height: 16),
           defaulters.when(
-            data: _DefaulterResults.new,
+            data: (page) => _DefaulterResults(
+              page: page,
+              onPageChanged: _changePage,
+            ),
             error: (error, _) => AppErrorState(
               message: _message(error),
-              onRetry: () => ref.invalidate(feeDefaultersProvider(_filter)),
+              onRetry: () =>
+                  ref.invalidate(feeDefaultersPageProvider(_filter)),
             ),
             loading: () => const AppLoadingState(label: 'Loading defaulters'),
           ),
@@ -309,6 +315,8 @@ class _FeeDefaultersPageState extends ConsumerState<FeeDefaultersPage> {
         sourceType: _sourceType,
         asOf: _blankToNull(_asOfController.text),
         query: _blankToNull(_searchController.text),
+        page: 0,
+        size: _pageSize,
       );
     });
   }
@@ -321,8 +329,12 @@ class _FeeDefaultersPageState extends ConsumerState<FeeDefaultersPage> {
       _sourceType = null;
       _asOfController.text = _dateLabel(DateTime.now());
       _searchController.clear();
-      _filter = FeeDefaulterFilter(asOf: _asOfController.text);
+      _filter = FeeDefaulterFilter(asOf: _asOfController.text, size: _pageSize);
     });
+  }
+
+  void _changePage(int page) {
+    setState(() => _filter = _filter.copyWith(page: page));
   }
 
   Future<void> _export(String format) async {
@@ -426,12 +438,17 @@ class _Header extends StatelessWidget {
 }
 
 class _DefaulterResults extends StatelessWidget {
-  const _DefaulterResults(this.items);
+  const _DefaulterResults({
+    required this.page,
+    required this.onPageChanged,
+  });
 
-  final List<FeeDefaulterModel> items;
+  final PagePayload<FeeDefaulterModel> page;
+  final ValueChanged<int> onPageChanged;
 
   @override
   Widget build(BuildContext context) {
+    final items = page.content;
     if (items.isEmpty) {
       return const Card(
         child: Padding(
@@ -440,104 +457,122 @@ class _DefaulterResults extends StatelessWidget {
         ),
       );
     }
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 1120 ? 2 : 1;
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            mainAxisExtent: 156,
-          ),
-          itemCount: items.length,
-          itemBuilder: (context, index) {
-            final item = items[index];
-            return Card(
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () => context.go(
-                  AppRoutes.collectFeePaymentForAssignment(item.assignmentId),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      SizedBox.square(
-                        dimension: 44,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.errorContainer,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.warning_amber_outlined,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onErrorContainer,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.studentName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w800),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              [
-                                item.admissionNumber,
-                                _classLabel(item),
-                                item.sourceType,
-                                if (item.dueDate != null)
-                                  'Due ${_dateLabel(item.dueDate!)}',
-                                '${item.overdueDays} overdue days',
-                              ].join(' - '),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.outline,
-                                  ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              [
-                                'Total ${_money(item.totalAmount)}',
-                                'Paid ${_money(item.paidAmount)}',
-                                'Pending ${_money(item.pendingAmount)}',
-                                if ((item.contactNumber ?? '').isNotEmpty)
-                                  item.contactNumber!,
-                              ].join(' - '),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      MoneyText(item.pendingAmount, emphasized: true),
-                    ],
-                  ),
-                ),
+    return Column(
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 1120 ? 2 : 1;
+            return GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                mainAxisExtent: 156,
               ),
+              itemCount: items.length,
+              itemBuilder: (context, index) {
+                final item = items[index];
+                return Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => context.go(
+                      AppRoutes.collectFeePaymentForAssignment(
+                        item.assignmentId,
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          SizedBox.square(
+                            dimension: 44,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.errorContainer,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.warning_amber_outlined,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onErrorContainer,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.studentName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.w800),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  [
+                                    item.admissionNumber,
+                                    _classLabel(item),
+                                    item.sourceType,
+                                    if (item.dueDate != null)
+                                      'Due ${_dateLabel(item.dueDate!)}',
+                                    '${item.overdueDays} overdue days',
+                                  ].join(' - '),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.outline,
+                                      ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  [
+                                    'Total ${_money(item.totalAmount)}',
+                                    'Paid ${_money(item.paidAmount)}',
+                                    'Pending ${_money(item.pendingAmount)}',
+                                    if ((item.contactNumber ?? '').isNotEmpty)
+                                      item.contactNumber!,
+                                  ].join(' - '),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          MoneyText(item.pendingAmount, emphasized: true),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
             );
           },
-        );
-      },
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: FeePaginationBar(
+            page: page.page,
+            size: page.size,
+            totalElements: page.totalElements,
+            totalPages: page.totalPages,
+            onPageChanged: onPageChanged,
+          ),
+        ),
+      ],
     );
   }
 }
