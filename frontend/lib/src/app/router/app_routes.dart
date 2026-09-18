@@ -21,6 +21,9 @@ abstract final class AppRoutes {
   static const transport = '/transport';
   static const teachers = '/teachers';
   static const teacherAttendance = '/teachers/attendance';
+  static const staff = '/modules/staff';
+  static const communications = '/modules/communications';
+  static const library = '/modules/library';
   static const users = '/users';
   static const roles = '/roles';
   static const auditLogs = '/audit-logs';
@@ -52,6 +55,9 @@ abstract final class AppRoutes {
       'hostel' => hostel,
       'transport' => transport,
       'teachers' => teachers,
+      'staff' => staff,
+      'communications' => communications,
+      'library' => library,
       'users' => users,
       'roles' => roles,
       'audit-logs' => auditLogs,
@@ -156,6 +162,9 @@ abstract final class AppRouteName {
   static const transport = 'transport';
   static const teachers = 'teachers';
   static const teacherAttendance = 'teacher-attendance';
+  static const staff = 'staff';
+  static const communications = 'communications';
+  static const library = 'library';
   static const users = 'users';
   static const roles = 'roles';
   static const auditLogs = 'audit-logs';

@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router/app_routes.dart';
 import '../data/public_website_data.dart';
 import '../widgets/public_site_layout.dart';
-import '../widgets/public_site_theme.dart';
 import '../widgets/public_site_widgets.dart';
 
 class PublicHomePage extends StatelessWidget {
@@ -21,15 +20,14 @@ class PublicHomePage extends StatelessWidget {
             eyebrow: 'About the school',
             title: 'A caring campus for confident learners.',
             subtitle:
-                'Start International School combines strong academics, values, activity-based learning, and parent communication through the School ERP platform.',
+                'Star International School combines strong academics, values, activity-based learning, and parent communication through the School ERP platform.',
             backgroundColor: Colors.white,
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final stacked = constraints.maxWidth < 820;
-                final image = const PublicNetworkImage(
-                  imageUrl:
-                      'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80',
-                  label: 'Classroom learning',
+                const image = PublicAssetImage(
+                  imageAsset: PublicWebsiteAssets.schoolGroup,
+                  label: 'Star International School students and staff',
                 );
                 final content = Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -79,7 +77,7 @@ class PublicHomePage extends StatelessWidget {
             eyebrow: 'Highlights',
             title: 'Everything students need to learn, grow, and belong.',
             subtitle:
-                'The public site starts with dummy content, but the structure is ready for real school data and future APIs.',
+                'The school experience brings together academics, activities, residential care, transport, and regular parent communication.',
             child: PublicResponsiveGrid(
               children: [
                 for (final item in highlights)
@@ -109,7 +107,7 @@ class PublicHomePage extends StatelessWidget {
             eyebrow: 'Events and announcements',
             title: 'What is happening on campus.',
             subtitle:
-                'Notices, circulars, and events are represented with dummy data for now.',
+                'Follow admission notices, campus events, circulars, and student activity updates.',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -173,7 +171,7 @@ class PublicHomePage extends StatelessWidget {
                     children: [
                       info,
                       const SizedBox(height: 24),
-                      const MapPlaceholder(),
+                      const CampusLocationPanel(),
                     ],
                   );
                 }
@@ -183,7 +181,7 @@ class PublicHomePage extends StatelessWidget {
                   children: [
                     Expanded(child: info),
                     const SizedBox(width: 32),
-                    const Expanded(child: MapPlaceholder()),
+                    const Expanded(child: CampusLocationPanel()),
                   ],
                 );
               },
@@ -214,12 +212,10 @@ class _HomeHero extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(
-            schoolProfile.heroImageUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return const ColoredBox(color: PublicSiteColors.primaryDark);
-            },
+          PublicAssetImage(
+            imageAsset: schoolProfile.heroImageAsset,
+            label: schoolProfile.name,
+            borderRadius: BorderRadius.zero,
           ),
           DecoratedBox(
             decoration: BoxDecoration(

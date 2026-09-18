@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router/app_routes.dart';
 import '../../../core/result/result.dart';
 import '../../../core/widgets/admin_shell.dart';
+import '../../../core/widgets/app_confirm_dialog.dart';
 import '../../../core/widgets/app_error_state.dart';
 import '../../../core/widgets/app_loading_state.dart';
+import '../../../core/widgets/app_page_layout.dart';
 import '../../../core/upload/file_picker.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
 import '../../module_records/data/models/module_record_model.dart';
@@ -14,17 +16,16 @@ import '../../module_records/data/repositories/module_records_repository_impl.da
 import '../../module_records/presentation/controllers/module_records_providers.dart';
 import '../domain/module_registry.dart';
 
-class ModulePlaceholderPage extends ConsumerStatefulWidget {
-  const ModulePlaceholderPage({required this.moduleId, super.key});
+class ModuleRecordsPage extends ConsumerStatefulWidget {
+  const ModuleRecordsPage({required this.moduleId, super.key});
 
   final String moduleId;
 
   @override
-  ConsumerState<ModulePlaceholderPage> createState() =>
-      _ModulePlaceholderPageState();
+  ConsumerState<ModuleRecordsPage> createState() => _ModuleRecordsPageState();
 }
 
-class _ModulePlaceholderPageState extends ConsumerState<ModulePlaceholderPage> {
+class _ModuleRecordsPageState extends ConsumerState<ModuleRecordsPage> {
   final _searchController = TextEditingController();
   late String _recordType;
   String _query = '';
@@ -36,7 +37,7 @@ class _ModulePlaceholderPageState extends ConsumerState<ModulePlaceholderPage> {
   }
 
   @override
-  void didUpdateWidget(covariant ModulePlaceholderPage oldWidget) {
+  void didUpdateWidget(covariant ModuleRecordsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.moduleId != widget.moduleId) {
       _recordType = _recordTypes(widget.moduleId).first;
@@ -72,32 +73,52 @@ class _ModulePlaceholderPageState extends ConsumerState<ModulePlaceholderPage> {
       },
       child: Column(
         children: [
-          _ModuleRecordsHeader(
-            moduleId: widget.moduleId,
-            recordType: _recordType,
-            recordTypes: _recordTypes(widget.moduleId),
-            searchController: _searchController,
-            onRecordTypeChanged: (value) {
-              setState(() {
-                _recordType = value;
-                _query = '';
-                _searchController.clear();
-              });
-            },
-            onSearch: () {
-              setState(() {
-                _query = _searchController.text.trim();
-              });
-            },
-            onAdd: () => _showRecordDialog(
-              context,
-              moduleId: widget.moduleId,
-              recordType: _recordType,
-              onChanged: () => ref.invalidate(moduleRecordsProvider(query)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+            child: Column(
+              children: [
+                AppPageHeader(
+                  title: module?.title ?? _titleCase(widget.moduleId),
+                  subtitle:
+                      'Manage ${_titleCase(_recordType).toLowerCase()} records, imports, exports, and active status.',
+                  icon: module?.icon ?? Icons.dashboard_customize_outlined,
+                  actions: [
+                    FilledButton.icon(
+                      onPressed: () => _showRecordDialog(
+                        context,
+                        moduleId: widget.moduleId,
+                        recordType: _recordType,
+                        onChanged: () =>
+                            ref.invalidate(moduleRecordsProvider(query)),
+                      ),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Record'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _ModuleRecordsHeader(
+                  moduleId: widget.moduleId,
+                  recordType: _recordType,
+                  recordTypes: _recordTypes(widget.moduleId),
+                  searchController: _searchController,
+                  onRecordTypeChanged: (value) {
+                    setState(() {
+                      _recordType = value;
+                      _query = '';
+                      _searchController.clear();
+                    });
+                  },
+                  onSearch: () {
+                    setState(() {
+                      _query = _searchController.text.trim();
+                    });
+                  },
+                  onRefresh: () => ref.invalidate(moduleRecordsProvider(query)),
+                ),
+              ],
             ),
-            onRefresh: () => ref.invalidate(moduleRecordsProvider(query)),
           ),
-          const Divider(height: 1),
           Expanded(
             child: records.when(
               data: (items) => _ModuleRecordList(
@@ -128,7 +149,6 @@ class _ModuleRecordsHeader extends ConsumerWidget {
     required this.searchController,
     required this.onRecordTypeChanged,
     required this.onSearch,
-    required this.onAdd,
     required this.onRefresh,
   });
 
@@ -138,117 +158,101 @@ class _ModuleRecordsHeader extends ConsumerWidget {
   final TextEditingController searchController;
   final ValueChanged<String> onRecordTypeChanged;
   final VoidCallback onSearch;
-  final VoidCallback onAdd;
   final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Material(
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
-        child: Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            SizedBox(
-              width: 230,
-              child: DropdownButtonFormField<String>(
-                initialValue: recordType,
-                decoration: const InputDecoration(
-                  labelText: 'Record type',
-                  prefixIcon: Icon(Icons.category_outlined),
-                ),
-                items: [
-                  for (final type in recordTypes)
-                    DropdownMenuItem(
-                      value: type,
-                      child: Text(_titleCase(type)),
-                    ),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    onRecordTypeChanged(value);
-                  }
-                },
+    return AppSectionCard(
+      child: AppFilterBar(
+        children: [
+          SizedBox(
+            width: 230,
+            child: DropdownButtonFormField<String>(
+              initialValue: recordType,
+              decoration: const InputDecoration(
+                labelText: 'Record type',
+                prefixIcon: Icon(Icons.category_outlined),
               ),
-            ),
-            SizedBox(
-              width: 300,
-              child: TextField(
-                controller: searchController,
-                decoration: const InputDecoration(
-                  labelText: 'Search records',
-                  prefixIcon: Icon(Icons.search),
-                ),
-                onSubmitted: (_) => onSearch(),
-              ),
-            ),
-            OutlinedButton.icon(
-              onPressed: onSearch,
-              icon: const Icon(Icons.tune_outlined),
-              label: const Text('Apply'),
-            ),
-            FilledButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add),
-              label: const Text('Add'),
-            ),
-            PopupMenuButton<String>(
-              tooltip: 'Export',
-              icon: const Icon(Icons.download_outlined),
-              itemBuilder: (context) => const [
-                PopupMenuItem(value: 'excel', child: Text('Export Excel')),
-                PopupMenuItem(value: 'csv', child: Text('Export CSV')),
-                PopupMenuItem(value: 'pdf', child: Text('Export PDF')),
+              items: [
+                for (final type in recordTypes)
+                  DropdownMenuItem(value: type, child: Text(_titleCase(type))),
               ],
-              onSelected: (format) => _runAction(
-                context,
-                ref
-                    .read(moduleRecordsRepositoryProvider)
-                    .export(
-                      moduleId: moduleId,
-                      recordType: recordType,
-                      format: format,
-                      query: searchController.text.trim(),
-                    ),
-                'Export downloaded.',
+              onChanged: (value) {
+                if (value != null) {
+                  onRecordTypeChanged(value);
+                }
+              },
+            ),
+          ),
+          SizedBox(
+            width: 300,
+            child: TextField(
+              controller: searchController,
+              decoration: const InputDecoration(
+                labelText: 'Search records',
+                prefixIcon: Icon(Icons.search),
               ),
+              onSubmitted: (_) => onSearch(),
             ),
-            OutlinedButton.icon(
-              onPressed: () => _runAction(
-                context,
-                ref
-                    .read(moduleRecordsRepositoryProvider)
-                    .template(moduleId: moduleId, recordType: recordType),
-                'Template downloaded.',
-              ),
-              icon: const Icon(Icons.table_view_outlined),
-              label: const Text('Template'),
+          ),
+          OutlinedButton.icon(
+            onPressed: onSearch,
+            icon: const Icon(Icons.tune_outlined),
+            label: const Text('Apply'),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Export',
+            icon: const Icon(Icons.download_outlined),
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'excel', child: Text('Export Excel')),
+              PopupMenuItem(value: 'csv', child: Text('Export CSV')),
+              PopupMenuItem(value: 'pdf', child: Text('Export PDF')),
+            ],
+            onSelected: (format) => _runAction(
+              context,
+              ref
+                  .read(moduleRecordsRepositoryProvider)
+                  .export(
+                    moduleId: moduleId,
+                    recordType: recordType,
+                    format: format,
+                    query: searchController.text.trim(),
+                  ),
+              'Export downloaded.',
             ),
-            PopupMenuButton<String>(
-              tooltip: 'Import',
-              icon: const Icon(Icons.upload_file_outlined),
-              itemBuilder: (context) => const [
-                PopupMenuItem(value: 'excel', child: Text('Import Excel')),
-                PopupMenuItem(value: 'csv', child: Text('Import CSV')),
-              ],
-              onSelected: (format) => _runPickedModuleImport(
-                context,
-                ref,
-                moduleId,
-                recordType,
-                format,
-              ),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => _runAction(
+              context,
+              ref
+                  .read(moduleRecordsRepositoryProvider)
+                  .template(moduleId: moduleId, recordType: recordType),
+              'Template downloaded.',
             ),
-            OutlinedButton.icon(
-              onPressed: onRefresh,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Refresh'),
+            icon: const Icon(Icons.table_view_outlined),
+            label: const Text('Template'),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Import',
+            icon: const Icon(Icons.upload_file_outlined),
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'excel', child: Text('Import Excel')),
+              PopupMenuItem(value: 'csv', child: Text('Import CSV')),
+            ],
+            onSelected: (format) => _runPickedModuleImport(
+              context,
+              ref,
+              moduleId,
+              recordType,
+              format,
             ),
-          ],
-        ),
+          ),
+          OutlinedButton.icon(
+            onPressed: onRefresh,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Refresh'),
+          ),
+        ],
       ),
     );
   }
@@ -270,7 +274,14 @@ class _ModuleRecordList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (records.isEmpty) {
-      return Center(child: Text('No ${_titleCase(recordType)} records found.'));
+      return AppEmptyState(
+        message: 'No ${_titleCase(recordType)} records found.',
+        action: OutlinedButton.icon(
+          onPressed: onChanged,
+          icon: const Icon(Icons.refresh),
+          label: const Text('Refresh'),
+        ),
+      );
     }
 
     return LayoutBuilder(
@@ -297,9 +308,11 @@ class _ModuleRecordList extends ConsumerWidget {
                 onChanged: onChanged,
               ),
               onDelete: () async {
-                final confirmed = await _confirm(
+                final confirmed = await _confirmDelete(
                   context,
-                  'Delete ${record.name}?',
+                  title: 'Delete record?',
+                  message:
+                      '${record.name} will be removed from ${_titleCase(recordType).toLowerCase()} records. Historical references may remain read-only where the backend preserves them.',
                 );
                 if (!confirmed || !context.mounted) {
                   return;
@@ -374,7 +387,10 @@ class _ModuleRecordCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      _StatusChip(status: record.status),
+                      AppStatusBadge(
+                        label: _titleCase(record.status),
+                        color: _statusColor(record.status),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -430,34 +446,6 @@ class _ModuleRecordCard extends StatelessWidget {
               ],
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final isActive = status.toUpperCase() == 'ACTIVE';
-    final color = isActive ? const Color(0xFF16A34A) : const Color(0xFF64748B);
-    return Container(
-      height: 26,
-      padding: const EdgeInsets.symmetric(horizontal: 9),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(13),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        _titleCase(status),
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w800,
         ),
       ),
     );
@@ -551,8 +539,16 @@ class _RecordFormDialogState extends ConsumerState<_RecordFormDialog> {
           child: Form(
             key: _formKey,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
+                Text(
+                  'Record Details',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 12),
                 _TwoColumnFields(
                   children: [
                     TextFormField(
@@ -590,6 +586,13 @@ class _RecordFormDialogState extends ConsumerState<_RecordFormDialog> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 18),
+                Text(
+                  'Additional Information',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+                ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _description,
@@ -622,7 +625,10 @@ class _RecordFormDialogState extends ConsumerState<_RecordFormDialog> {
           icon: _saving
               ? const SizedBox.square(
                   dimension: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 )
               : const Icon(Icons.save_outlined),
           label: const Text('Save'),
@@ -756,6 +762,19 @@ String? _required(String? value) {
   return null;
 }
 
+Color _statusColor(String status) {
+  return switch (status.toUpperCase()) {
+    'ACTIVE' ||
+    'APPROVED' ||
+    'PAID' ||
+    'ISSUED' ||
+    'RETURNED' => const Color(0xFF16A34A),
+    'PENDING' || 'PARTIAL' || 'OVERDUE' => const Color(0xFFD97706),
+    'REJECTED' || 'INACTIVE' || 'DELETED' => const Color(0xFFDC2626),
+    _ => const Color(0xFF64748B),
+  };
+}
+
 void _snack(BuildContext context, String message) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
@@ -817,23 +836,17 @@ Future<void> _runPickedModuleImport(
   );
 }
 
-Future<bool> _confirm(BuildContext context, String message) async {
-  final result = await showDialog<bool>(
+Future<bool> _confirmDelete(
+  BuildContext context, {
+  required String title,
+  required String message,
+}) async {
+  return showAppConfirmDialog(
     context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Confirm action'),
-      content: Text(message),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Confirm'),
-        ),
-      ],
-    ),
+    title: title,
+    message: message,
+    confirmLabel: 'Delete',
+    confirmIcon: Icons.delete_outline,
+    destructive: true,
   );
-  return result ?? false;
 }

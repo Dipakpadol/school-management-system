@@ -43,6 +43,7 @@ abstract final class ApiPaths {
   static const auditLogFilterUsers = '/v1/audit-logs/filter-options/users';
 
   static const reportsOptions = '/v1/reports/options';
+  static const reportsPreview = '/v1/reports/preview';
   static const reportsExport = '/v1/reports/export';
 
   static const notificationLogs = '/v1/notifications/logs';
@@ -51,9 +52,103 @@ abstract final class ApiPaths {
   static const notificationTestSms = '/v1/notifications/test/sms';
   static const notificationTestWhatsApp = '/v1/notifications/test/whatsapp';
   static const appSettings = '/v1/settings';
+  static const staff = '/v1/staff';
+  static const staffDepartments = '/v1/staff/departments';
+  static const staffDesignations = '/v1/staff/designations';
+  static const staffAttendanceDaily = '/v1/staff/attendance/daily';
+  static const staffAttendanceSummary = '/v1/staff/attendance/summary';
+  static const staffAttendanceMonthly = '/v1/staff/attendance/monthly';
+  static const staffLeaveTypes = '/v1/staff/leave-types';
+  static const staffLeaves = '/v1/staff/leaves';
+  static const salaryStructures = '/v1/staff/salary-structures';
+  static const staffSalaryAssignments = '/v1/staff/salary-assignments';
+  static const payroll = '/v1/staff/payroll';
+  static const payrollGenerate = '/v1/staff/payroll/generate';
+  static const communications = '/v1/communications';
+  static const librarySummary = '/v1/library/summary';
+  static const libraryCategories = '/v1/library/categories';
+  static const libraryAuthors = '/v1/library/authors';
+  static const libraryPublishers = '/v1/library/publishers';
+  static const libraryBooks = '/v1/library/books';
+  static const libraryCopies = '/v1/library/copies';
+  static const libraryMemberships = '/v1/library/memberships';
+  static const libraryLoans = '/v1/library/loans';
+  static const libraryIssueLoan = '/v1/library/loans/issue';
+  static const libraryFines = '/v1/library/fines';
 
   static String notificationTemplate(String id) =>
       '/v1/notifications/templates/$id';
+
+  static String staffMember(String id) => '/v1/staff/$id';
+
+  static String staffDeactivate(String id) => '/v1/staff/$id/deactivate';
+
+  static String staffExit(String id) => '/v1/staff/$id/exit';
+
+  static String staffDocuments(String id) => '/v1/staff/$id/documents';
+
+  static String staffDocument(String id, String documentId) =>
+      '/v1/staff/$id/documents/$documentId';
+
+  static String staffDocumentArchive(String id, String documentId) =>
+      '/v1/staff/$id/documents/$documentId/archive';
+
+  static String staffAttendanceHistory(String id) => '/v1/staff/$id/attendance';
+
+  static String staffLeaveType(String id) => '/v1/staff/leave-types/$id';
+
+  static String salaryStructure(String id) =>
+      '/v1/staff/salary-structures/$id';
+
+  static String staffSalaryAssignmentHistory(String id) =>
+      '/v1/staff/$id/salary-assignments';
+
+  static String payrollPaid(String id) => '/v1/staff/payroll/$id/paid';
+
+  static String communication(String id) => '/v1/communications/$id';
+
+  static String communicationPublish(String id) =>
+      '/v1/communications/$id/publish';
+
+  static String communicationUnpublish(String id) =>
+      '/v1/communications/$id/unpublish';
+
+  static String communicationArchive(String id) =>
+      '/v1/communications/$id/archive';
+
+  static String libraryCategory(String id) => '/v1/library/categories/$id';
+
+  static String libraryAuthor(String id) => '/v1/library/authors/$id';
+
+  static String libraryPublisher(String id) => '/v1/library/publishers/$id';
+
+  static String libraryBook(String id) => '/v1/library/books/$id';
+
+  static String libraryBookDeactivate(String id) =>
+      '/v1/library/books/$id/deactivate';
+
+  static String libraryCopy(String id) => '/v1/library/copies/$id';
+
+  static String libraryCopyLost(String id) => '/v1/library/copies/$id/lost';
+
+  static String libraryCopyDamaged(String id) =>
+      '/v1/library/copies/$id/damaged';
+
+  static String libraryCopyAvailable(String id) =>
+      '/v1/library/copies/$id/available';
+
+  static String libraryMembership(String id) => '/v1/library/memberships/$id';
+
+  static String libraryMembershipDeactivate(String id) =>
+      '/v1/library/memberships/$id/deactivate';
+
+  static String libraryLoanReturn(String id) => '/v1/library/loans/$id/return';
+
+  static String libraryLoanLost(String id) => '/v1/library/loans/$id/lost';
+
+  static String libraryFinePay(String id) => '/v1/library/fines/$id/pay';
+
+  static String libraryFineWaive(String id) => '/v1/library/fines/$id/waive';
 
   static const hostelAcademicYears = '/v1/hostels/academic-years';
   static const hostels = '/v1/hostels';
@@ -346,6 +441,8 @@ abstract final class ApiPaths {
   static const attendanceAcademicYears = '/v1/attendance/academic-years';
   static const attendanceStudents = '/v1/attendance/students';
   static const attendanceDaily = '/v1/attendance/daily';
+  static const attendanceSummary = '/v1/attendance/summary';
+  static const attendanceMonthly = '/v1/attendance/monthly';
   static const attendanceExport = '/v1/attendance/export';
 
   static String attendanceClasses(String academicYearId) =>

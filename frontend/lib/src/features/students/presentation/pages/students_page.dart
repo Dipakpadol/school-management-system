@@ -7,6 +7,7 @@ import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_info_card.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../../core/widgets/app_select_field.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/models/student_models.dart';
@@ -63,13 +64,15 @@ class _StudentManagementHome extends ConsumerWidget {
 
     return Column(
       children: [
-        Material(
-          color: Colors.white,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: SizedBox(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+          child: AppPageHeader(
+            title: 'Student Management',
+            subtitle:
+                'Browse classes and sections for the selected academic year, then open student profiles.',
+            icon: Icons.school_outlined,
+            actions: [
+              SizedBox(
                 width: 320,
                 child: AppSelectField<String>(
                   label: 'Academic Year',
@@ -89,13 +92,15 @@ class _StudentManagementHome extends ConsumerWidget {
                   },
                 ),
               ),
-            ),
+            ],
           ),
         ),
-        const Divider(height: 1),
         Expanded(
           child: classes == null
-              ? const Center(child: Text('No academic years found.'))
+              ? const AppEmptyState(
+                  message: 'No academic years found.',
+                  icon: Icons.calendar_month_outlined,
+                )
               : classes.when(
                   data: (items) => _ClassGrid(
                     academicYearId: effectiveYearId!,
@@ -125,7 +130,10 @@ class _ClassGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (classes.isEmpty) {
-      return const Center(child: Text('No classes found.'));
+      return const AppEmptyState(
+        message: 'No classes found for the selected academic year.',
+        icon: Icons.school_outlined,
+      );
     }
 
     return LayoutBuilder(

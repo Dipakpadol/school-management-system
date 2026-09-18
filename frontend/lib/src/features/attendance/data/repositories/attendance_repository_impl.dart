@@ -37,12 +37,14 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
     required String academicYearId,
     required String classId,
     required String sectionId,
+    required String date,
   }) {
     return _guard(
       () => _remote.students(
         academicYearId: academicYearId,
         classId: classId,
         sectionId: sectionId,
+        date: date,
       ),
     );
   }
@@ -60,6 +62,44 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
         classId: classId,
         sectionId: sectionId,
         date: date,
+      ),
+    );
+  }
+
+  @override
+  Future<Result<AttendanceSummaryModel>> summary({
+    required String academicYearId,
+    required String classId,
+    required String sectionId,
+    required String fromDate,
+    required String toDate,
+  }) {
+    return _guard(
+      () => _remote.summary(
+        academicYearId: academicYearId,
+        classId: classId,
+        sectionId: sectionId,
+        fromDate: fromDate,
+        toDate: toDate,
+      ),
+    );
+  }
+
+  @override
+  Future<Result<AttendanceSummaryModel>> monthly({
+    required String academicYearId,
+    required String classId,
+    required String sectionId,
+    required int year,
+    required int month,
+  }) {
+    return _guard(
+      () => _remote.monthly(
+        academicYearId: academicYearId,
+        classId: classId,
+        sectionId: sectionId,
+        year: year,
+        month: month,
       ),
     );
   }

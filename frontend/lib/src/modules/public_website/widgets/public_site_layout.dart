@@ -129,7 +129,7 @@ class _PublicBrand extends StatelessWidget {
                 ),
               ),
               Text(
-                'Public School',
+                'English Medium School',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -382,7 +382,7 @@ class _PublicFooter extends StatelessWidget {
                 const Divider(color: Color(0xFF334155), height: 1),
                 const SizedBox(height: 18),
                 Text(
-                  'Copyright 2026 ${schoolProfile.name}. Public website content is ready for school-specific updates.',
+                  'Copyright 2026 ${schoolProfile.name}. All rights reserved.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: const Color(0xFFCBD5E1),
                   ),
@@ -415,19 +415,21 @@ class _FooterSchoolInfo extends StatelessWidget {
             height: 1.5,
           ),
         ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 8,
-          children: [
-            for (final link in schoolProfile.socialLinks)
-              IconButton(
-                tooltip: link.label,
-                onPressed: () {},
-                color: Colors.white,
-                icon: Icon(link.icon),
-              ),
-          ],
-        ),
+        if (schoolProfile.socialLinks.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final link in schoolProfile.socialLinks)
+                IconButton(
+                  tooltip: link.label,
+                  onPressed: () {},
+                  color: Colors.white,
+                  icon: Icon(link.icon),
+                ),
+            ],
+          ),
+        ],
       ],
     );
   }
@@ -524,10 +526,11 @@ class _FooterContact extends StatelessWidget {
           icon: Icons.place_outlined,
           text: schoolProfile.address,
         ),
-        _FooterContactLine(
-          icon: Icons.call_outlined,
-          text: schoolProfile.phone,
-        ),
+        if (schoolProfile.phone.trim().isNotEmpty)
+          _FooterContactLine(
+            icon: Icons.call_outlined,
+            text: schoolProfile.phone,
+          ),
         _FooterContactLine(icon: Icons.mail_outline, text: schoolProfile.email),
       ],
     );

@@ -1,6 +1,7 @@
 package com.school.erp.modules.reports.api;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import com.school.erp.common.api.ApiResponse;
@@ -98,6 +99,20 @@ public class ReportsController {
 				.header("Content-Disposition", "attachment; filename=\"" + file.filename() + "\"")
 				.contentType(MediaType.parseMediaType(file.contentType()))
 				.body(file.content());
+	}
+
+	@GetMapping("/preview")
+	@PreAuthorize("hasAuthority('REPORTS_READ')")
+	@Operation(summary = "Preview a selected report")
+	public ResponseEntity<ApiResponse<PageResponse<Map<String, Object>>>> preview(
+			@Valid @ParameterObject ReportExportRequest exportRequest,
+			@Valid @ParameterObject PageRequestDto pageRequest,
+			HttpServletRequest request) {
+		return ResponseEntity.ok(ApiResponse.success(
+				reportsService.preview(exportRequest, pageRequest),
+				"Report preview fetched successfully",
+				request.getRequestURI(),
+				MDC.get(CorrelationIdFilter.CORRELATION_ID)));
 	}
 
 	@GetMapping("/{recordType}")

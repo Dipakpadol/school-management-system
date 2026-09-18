@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/api_paths.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/page_payload.dart';
 import '../models/report_options_model.dart';
 
 final reportsRemoteDataSourceProvider = Provider<ReportsRemoteDataSource>((
@@ -24,6 +25,19 @@ class ReportsRemoteDataSource {
 
   Future<List<int>> export(Map<String, dynamic> query) {
     return _apiClient.download(ApiPaths.reportsExport, queryParameters: query);
+  }
+
+  Future<PagePayload<ReportPreviewRowModel>> preview(
+    Map<String, dynamic> query,
+  ) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.reportsPreview,
+      queryParameters: query,
+    );
+    return PagePayload.fromJson(
+      _unwrapData(response.data),
+      ReportPreviewRowModel.fromJson,
+    );
   }
 
   Map<String, dynamic> _unwrapData(Map<String, dynamic>? body) {

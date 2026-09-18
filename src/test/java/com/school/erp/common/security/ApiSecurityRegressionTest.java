@@ -2,7 +2,9 @@ package com.school.erp.common.security;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
@@ -28,7 +30,14 @@ class ApiSecurityRegressionTest {
 	@ValueSource(strings = {
 			"/api/v1/auth/me",
 			"/api/v1/students",
-			"/api/v1/fees/categories"
+			"/api/v1/fees/categories",
+			"/api/v1/staff",
+			"/api/v1/staff/attendance/daily?date=2026-09-01",
+			"/api/v1/staff/leave-types",
+			"/api/v1/staff/payroll",
+			"/api/v1/communications",
+			"/api/v1/library/books",
+			"/api/v1/settings"
 	})
 	void protectedAuthStudentsAndFeesRoutesRejectAnonymousUsers(String path) throws Exception {
 		mockMvc.perform(api(get(path)))
@@ -38,7 +47,14 @@ class ApiSecurityRegressionTest {
 	@ParameterizedTest
 	@ValueSource(strings = {
 			"/api/v1/students",
-			"/api/v1/fees/categories"
+			"/api/v1/fees/categories",
+			"/api/v1/staff",
+			"/api/v1/staff/attendance/daily?date=2026-09-01",
+			"/api/v1/staff/leave-types",
+			"/api/v1/staff/payroll",
+			"/api/v1/communications",
+			"/api/v1/library/books",
+			"/api/v1/settings"
 	})
 	void protectedReadRoutesRejectAuthenticatedUsersWithoutRequiredRolesOrPermissions(String path) throws Exception {
 		mockMvc.perform(api(get(path)).with(user("limited-user")))
@@ -118,6 +134,107 @@ class ApiSecurityRegressionTest {
 						  "description": "Core academic tuition.",
 						  "active": true,
 						  "sortOrder": 1
+						}
+						"""))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void phase5StaffCreateRejectsAuthenticatedUserWithoutCreatePermission() throws Exception {
+		mockMvc.perform(api(post("/api/v1/staff"))
+				.with(user("limited-user"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "employeeCode": "EMP-SEC-001",
+						  "firstName": "Security",
+						  "lastName": "Check",
+						  "email": "security.check@school.test",
+						  "departmentId": "00000000-0000-0000-0000-000000000001",
+						  "designationId": "00000000-0000-0000-0000-000000000002",
+						  "joiningDate": "2026-09-01",
+						  "staffType": "NON_TEACHING",
+						  "status": "ACTIVE"
+						}
+						"""))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void phase5LeaveApprovalRejectsAuthenticatedUserWithoutApprovePermission() throws Exception {
+		mockMvc.perform(api(patch("/api/v1/staff/leaves/00000000-0000-0000-0000-000000000001/approve"))
+				.with(user("limited-user"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "comment": "Approved"
+						}
+						"""))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void phase5PayrollGenerationRejectsAuthenticatedUserWithoutProcessPermission() throws Exception {
+		mockMvc.perform(api(post("/api/v1/staff/payroll/generate"))
+				.with(user("limited-user"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "staffId": "00000000-0000-0000-0000-000000000001",
+						  "payrollYear": 2026,
+						  "payrollMonth": 9
+						}
+						"""))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void phase5CommunicationCreateRejectsAuthenticatedUserWithoutCreatePermission() throws Exception {
+		mockMvc.perform(api(post("/api/v1/communications"))
+				.with(user("limited-user"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "type": "ANNOUNCEMENT",
+						  "title": "Staff meeting",
+						  "message": "Monthly meeting",
+						  "audienceType": "STAFF",
+						  "status": "DRAFT"
+						}
+						"""))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void phase5SettingsUpdateRejectsAuthenticatedUserWithoutUpdatePermission() throws Exception {
+		mockMvc.perform(api(put("/api/v1/settings"))
+				.with(user("limited-user"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "groups": {
+						    "application": {
+						      "maintenanceMode": "false"
+						    }
+						  }
+						}
+						"""))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void phase6LibraryBookCreateRejectsAuthenticatedUserWithoutCreatePermission() throws Exception {
+		mockMvc.perform(api(post("/api/v1/library/books"))
+				.with(user("limited-user"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "title": "Malgudi Days",
+						  "isbn": "9788185986173",
+						  "authorIds": [],
+						  "publicationYear": 1943,
+						  "language": "English",
+						  "active": true
 						}
 						"""))
 				.andExpect(status().isForbidden());

@@ -13,6 +13,7 @@ public record DashboardSummaryResponse(
 		long totalStudents,
 		long totalStaff,
 		long totalTeachers,
+		long nonTeachingStaff,
 		long totalParents,
 		long totalUsers,
 		long activeUsers,
@@ -20,6 +21,10 @@ public record DashboardSummaryResponse(
 		BigDecimal todayAttendancePercentage,
 		BigDecimal totalFeeCollected,
 		BigDecimal pendingFeeAmount,
+		long totalLibraryBooks,
+		long availableLibraryCopies,
+		long libraryOverdueLoans,
+		BigDecimal pendingLibraryFineAmount,
 		List<RecentActivityResponse> recentActivities,
 		List<DashboardNotificationResponse> notifications,
 		List<BirthdayTodayResponse> birthdaysToday) {
@@ -28,6 +33,7 @@ public record DashboardSummaryResponse(
 		todayAttendancePercentage = money(todayAttendancePercentage);
 		totalFeeCollected = money(totalFeeCollected);
 		pendingFeeAmount = money(pendingFeeAmount);
+		pendingLibraryFineAmount = money(pendingLibraryFineAmount);
 		recentActivities = recentActivities == null ? List.of() : List.copyOf(recentActivities);
 		notifications = notifications == null ? List.of() : List.copyOf(notifications);
 		birthdaysToday = birthdaysToday == null ? List.of() : List.copyOf(birthdaysToday);

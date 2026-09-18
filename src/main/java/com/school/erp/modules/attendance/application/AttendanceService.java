@@ -1,9 +1,9 @@
 package com.school.erp.modules.attendance.application;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,8 +21,14 @@ import com.school.erp.common.exception.ResourceNotFoundException;
 import com.school.erp.modules.academic.domain.AcademicYear;
 import com.school.erp.modules.academic.domain.ClassEntity;
 import com.school.erp.modules.academic.domain.SectionEntity;
+import com.school.erp.modules.academic.domain.Teacher;
 import com.school.erp.modules.academic.application.AcademicHierarchyService;
+import com.school.erp.modules.academic.infrastructure.ClassTeacherMappingRepository;
+import com.school.erp.modules.academic.infrastructure.SubjectTeacherMappingRepository;
+import com.school.erp.modules.academic.infrastructure.TeacherRepository;
+import com.school.erp.modules.auth.application.SchoolUserPrincipal;
 import com.school.erp.modules.attendance.api.dto.AttendanceRecordResponse;
+import com.school.erp.modules.attendance.api.dto.AttendanceSummaryResponse;
 import com.school.erp.modules.attendance.api.dto.AttendanceStudentResponse;
 import com.school.erp.modules.attendance.api.dto.DailyAttendanceRecordRequest;
 import com.school.erp.modules.attendance.api.dto.DailyAttendanceRequest;
@@ -35,6 +41,7 @@ import com.school.erp.modules.attendance.domain.AttendanceStatus;
 import com.school.erp.modules.attendance.infrastructure.AttendanceRecordRepository;
 import com.school.erp.modules.students.domain.Student;
 import com.school.erp.modules.students.domain.StudentClassAssignment;
+import com.school.erp.modules.students.domain.StudentStatus;
 import com.school.erp.modules.students.infrastructure.StudentClassAssignmentRepository;
 import com.school.erp.modules.students.infrastructure.StudentRepository;
 
@@ -42,6 +49,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -53,17 +63,36 @@ import lombok.RequiredArgsConstructor;
 public class AttendanceService {
 
 	private static final String MODULE_NAME = "ATTENDANCE";
+	public static final List<String> ATTENDANCE_REPORT_HEADERS = List.of(
+			"Date",
+			"Admission Number",
+			"Student Name",
+			"Status",
+			"Remarks");
 
 	private final AcademicHierarchyService academicHierarchyService;
 	private final StudentClassAssignmentRepository studentClassAssignmentRepository;
 	private final StudentRepository studentRepository;
 	private final AttendanceRecordRepository attendanceRecordRepository;
+	private final TeacherRepository teacherRepository;
+	private final ClassTeacherMappingRepository classTeacherMappingRepository;
+	private final SubjectTeacherMappingRepository subjectTeacherMappingRepository;
 	private final AuditLogService auditLogService;
 
 	@Transactional(readOnly = true)
 	public List<AttendanceStudentResponse> getStudents(UUID academicYearId, UUID classId, UUID sectionId) {
+		return getStudents(academicYearId, classId, sectionId, LocalDate.now());
+	}
+
+	@Transactional(readOnly = true)
+	public List<AttendanceStudentResponse> getStudents(
+			UUID academicYearId,
+			UUID classId,
+			UUID sectionId,
+			LocalDate attendanceDate) {
 		validateHierarchy(academicYearId, classId, sectionId);
-		return activeAssignments(academicYearId, classId, sectionId).stream()
+		validateTeacherAttendanceScope(academicYearId, classId, sectionId);
+		return eligibleAssignments(academicYearId, classId, sectionId, resolveAttendanceDate(attendanceDate)).stream()
 				.map(this::toStudentResponse)
 				.toList();
 	}
@@ -71,10 +100,12 @@ public class AttendanceService {
 	@Transactional
 	public DailyAttendanceResponse saveDaily(DailyAttendanceRequest request) {
 		Hierarchy hierarchy = validateHierarchy(request.academicYearId(), request.classId(), request.sectionId());
-		Map<UUID, StudentClassAssignment> assignmentByStudent = activeAssignments(
+		validateTeacherAttendanceScope(request.academicYearId(), request.classId(), request.sectionId());
+		Map<UUID, StudentClassAssignment> assignmentByStudent = eligibleAssignments(
 				request.academicYearId(),
 				request.classId(),
-				request.sectionId()).stream()
+				request.sectionId(),
+				request.attendanceDate()).stream()
 				.collect(Collectors.toMap(
 						assignment -> assignment.getStudent().getId(),
 						Function.identity(),
@@ -82,12 +113,17 @@ public class AttendanceService {
 						LinkedHashMap::new));
 		validateRequestStudents(request.records(), assignmentByStudent);
 
-		Map<UUID, AttendanceRecord> existingByStudent = attendanceRecordRepository.findDailyRecords(
-				request.academicYearId(),
-				request.classId(),
-				request.sectionId(),
+		List<UUID> requestedStudentIds = request.records().stream()
+				.map(DailyAttendanceRecordRequest::studentId)
+				.toList();
+		Map<UUID, AttendanceRecord> existingByStudent = attendanceRecordRepository.findByStudentIdsAndDate(
+				requestedStudentIds,
 				request.attendanceDate()).stream()
-				.collect(Collectors.toMap(record -> record.getStudent().getId(), Function.identity()));
+				.collect(Collectors.toMap(
+						record -> record.getStudent().getId(),
+						Function.identity(),
+						(first, second) -> first,
+						LinkedHashMap::new));
 
 		for (DailyAttendanceRecordRequest recordRequest : request.records()) {
 			AttendanceRecord record = existingByStudent.get(recordRequest.studentId());
@@ -129,8 +165,9 @@ public class AttendanceService {
 	@Transactional(readOnly = true)
 	public DailyAttendanceResponse getDaily(UUID academicYearId, UUID classId, UUID sectionId, LocalDate attendanceDate) {
 		validateHierarchy(academicYearId, classId, sectionId);
+		validateTeacherAttendanceScope(academicYearId, classId, sectionId);
 		Map<UUID, String> rollNumbers = new java.util.HashMap<>();
-		for (StudentClassAssignment assignment : activeAssignments(academicYearId, classId, sectionId)) {
+		for (StudentClassAssignment assignment : eligibleAssignments(academicYearId, classId, sectionId, attendanceDate)) {
 			rollNumbers.put(assignment.getStudent().getId(), assignment.getRollNumber());
 		}
 		List<AttendanceRecordResponse> records = attendanceRecordRepository.findDailyRecords(
@@ -155,12 +192,7 @@ public class AttendanceService {
 		long late = count(records, AttendanceStatus.LATE);
 		long halfDay = count(records, AttendanceStatus.HALF_DAY);
 		long leave = count(records, AttendanceStatus.LEAVE);
-		BigDecimal percentage = total == 0
-				? BigDecimal.ZERO
-				: BigDecimal.valueOf(present + late)
-						.add(BigDecimal.valueOf(halfDay).multiply(BigDecimal.valueOf(0.5)))
-						.multiply(BigDecimal.valueOf(100))
-						.divide(BigDecimal.valueOf(total), 2, RoundingMode.HALF_UP);
+		BigDecimal percentage = AttendanceSummaryCalculator.percentage(total, present, late, halfDay);
 		return new StudentAttendanceSummaryResponse(
 				studentId,
 				student.getDisplayName(),
@@ -222,6 +254,47 @@ public class AttendanceService {
 	}
 
 	@Transactional(readOnly = true)
+	public AttendanceSummaryResponse getClassSummary(
+			UUID academicYearId,
+			UUID classId,
+			UUID sectionId,
+			LocalDate fromDate,
+			LocalDate toDate) {
+		validateRequiredDateRange(fromDate, toDate);
+		Hierarchy hierarchy = validateHierarchy(academicYearId, classId, sectionId);
+		validateTeacherAttendanceScope(academicYearId, classId, sectionId);
+		List<AttendanceRecord> records = attendanceRecordRepository.findClassSummaryRecords(
+				academicYearId,
+				classId,
+				sectionId,
+				fromDate,
+				toDate);
+		return toSummaryResponse(hierarchy, fromDate, toDate, records);
+	}
+
+	@Transactional(readOnly = true)
+	public AttendanceSummaryResponse getMonthlySummary(
+			UUID academicYearId,
+			UUID classId,
+			UUID sectionId,
+			int year,
+			int month) {
+		YearMonth selectedMonth;
+		try {
+			selectedMonth = YearMonth.of(year, month);
+		}
+		catch (RuntimeException ex) {
+			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Month must be between 1 and 12.");
+		}
+		return getClassSummary(
+				academicYearId,
+				classId,
+				sectionId,
+				selectedMonth.atDay(1),
+				selectedMonth.atEndOfMonth());
+	}
+
+	@Transactional(readOnly = true)
 	public byte[] exportStudentAttendanceHistory(
 			UUID studentId,
 			UUID academicYearId,
@@ -257,22 +330,14 @@ public class AttendanceService {
 
 	@Transactional(readOnly = true)
 	public byte[] export(UUID academicYearId, UUID classId, UUID sectionId, LocalDate fromDate, LocalDate toDate) {
-		if (fromDate.isAfter(toDate)) {
-			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "From date must be before or equal to to date.");
-		}
-		validateHierarchy(academicYearId, classId, sectionId);
-		StringBuilder csv = new StringBuilder("Date,Admission Number,Student Name,Status,Remarks\n");
-		for (AttendanceRecord record : attendanceRecordRepository.findForExport(
-				academicYearId,
-				classId,
-				sectionId,
-				fromDate,
-				toDate)) {
-			csv.append(record.getAttendanceDate()).append(',')
-					.append(escape(record.getStudent().getAdmissionNumber())).append(',')
-					.append(escape(record.getStudent().getDisplayName())).append(',')
-					.append(record.getStatus()).append(',')
-					.append(escape(record.getRemarks())).append('\n');
+		List<Map<String, Object>> rows = reportRows(academicYearId, classId, sectionId, fromDate, toDate);
+		StringBuilder csv = new StringBuilder(String.join(",", ATTENDANCE_REPORT_HEADERS)).append('\n');
+		for (Map<String, Object> row : rows) {
+			csv.append(row.get("Date")).append(',')
+					.append(escape((String) row.get("Admission Number"))).append(',')
+					.append(escape((String) row.get("Student Name"))).append(',')
+					.append(row.get("Status")).append(',')
+					.append(escape((String) row.get("Remarks"))).append('\n');
 		}
 		audit(
 				"AttendanceRecord",
@@ -281,6 +346,21 @@ public class AttendanceService {
 				null,
 				Map.of("academicYearId", academicYearId, "classId", classId, "sectionId", sectionId, "fromDate", fromDate, "toDate", toDate));
 		return csv.toString().getBytes(StandardCharsets.UTF_8);
+	}
+
+	@Transactional(readOnly = true)
+	public List<Map<String, Object>> reportRows(UUID academicYearId, UUID classId, UUID sectionId, LocalDate fromDate, LocalDate toDate) {
+		validateRequiredDateRange(fromDate, toDate);
+		validateHierarchy(academicYearId, classId, sectionId);
+		validateTeacherAttendanceScope(academicYearId, classId, sectionId);
+		return attendanceRecordRepository.findForExport(
+				academicYearId,
+				classId,
+				sectionId,
+				fromDate,
+				toDate).stream()
+				.map(this::toReportRow)
+				.toList();
 	}
 
 	private Hierarchy validateHierarchy(UUID academicYearId, UUID classId, UUID sectionId) {
@@ -293,8 +373,17 @@ public class AttendanceService {
 		return new Hierarchy(academicYear, classEntity, section);
 	}
 
-	private List<StudentClassAssignment> activeAssignments(UUID academicYearId, UUID classId, UUID sectionId) {
-		return studentClassAssignmentRepository.findActiveByHierarchy(academicYearId, classId, sectionId);
+	private List<StudentClassAssignment> eligibleAssignments(
+			UUID academicYearId,
+			UUID classId,
+			UUID sectionId,
+			LocalDate attendanceDate) {
+		return studentClassAssignmentRepository.findEligibleByHierarchyOnDate(
+				academicYearId,
+				classId,
+				sectionId,
+				resolveAttendanceDate(attendanceDate),
+				StudentStatus.INACTIVE);
 	}
 
 	private void validateRequestStudents(
@@ -362,18 +451,50 @@ public class AttendanceService {
 	}
 
 	private long count(List<AttendanceRecord> records, AttendanceStatus status) {
-		return records.stream().filter(record -> record.getStatus() == status).count();
+		return AttendanceSummaryCalculator.count(records, status, AttendanceRecord::getStatus);
 	}
 
 	private BigDecimal attendancePercentage(List<AttendanceRecord> records) {
-		long total = records.size();
-		if (total == 0) {
-			return BigDecimal.ZERO;
-		}
-		return BigDecimal.valueOf(count(records, AttendanceStatus.PRESENT) + count(records, AttendanceStatus.LATE))
-				.add(BigDecimal.valueOf(count(records, AttendanceStatus.HALF_DAY)).multiply(BigDecimal.valueOf(0.5)))
-				.multiply(BigDecimal.valueOf(100))
-				.divide(BigDecimal.valueOf(total), 2, RoundingMode.HALF_UP);
+		return AttendanceSummaryCalculator.percentage(records, AttendanceRecord::getStatus);
+	}
+
+	private AttendanceSummaryResponse toSummaryResponse(
+			Hierarchy hierarchy,
+			LocalDate fromDate,
+			LocalDate toDate,
+			List<AttendanceRecord> records) {
+		return new AttendanceSummaryResponse(
+				hierarchy.academicYear().getId(),
+				hierarchy.academicYear().getName(),
+				hierarchy.classEntity().getId(),
+				hierarchy.classEntity().getName(),
+				hierarchy.section().getId(),
+				hierarchy.section().getName(),
+				fromDate,
+				toDate,
+				studentClassAssignmentRepository.countEligibleStudents(
+						hierarchy.academicYear().getId(),
+						hierarchy.classEntity().getId(),
+						hierarchy.section().getId(),
+						toDate,
+						StudentStatus.INACTIVE),
+				records.size(),
+				count(records, AttendanceStatus.PRESENT),
+				count(records, AttendanceStatus.ABSENT),
+				count(records, AttendanceStatus.LATE),
+				count(records, AttendanceStatus.HALF_DAY),
+				count(records, AttendanceStatus.LEAVE),
+				attendancePercentage(records));
+	}
+
+	private Map<String, Object> toReportRow(AttendanceRecord record) {
+		Map<String, Object> row = new LinkedHashMap<>();
+		row.put("Date", record.getAttendanceDate());
+		row.put("Admission Number", record.getStudent().getAdmissionNumber());
+		row.put("Student Name", record.getStudent().getDisplayName());
+		row.put("Status", record.getStatus());
+		row.put("Remarks", record.getRemarks());
+		return row;
 	}
 
 	private StudentAttendanceHistoryRecordResponse toHistoryRecordResponse(AttendanceRecord record) {
@@ -432,6 +553,17 @@ public class AttendanceService {
 		}
 	}
 
+	private void validateRequiredDateRange(LocalDate fromDate, LocalDate toDate) {
+		if (fromDate == null || toDate == null) {
+			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "From date and to date are required.");
+		}
+		validateDateRange(fromDate, toDate);
+	}
+
+	private LocalDate resolveAttendanceDate(LocalDate attendanceDate) {
+		return attendanceDate == null ? LocalDate.now() : attendanceDate;
+	}
+
 	private Pageable studentHistoryPageable(PageRequestDto pageRequest, String sort) {
 		int page = pageRequest == null ? 0 : pageRequest.page();
 		int size = pageRequest == null ? 20 : pageRequest.size();
@@ -480,6 +612,74 @@ public class AttendanceService {
 			return "\"" + value.replace("\"", "\"\"") + "\"";
 		}
 		return value;
+	}
+
+	private void validateTeacherAttendanceScope(UUID academicYearId, UUID classId, UUID sectionId) {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication == null
+				|| !authentication.isAuthenticated()
+				|| authentication instanceof AnonymousAuthenticationToken
+				|| !hasAuthority(authentication, "ROLE_TEACHER")
+				|| hasAnyAuthority(authentication, "ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_PRINCIPAL")) {
+			return;
+		}
+		UUID userAccountId = currentUserAccountId(authentication);
+		if (userAccountId == null) {
+			throw new BusinessException(ErrorCode.FORBIDDEN, "Teacher attendance account is not linked to a user id.");
+		}
+		Teacher teacher = teacherRepository.findByUserAccountIdAndDeletedFalse(userAccountId)
+				.orElseThrow(() -> new BusinessException(
+						ErrorCode.FORBIDDEN,
+						"Teacher attendance account is not linked to a teacher profile."));
+		boolean classTeacher = classTeacherMappingRepository
+				.existsByTeacherIdAndClassEntityIdAndSectionIdAndActiveTrueAndDeletedFalse(
+						teacher.getId(),
+						classId,
+						sectionId);
+		boolean subjectTeacher = subjectTeacherMappingRepository
+				.existsByTeacherIdAndClassEntityIdAndSectionIdAndActiveTrueAndDeletedFalse(
+						teacher.getId(),
+						classId,
+						sectionId);
+		if (!classTeacher && !subjectTeacher) {
+			throw new BusinessException(
+					ErrorCode.FORBIDDEN,
+					"Teacher is not assigned to the selected class and division.");
+		}
+	}
+
+	private boolean hasAuthority(Authentication authentication, String authority) {
+		return authentication.getAuthorities().stream()
+				.anyMatch(granted -> granted.getAuthority().equals(authority));
+	}
+
+	private boolean hasAnyAuthority(Authentication authentication, String... authorities) {
+		for (String authority : authorities) {
+			if (hasAuthority(authentication, authority)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private UUID currentUserAccountId(Authentication authentication) {
+		Object principal = authentication.getPrincipal();
+		if (principal instanceof SchoolUserPrincipal userPrincipal) {
+			return userPrincipal.getId();
+		}
+		return parseUuid(authentication.getName());
+	}
+
+	private UUID parseUuid(String value) {
+		if (!StringUtils.hasText(value)) {
+			return null;
+		}
+		try {
+			return UUID.fromString(value);
+		}
+		catch (IllegalArgumentException ex) {
+			return null;
+		}
 	}
 
 	private void audit(String entityName, UUID entityId, String action, Object oldValue, Object newValue) {

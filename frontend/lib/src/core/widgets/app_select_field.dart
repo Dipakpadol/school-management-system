@@ -6,6 +6,10 @@ class AppSelectField<T> extends StatelessWidget {
     required this.value,
     required this.items,
     required this.onChanged,
+    this.required = false,
+    this.helperText,
+    this.validator,
+    this.enabled = true,
     this.icon,
     super.key,
   });
@@ -14,6 +18,10 @@ class AppSelectField<T> extends StatelessWidget {
   final T? value;
   final List<DropdownMenuItem<T>> items;
   final ValueChanged<T?> onChanged;
+  final bool required;
+  final String? helperText;
+  final FormFieldValidator<T>? validator;
+  final bool enabled;
   final IconData? icon;
 
   @override
@@ -22,11 +30,13 @@ class AppSelectField<T> extends StatelessWidget {
       initialValue: value,
       isExpanded: true,
       decoration: InputDecoration(
-        labelText: label,
+        labelText: required ? '$label *' : label,
+        helperText: helperText,
         prefixIcon: icon == null ? null : Icon(icon),
       ),
+      validator: validator,
       items: items,
-      onChanged: onChanged,
+      onChanged: enabled && items.isNotEmpty ? onChanged : null,
     );
   }
 }

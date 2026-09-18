@@ -206,21 +206,38 @@ public class FeeImportExportService {
 
 	@Transactional(readOnly = true)
 	public byte[] collectionReport(String format) {
-		FeeReportSummaryResponse summary = feeService.summarizeFees(new FeeReportRequest(null, null, null, null));
-		List<String> headers = List.of("assignments", "grossAmount", "discountAmount", "lateFeeAmount", "paidAmount", "balanceAmount");
-		List<Map<String, Object>> rows = List.of(new LinkedHashMap<>(Map.of(
-				"assignments", summary.assignments(),
-				"grossAmount", summary.grossAmount(),
-				"discountAmount", summary.discountAmount(),
-				"lateFeeAmount", summary.lateFeeAmount(),
-				"paidAmount", summary.paidAmount(),
-				"balanceAmount", summary.balanceAmount())));
+		return collectionReport(format, new FeeReportRequest(null, null, null, null));
+	}
+
+	@Transactional(readOnly = true)
+	public byte[] collectionReport(String format, FeeReportRequest request) {
+		List<String> headers = collectionReportHeaders();
+		List<Map<String, Object>> rows = collectionReportRows(request);
 		auditLogService.recordStandalone(new AuditLogEvent("FEES", "FeeCollectionReport", null, AuditAction.EXPORT, null, format));
 		return switch (normalizeFormat(format)) {
-			case "pdf" -> pdfExportService.exportTable("Fee Collection Summary", headers, rows);
+			case "pdf" -> pdfExportService.exportTable("Fee Collection Summary", feeReportFilters(request), headers, rows);
 			case "csv" -> csvExportService.export(headers, rows);
 			default -> excelExportService.export("collection-summary", headers, rows);
 		};
+	}
+
+	@Transactional(readOnly = true)
+	public List<String> collectionReportHeaders() {
+		return List.of("assignments", "grossAmount", "discountAmount", "lateFeeAmount", "paidAmount", "balanceAmount");
+	}
+
+	@Transactional(readOnly = true)
+	public List<Map<String, Object>> collectionReportRows(FeeReportRequest request) {
+		FeeReportSummaryResponse summary = feeService.summarizeFees(
+				request == null ? new FeeReportRequest(null, null, null, null) : request);
+		Map<String, Object> row = new LinkedHashMap<>();
+		row.put("assignments", summary.assignments());
+		row.put("grossAmount", summary.grossAmount());
+		row.put("discountAmount", summary.discountAmount());
+		row.put("lateFeeAmount", summary.lateFeeAmount());
+		row.put("paidAmount", summary.paidAmount());
+		row.put("balanceAmount", summary.balanceAmount());
+		return List.of(row);
 	}
 
 	@Transactional(readOnly = true)
@@ -230,28 +247,69 @@ public class FeeImportExportService {
 
 	@Transactional(readOnly = true)
 	public byte[] defaulterReport(String format, DefaulterSearchRequest request) {
-		List<FeeDefaulterResponse> defaulters = feeService.findDefaulters(
-				request == null ? emptyDefaulterSearch() : request,
-				new com.school.erp.common.api.PageRequestDto(0, 200, null, null)).content();
-		List<String> headers = List.of("assignmentId", "admissionNumber", "studentName", "className", "sectionName", "balanceAmount", "oldestDueDate", "overdueInstallments");
-		List<Map<String, Object>> rows = defaulters.stream().map(defaulter -> {
-			Map<String, Object> row = new LinkedHashMap<>();
-			row.put("assignmentId", defaulter.assignmentId());
-			row.put("admissionNumber", defaulter.admissionNumber());
-			row.put("studentName", defaulter.studentName());
-			row.put("className", defaulter.className());
-			row.put("sectionName", defaulter.sectionName());
-			row.put("balanceAmount", defaulter.balanceAmount());
-			row.put("oldestDueDate", defaulter.oldestDueDate());
-			row.put("overdueInstallments", defaulter.overdueInstallments());
-			return row;
-		}).toList();
+		List<String> headers = defaulterReportHeaders();
+		List<Map<String, Object>> rows = defaulterReportRows(request);
 		auditLogService.recordStandalone(new AuditLogEvent("FEES", "FeeDefaulterReport", null, AuditAction.EXPORT, null, format));
 		return switch (normalizeFormat(format)) {
-			case "pdf" -> pdfExportService.exportTable("Fee Defaulters", headers, rows);
+			case "pdf" -> pdfExportService.exportTable("Fee Defaulters", defaulterReportFilters(request), headers, rows);
 			case "csv" -> csvExportService.export(headers, rows);
 			default -> excelExportService.export("fee-defaulters", headers, rows);
 		};
+	}
+
+	@Transactional(readOnly = true)
+	public List<String> defaulterReportHeaders() {
+		return List.of("assignmentId", "admissionNumber", "studentName", "className", "sectionName", "balanceAmount", "oldestDueDate", "overdueInstallments");
+	}
+
+	@Transactional(readOnly = true)
+	public List<Map<String, Object>> defaulterReportRows(DefaulterSearchRequest request) {
+		DefaulterSearchRequest effective = request == null ? emptyDefaulterSearch() : request;
+		List<Map<String, Object>> rows = new ArrayList<>();
+		int page = 0;
+		while (true) {
+			var defaulters = feeService.findDefaulters(
+					effective,
+					new com.school.erp.common.api.PageRequestDto(page, 200, null, null));
+			defaulters.content().stream().map(defaulter -> {
+				Map<String, Object> row = new LinkedHashMap<>();
+				row.put("assignmentId", defaulter.assignmentId());
+				row.put("admissionNumber", defaulter.admissionNumber());
+				row.put("studentName", defaulter.studentName());
+				row.put("className", defaulter.className());
+				row.put("sectionName", defaulter.sectionName());
+				row.put("balanceAmount", defaulter.balanceAmount());
+				row.put("oldestDueDate", defaulter.oldestDueDate());
+				row.put("overdueInstallments", defaulter.overdueInstallments());
+				return row;
+			}).forEach(rows::add);
+			if (defaulters.last() || defaulters.content().isEmpty()) {
+				return rows;
+			}
+			page++;
+		}
+	}
+
+	private Map<String, Object> feeReportFilters(FeeReportRequest request) {
+		FeeReportRequest effective = request == null ? new FeeReportRequest(null, null, null, null) : request;
+		Map<String, Object> filters = new LinkedHashMap<>();
+		filters.put("Academic Year", effective.academicYear());
+		filters.put("Class", effective.className());
+		filters.put("Section", effective.sectionName());
+		filters.put("Status", effective.status());
+		return filters;
+	}
+
+	private Map<String, Object> defaulterReportFilters(DefaulterSearchRequest request) {
+		DefaulterSearchRequest effective = request == null ? emptyDefaulterSearch() : request;
+		Map<String, Object> filters = new LinkedHashMap<>();
+		filters.put("Academic Year ID", effective.academicYearId());
+		filters.put("Class ID", effective.classId());
+		filters.put("Section ID", effective.sectionId());
+		filters.put("As Of", effective.asOf());
+		filters.put("Due Date", effective.dueDate());
+		filters.put("Minimum Balance", effective.minimumBalance());
+		return filters;
 	}
 
 	private DefaulterSearchRequest emptyDefaulterSearch() {

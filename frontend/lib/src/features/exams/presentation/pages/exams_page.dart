@@ -6,6 +6,8 @@ import '../../../../app/router/app_routes.dart';
 import '../../../../core/download/file_downloader.dart';
 import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../academic/data/models/academic_models.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/models/exam_models.dart';
@@ -66,6 +68,15 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
         length: 4,
         child: Column(
           children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 24, 24, 12),
+              child: AppPageHeader(
+                title: 'Exams & Results',
+                subtitle:
+                    'Configure exam types and schedules, enter marks, review results, and export reports.',
+                icon: Icons.assignment_outlined,
+              ),
+            ),
             const Material(
               color: Colors.white,
               child: TabBar(
@@ -80,7 +91,7 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
             ),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const AppLoadingState(label: 'Loading exams')
                   : TabBarView(
                       children: [
                         _typesTab(),
@@ -113,7 +124,10 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
         ]),
         Expanded(
           child: _types.isEmpty
-              ? const Center(child: Text('No exam types found.'))
+              ? const AppEmptyState(
+                  message: 'No exam types found.',
+                  icon: Icons.assignment_outlined,
+                )
               : ListView.separated(
                   padding: const EdgeInsets.all(18),
                   itemCount: _types.length,
@@ -170,7 +184,10 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
         ]),
         Expanded(
           child: _schedules.isEmpty
-              ? const Center(child: Text('No exam schedules found.'))
+              ? const AppEmptyState(
+                  message: 'No exam schedules found.',
+                  icon: Icons.event_note_outlined,
+                )
               : ListView.separated(
                   padding: const EdgeInsets.all(18),
                   itemCount: _schedules.length,
@@ -273,7 +290,10 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
         ]),
         Expanded(
           child: _students.isEmpty
-              ? const Center(child: Text('No students loaded.'))
+              ? const AppEmptyState(
+                  message: 'No students loaded.',
+                  icon: Icons.group_outlined,
+                )
               : ListView.separated(
                   padding: const EdgeInsets.all(18),
                   itemCount: _students.length,
@@ -322,7 +342,10 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
         ]),
         Expanded(
           child: _results.isEmpty
-              ? const Center(child: Text('No results generated.'))
+              ? const AppEmptyState(
+                  message: 'No results generated.',
+                  icon: Icons.leaderboard_outlined,
+                )
               : ListView.separated(
                   padding: const EdgeInsets.all(18),
                   itemCount: _results.length,
@@ -772,9 +795,12 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
                       ),
                       const SizedBox(height: 16),
                       if (rows.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 20),
-                          child: Center(child: Text('No subjects selected.')),
+                        const SizedBox(
+                          height: 150,
+                          child: AppEmptyState(
+                            message: 'No subjects selected.',
+                            icon: Icons.menu_book_outlined,
+                          ),
                         )
                       else
                         Column(
@@ -1015,11 +1041,11 @@ class _ExamsPageState extends ConsumerState<ExamsPage> {
       subjects.add({
         'subjectId': row.subjectId,
         'examDate': _dateLabel(row.examDate),
-        if (startTime != null) 'startTime': startTime,
-        if (endTime != null) 'endTime': endTime,
-        if (room != null) 'room': room,
+        'startTime': ?startTime,
+        'endTime': ?endTime,
+        'room': ?room,
         'maxMarks': maxMarks,
-        if (passingMarks != null) 'passingMarks': passingMarks,
+        'passingMarks': ?passingMarks,
       });
     }
     return {

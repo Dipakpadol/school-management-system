@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
+import '../../../../core/theme/app_design_system.dart';
 import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../../core/widgets/app_select_field.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../students/data/models/student_models.dart';
@@ -54,6 +56,22 @@ class _TeacherAttendancePageState extends ConsumerState<TeacherAttendancePage> {
           }
           return Column(
             children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+                child: AppPageHeader(
+                  title: 'Teacher Attendance',
+                  subtitle:
+                      'Mark daily attendance for teaching staff and review the selected day summary.',
+                  icon: Icons.fact_check_outlined,
+                  actions: [
+                    OutlinedButton.icon(
+                      onPressed: () => context.go(AppRoutes.teachers),
+                      icon: const Icon(Icons.arrow_back_outlined),
+                      label: const Text('Teachers'),
+                    ),
+                  ],
+                ),
+              ),
               _TeacherAttendanceHeader(
                 years: items,
                 selectedAcademicYearId: effectiveYearId,
@@ -67,7 +85,6 @@ class _TeacherAttendancePageState extends ConsumerState<TeacherAttendancePage> {
                   });
                 },
                 onDateChanged: _pickDate,
-                onBack: () => context.go(AppRoutes.teachers),
                 onMarkAllPresent: effectiveYearId == null
                     ? null
                     : () => _markAllPresent(effectiveYearId),
@@ -78,7 +95,10 @@ class _TeacherAttendancePageState extends ConsumerState<TeacherAttendancePage> {
               const Divider(height: 1),
               Expanded(
                 child: effectiveYearId == null
-                    ? const Center(child: Text('No academic years found.'))
+                    ? const AppEmptyState(
+                        message: 'No academic years found for attendance.',
+                        icon: Icons.calendar_month_outlined,
+                      )
                     : _TeacherAttendanceBody(
                         academicYearId: effectiveYearId,
                         attendanceDate: _attendanceDate,
@@ -206,7 +226,6 @@ class _TeacherAttendanceHeader extends StatelessWidget {
     required this.saving,
     required this.onAcademicYearChanged,
     required this.onDateChanged,
-    required this.onBack,
     required this.onMarkAllPresent,
     required this.onSave,
   });
@@ -217,26 +236,22 @@ class _TeacherAttendanceHeader extends StatelessWidget {
   final bool saving;
   final ValueChanged<String?> onAcademicYearChanged;
   final VoidCallback onDateChanged;
-  final VoidCallback onBack;
   final VoidCallback? onMarkAllPresent;
   final VoidCallback? onSave;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: AppSectionCard(
+        title: 'Attendance Controls',
+        subtitle:
+            'Select academic year and date before marking teacher attendance.',
         child: Wrap(
           spacing: 12,
           runSpacing: 10,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            IconButton(
-              tooltip: 'Back to teachers',
-              onPressed: onBack,
-              icon: const Icon(Icons.arrow_back_outlined),
-            ),
             SizedBox(
               width: 300,
               child: AppSelectField<String>(
@@ -311,20 +326,48 @@ class _TeacherAttendanceBody extends ConsumerWidget {
         return daily.when(
           data: (dailyRecord) {
             if (teacherItems.isEmpty) {
-              return const Center(child: Text('No teachers found.'));
+              return const AppEmptyState(
+                message: 'No teachers found for the selected academic year.',
+                icon: Icons.badge_outlined,
+              );
             }
             return ListView(
               padding: const EdgeInsets.all(24),
               children: [
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
+                AppStatGrid(
+                  minItemWidth: 160,
+                  maxColumns: 5,
                   children: [
-                    _SummaryChip(label: 'Present', value: dailyRecord.present),
-                    _SummaryChip(label: 'Absent', value: dailyRecord.absent),
-                    _SummaryChip(label: 'Late', value: dailyRecord.late),
-                    _SummaryChip(label: 'Half day', value: dailyRecord.halfDay),
-                    _SummaryChip(label: 'Leave', value: dailyRecord.leave),
+                    _SummaryChip(
+                      label: 'Present',
+                      value: dailyRecord.present,
+                      icon: Icons.check_circle_outline,
+                      color: AppDesignTokens.success,
+                    ),
+                    _SummaryChip(
+                      label: 'Absent',
+                      value: dailyRecord.absent,
+                      icon: Icons.cancel_outlined,
+                      color: AppDesignTokens.danger,
+                    ),
+                    _SummaryChip(
+                      label: 'Late',
+                      value: dailyRecord.late,
+                      icon: Icons.schedule_outlined,
+                      color: AppDesignTokens.warning,
+                    ),
+                    _SummaryChip(
+                      label: 'Half day',
+                      value: dailyRecord.halfDay,
+                      icon: Icons.timelapse_outlined,
+                      color: AppDesignTokens.amber,
+                    ),
+                    _SummaryChip(
+                      label: 'Leave',
+                      value: dailyRecord.leave,
+                      icon: Icons.event_available_outlined,
+                      color: AppDesignTokens.teal,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -479,16 +522,25 @@ class _TeacherAttendanceRow extends StatelessWidget {
 }
 
 class _SummaryChip extends StatelessWidget {
-  const _SummaryChip({required this.label, required this.value});
+  const _SummaryChip({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
 
   final String label;
   final int value;
+  final IconData icon;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return Chip(
-      label: Text('$label $value'),
-      avatar: const Icon(Icons.fact_check_outlined, size: 18),
+    return AppStatCard(
+      label: label,
+      value: value.toString(),
+      icon: icon,
+      color: color,
     );
   }
 }

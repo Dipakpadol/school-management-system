@@ -4,10 +4,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/widgets/admin_shell.dart';
+import '../../../../core/widgets/app_confirm_dialog.dart';
 import '../../../../core/widgets/app_data_table.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../../core/widgets/app_select_field.dart';
+import '../../../../core/widgets/app_text_field.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../students/data/models/student_models.dart';
 import '../../../students/presentation/controllers/students_providers.dart';
@@ -52,6 +55,22 @@ class _TeacherManagementPageState extends ConsumerState<TeacherManagementPage> {
           }
           return Column(
             children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+                child: AppPageHeader(
+                  title: 'Teacher Management',
+                  subtitle:
+                      'Manage teacher profiles, class assignments, subject mappings, attendance, and documents.',
+                  icon: Icons.badge_outlined,
+                  actions: [
+                    OutlinedButton.icon(
+                      onPressed: () => context.go(AppRoutes.teacherAttendance),
+                      icon: const Icon(Icons.fact_check_outlined),
+                      label: const Text('Teacher attendance'),
+                    ),
+                  ],
+                ),
+              ),
               _Header(
                 years: items,
                 selectedAcademicYearId: effectiveYearId,
@@ -66,10 +85,12 @@ class _TeacherManagementPageState extends ConsumerState<TeacherManagementPage> {
                 onTeacherAttendance: () =>
                     context.go(AppRoutes.teacherAttendance),
               ),
-              const Divider(height: 1),
               Expanded(
                 child: effectiveYearId == null
-                    ? const Center(child: Text('No academic years found.'))
+                    ? const AppEmptyState(
+                        message: 'No academic years found for teachers.',
+                        icon: Icons.calendar_month_outlined,
+                      )
                     : _TeacherList(academicYearId: effectiveYearId),
               ),
             ],
@@ -102,14 +123,10 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-        child: Wrap(
-          spacing: 12,
-          runSpacing: 10,
-          crossAxisAlignment: WrapCrossAlignment.center,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+      child: AppSectionCard(
+        child: AppFilterBar(
           children: [
             SizedBox(
               width: 320,
@@ -153,7 +170,10 @@ class _TeacherList extends ConsumerWidget {
     return teachers.when(
       data: (items) {
         if (items.isEmpty) {
-          return const Center(child: Text('No teachers found.'));
+          return const AppEmptyState(
+            message: 'No teachers found.',
+            icon: Icons.badge_outlined,
+          );
         }
         return ListView(
           padding: const EdgeInsets.all(24),
@@ -1332,7 +1352,12 @@ Future<void> _deleteTeacher(
   TeacherModel teacher,
   String academicYearId,
 ) async {
-  final confirmed = await _confirm(context, 'Delete ${teacher.displayName}?');
+  final confirmed = await _confirmDelete(
+    context,
+    title: 'Delete teacher profile?',
+    message:
+        '${teacher.displayName} will be removed from teacher management. Existing attendance, class, subject, and document history may remain preserved by the backend.',
+  );
   if (!confirmed || !context.mounted) {
     return;
   }
@@ -1358,7 +1383,12 @@ Future<void> _deleteAssignment(
   String academicYearId,
   TeacherAssignmentModel assignment,
 ) async {
-  final confirmed = await _confirm(context, 'Delete this assignment?');
+  final confirmed = await _confirmDelete(
+    context,
+    title: 'Delete teacher assignment?',
+    message:
+        'This class or subject assignment will be removed from ${teacher.displayName}. Existing academic history will not be edited from this screen.',
+  );
   if (!confirmed || !context.mounted) {
     return;
   }
@@ -1384,7 +1414,12 @@ Future<void> _deleteDocument(
   String academicYearId,
   TeacherDocumentModel document,
 ) async {
-  final confirmed = await _confirm(context, 'Delete ${document.fileName}?');
+  final confirmed = await _confirmDelete(
+    context,
+    title: 'Delete teacher document?',
+    message:
+        '${document.fileName} will be removed from this teacher profile. Keep a separate copy if this document is still required.',
+  );
   if (!confirmed || !context.mounted) {
     return;
   }
@@ -1419,9 +1454,10 @@ class _DialogField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SizedField(
-      child: TextFormField(
+      child: AppTextField(
         controller: controller,
-        decoration: InputDecoration(labelText: label),
+        label: label,
+        required: required,
         validator: validator ?? (required ? _required : null),
       ),
     );
@@ -1521,21 +1557,10 @@ class _StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final active = label == 'ACTIVE';
     final color = active ? const Color(0xFF16A34A) : const Color(0xFF64748B);
-    return Container(
-      height: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
+    return AppStatusBadge(
+      label: label,
+      color: color,
+      icon: active ? Icons.check_circle_outline : Icons.pause_circle_outline,
     );
   }
 }
@@ -1555,25 +1580,19 @@ void _refreshTeacherState(
   }
 }
 
-Future<bool> _confirm(BuildContext context, String message) async {
-  final result = await showDialog<bool>(
+Future<bool> _confirmDelete(
+  BuildContext context, {
+  required String title,
+  required String message,
+}) async {
+  return showAppConfirmDialog(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text('Confirm action'),
-      content: Text(message),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Confirm'),
-        ),
-      ],
-    ),
+    title: title,
+    message: message,
+    confirmLabel: 'Delete',
+    confirmIcon: Icons.delete_outline,
+    destructive: true,
   );
-  return result ?? false;
 }
 
 String? _required(String? value) {

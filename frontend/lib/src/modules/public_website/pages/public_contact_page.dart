@@ -21,7 +21,7 @@ class PublicContactPage extends ConsumerWidget {
           const PublicPageHero(
             title: 'Contact Us',
             subtitle:
-                'School address, phone number, email, map placeholder, and admission enquiry form.',
+                'School address, email, office hours, location details, and admission enquiry form.',
             icon: Icons.contact_mail_outlined,
           ),
           PublicSection(
@@ -35,7 +35,7 @@ class PublicContactPage extends ConsumerWidget {
                   children: [
                     ContactInfoList(),
                     SizedBox(height: 12),
-                    MapPlaceholder(),
+                    CampusLocationPanel(),
                   ],
                 );
                 final form = PublicEnquiryForm(enquiryService: enquiryService);

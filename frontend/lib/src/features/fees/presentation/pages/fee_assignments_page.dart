@@ -7,6 +7,7 @@ import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_data_table.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../students/data/models/student_models.dart';
 import '../../../students/presentation/controllers/students_providers.dart';
@@ -75,10 +76,8 @@ class _FeeAssignmentsPageState extends ConsumerState<FeeAssignmentsPage> {
           ),
           const SizedBox(height: 16),
           assignments.when(
-            data: (page) => _AssignmentsTable(
-              page: page,
-              onPageChanged: _changePage,
-            ),
+            data: (page) =>
+                _AssignmentsTable(page: page, onPageChanged: _changePage),
             error: (error, _) => AppErrorState(
               message: _message(error),
               onRetry: () =>
@@ -139,15 +138,15 @@ class _FeeAssignmentsPageState extends ConsumerState<FeeAssignmentsPage> {
                           child: Text(year.name),
                         ),
                     ],
-                            onChanged: (value) {
-                              setState(() {
-                                _academicYearId = value;
-                                _classId = null;
-                                _sectionId = null;
-                                _feeStructureId = null;
-                              });
-                            },
-                          ),
+                    onChanged: (value) {
+                      setState(() {
+                        _academicYearId = value;
+                        _classId = null;
+                        _sectionId = null;
+                        _feeStructureId = null;
+                      });
+                    },
+                  ),
                 ),
                 _FieldBox(
                   child: classes == null
@@ -291,14 +290,14 @@ class _FeeAssignmentsPageState extends ConsumerState<FeeAssignmentsPage> {
                           : page.content
                                 .where(
                                   (structure) => structure.items.any(
-                                    (item) =>
-                                        item.categoryId == _feeCategoryId,
+                                    (item) => item.categoryId == _feeCategoryId,
                                   ),
                                 )
                                 .toList(growable: false);
-                      final selected = items.any(
-                        (structure) => structure.id == _feeStructureId,
-                      )
+                      final selected =
+                          items.any(
+                            (structure) => structure.id == _feeStructureId,
+                          )
                           ? _feeStructureId
                           : null;
                       return DropdownButtonFormField<String?>(
@@ -478,59 +477,34 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          runSpacing: 12,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: 'Back',
-                  onPressed: onBack,
-                  icon: const Icon(Icons.arrow_back),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Assignments',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-                ),
-              ],
-            ),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: onRefresh,
-                  icon: const Icon(Icons.refresh_outlined),
-                  label: const Text('Refresh'),
-                ),
-                FilledButton.icon(
-                  onPressed: onNew,
-                  icon: const Icon(Icons.add_outlined),
-                  label: const Text('Assign class fee'),
-                ),
-              ],
-            ),
-          ],
+    return AppPageHeader(
+      title: 'Fee Assignments',
+      subtitle:
+          'Search, filter, and review class, hostel, and transport fee assignments.',
+      icon: Icons.assignment_ind_outlined,
+      actions: [
+        IconButton.outlined(
+          tooltip: 'Back',
+          onPressed: onBack,
+          icon: const Icon(Icons.arrow_back),
         ),
-      ),
+        OutlinedButton.icon(
+          onPressed: onRefresh,
+          icon: const Icon(Icons.refresh_outlined),
+          label: const Text('Refresh'),
+        ),
+        FilledButton.icon(
+          onPressed: onNew,
+          icon: const Icon(Icons.add_outlined),
+          label: const Text('Assign class fee'),
+        ),
+      ],
     );
   }
 }
 
 class _AssignmentsTable extends StatelessWidget {
-  const _AssignmentsTable({
-    required this.page,
-    required this.onPageChanged,
-  });
+  const _AssignmentsTable({required this.page, required this.onPageChanged});
 
   final PagePayload<StudentFeeAssignmentModel> page;
   final ValueChanged<int> onPageChanged;
@@ -540,9 +514,9 @@ class _AssignmentsTable extends StatelessWidget {
     final items = page.content;
     if (items.isEmpty) {
       return const Card(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text('No fee assignments found.'),
+        child: AppEmptyState(
+          message: 'No fee assignments found.',
+          icon: Icons.assignment_outlined,
         ),
       );
     }

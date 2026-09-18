@@ -6,6 +6,7 @@ import '../../../../app/router/app_routes.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../data/repositories/auth_repository_impl.dart';
+import '../widgets/auth_page_shell.dart';
 
 class ForgotPasswordPage extends ConsumerStatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -29,79 +30,53 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Forgot Password'),
-        leading: IconButton(
-          tooltip: 'Back',
-          onPressed: () => context.go(AppRoutes.login),
-          icon: const Icon(Icons.arrow_back),
-        ),
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 440),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Reset access',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Enter your email or mobile number.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.outline,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  if (_message != null) ...[
-                    _AuthNotice(message: _message!, error: _hasError),
-                    const SizedBox(height: 14),
-                  ],
-                  AppTextField(
-                    controller: _emailOrMobile,
-                    label: 'Email or mobile number',
-                    prefixIcon: Icons.alternate_email,
-                    validator: _required,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _submit(),
-                  ),
-                  const SizedBox(height: 20),
-                  AppButton(
-                    label: 'Submit',
-                    icon: Icons.send_outlined,
-                    expand: true,
-                    isLoading: _submitting,
-                    onPressed: _submit,
-                  ),
-                  TextButton(
-                    onPressed: _submitting
-                        ? null
-                        : () => context.go(AppRoutes.resetPassword),
-                    child: const Text('I already have a reset token'),
-                  ),
-                  TextButton(
-                    onPressed: _submitting
-                        ? null
-                        : () => context.go(AppRoutes.login),
-                    child: const Text('Back to sign in'),
-                  ),
-                ],
+    return AuthPageShell(
+      title: 'Reset access',
+      subtitle: 'Enter your email or mobile number to request a reset token.',
+      icon: Icons.mark_email_read_outlined,
+      onBack: () => context.go(AppRoutes.login),
+      children: [
+        Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_message != null) ...[
+                AuthNotice(message: _message!, error: _hasError),
+                const SizedBox(height: 14),
+              ],
+              AppTextField(
+                controller: _emailOrMobile,
+                label: 'Email or mobile number',
+                prefixIcon: Icons.alternate_email,
+                validator: _required,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _submit(),
               ),
-            ),
+              const SizedBox(height: 20),
+              AppButton(
+                label: 'Submit',
+                icon: Icons.send_outlined,
+                expand: true,
+                isLoading: _submitting,
+                onPressed: _submit,
+              ),
+              TextButton(
+                onPressed: _submitting
+                    ? null
+                    : () => context.go(AppRoutes.resetPassword),
+                child: const Text('I already have a reset token'),
+              ),
+              TextButton(
+                onPressed: _submitting
+                    ? null
+                    : () => context.go(AppRoutes.login),
+                child: const Text('Back to sign in'),
+              ),
+            ],
           ),
         ),
-      ),
+      ],
     );
   }
 
@@ -133,32 +108,6 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
     if (mounted) {
       setState(() => _submitting = false);
     }
-  }
-}
-
-class _AuthNotice extends StatelessWidget {
-  const _AuthNotice({required this.message, required this.error});
-
-  final String message;
-  final bool error;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: error ? colors.errorContainer : colors.primaryContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        message,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: error ? colors.onErrorContainer : colors.onPrimaryContainer,
-        ),
-      ),
-    );
   }
 }
 

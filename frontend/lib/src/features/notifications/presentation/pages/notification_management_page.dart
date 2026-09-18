@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/widgets/admin_shell.dart';
+import '../../../../core/widgets/app_confirm_dialog.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/models/notification_models.dart';
 import '../../data/repositories/notifications_repository_impl.dart';
@@ -45,6 +47,15 @@ class _NotificationManagementPageState
         length: 3,
         child: Column(
           children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 24, 24, 12),
+              child: AppPageHeader(
+                title: 'Notification Management',
+                subtitle:
+                    'Send test notifications, inspect delivery logs, and manage reusable notification templates.',
+                icon: Icons.notifications_active_outlined,
+              ),
+            ),
             const Material(
               color: Colors.white,
               child: TabBar(
@@ -465,25 +476,15 @@ class _NotificationManagementPageState
   }
 
   Future<void> _deleteTemplate(NotificationTemplateModel template) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppConfirmDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete template'),
-        content: Text(template.templateName),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.of(context).pop(true),
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Delete'),
-          ),
-        ],
-      ),
+      title: 'Delete template',
+      message: template.templateName,
+      confirmLabel: 'Delete',
+      confirmIcon: Icons.delete_outline,
+      destructive: true,
     );
-    if (confirmed != true || !mounted) {
+    if (!confirmed || !mounted) {
       return;
     }
     final result = await ref
@@ -534,8 +535,17 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Chip(visualDensity: VisualDensity.compact, label: Text(label));
+    return AppStatusBadge(label: label, color: _statusColor(label));
   }
+}
+
+Color _statusColor(String status) {
+  return switch (status.toUpperCase()) {
+    'SENT' || 'DELIVERED' || 'ACTIVE' => const Color(0xFF16A34A),
+    'PENDING' || 'QUEUED' => const Color(0xFFD97706),
+    'FAILED' || 'INACTIVE' => const Color(0xFFDC2626),
+    _ => const Color(0xFF64748B),
+  };
 }
 
 class _EmptyState extends StatelessWidget {
@@ -545,8 +555,9 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Text(message, style: Theme.of(context).textTheme.bodyMedium),
+    return AppEmptyState(
+      message: message,
+      icon: Icons.notifications_none_outlined,
     );
   }
 }

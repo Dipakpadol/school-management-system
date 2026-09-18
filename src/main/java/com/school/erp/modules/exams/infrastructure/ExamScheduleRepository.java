@@ -43,6 +43,29 @@ public interface ExamScheduleRepository extends BaseRepository<ExamSchedule, UUI
 	@Query("""
 			select distinct schedule
 			from ExamSchedule schedule
+			join schedule.subjects subjectRow
+			where schedule.deleted = false
+			  and subjectRow.deleted = false
+			  and schedule.academicYear.id = :academicYearId
+			  and schedule.classEntity.id = :classId
+			  and schedule.section.id = :sectionId
+			  and (:examTypeId is null or schedule.examType.id = :examTypeId)
+			  and (:examScheduleId is null or schedule.id = :examScheduleId)
+			  and (:subjectId is null or subjectRow.subject.id = :subjectId)
+			order by schedule.examType.displayOrder asc, schedule.examName asc, schedule.createdAt asc
+			""")
+	List<ExamSchedule> findReportSchedules(
+			@Param("academicYearId") UUID academicYearId,
+			@Param("classId") UUID classId,
+			@Param("sectionId") UUID sectionId,
+			@Param("examTypeId") UUID examTypeId,
+			@Param("examScheduleId") UUID examScheduleId,
+			@Param("subjectId") UUID subjectId);
+
+	@EntityGraph(attributePaths = { "academicYear", "classEntity", "section", "examType", "subjects", "subjects.subject", "subject" })
+	@Query("""
+			select distinct schedule
+			from ExamSchedule schedule
 			where schedule.deleted = false
 			  and schedule.academicYear.id = :academicYearId
 			  and schedule.classEntity.id = :classId

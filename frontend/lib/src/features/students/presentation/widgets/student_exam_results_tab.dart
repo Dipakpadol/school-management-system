@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/widgets/app_data_table.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../exams/data/models/exam_models.dart';
 import '../../data/models/student_models.dart';
 import '../../data/models/student_profile_history_models.dart';
@@ -419,14 +420,14 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE0F2FE),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(status.replaceAll('_', ' ')),
-    );
+    final normalized = status.toUpperCase();
+    final color = switch (normalized) {
+      'PASS' || 'PASSED' || 'QUALIFIED' => const Color(0xFF16A34A),
+      'FAIL' || 'FAILED' => const Color(0xFFDC2626),
+      'ABSENT' => const Color(0xFF64748B),
+      _ => const Color(0xFF0891B2),
+    };
+    return AppStatusBadge(label: status.replaceAll('_', ' '), color: color);
   }
 }
 

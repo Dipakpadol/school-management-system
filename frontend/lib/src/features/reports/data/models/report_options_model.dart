@@ -70,3 +70,13 @@ class ReportFilterOptionModel {
   final String type;
   final bool required;
 }
+
+class ReportPreviewRowModel {
+  const ReportPreviewRowModel({required this.cells});
+
+  factory ReportPreviewRowModel.fromJson(Map<String, dynamic> json) {
+    return ReportPreviewRowModel(cells: Map<String, dynamic>.from(json));
+  }
+
+  final Map<String, dynamic> cells;
+}

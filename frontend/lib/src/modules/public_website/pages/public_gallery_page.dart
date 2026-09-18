@@ -17,12 +17,12 @@ class PublicGalleryPage extends StatelessWidget {
           const PublicPageHero(
             title: 'Gallery',
             subtitle:
-                'Responsive placeholder image grid for campus life, classrooms, library, sports, and activities.',
+                'Campus life, events, activities, sports, and academic moments from Star International School.',
             icon: Icons.photo_library_outlined,
           ),
           PublicSection(
             eyebrow: 'Campus moments',
-            title: 'Replace these placeholders with real school images later.',
+            title: 'A look at school life.',
             child: PublicResponsiveGrid(
               maxColumns: 3,
               minItemWidth: 260,

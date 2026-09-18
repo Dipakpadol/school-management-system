@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
+import '../../../../core/theme/app_design_system.dart';
 import '../../../../core/widgets/admin_shell.dart';
+import '../../../../core/widgets/app_confirm_dialog.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../fees/data/models/fee_models.dart';
 import '../../../fees/presentation/controllers/fees_providers.dart';
@@ -59,7 +62,7 @@ class _ProfileScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 9,
+      length: 10,
       child: Column(
         children: [
           Material(
@@ -107,15 +110,16 @@ class _ProfileScaffold extends StatelessWidget {
                 const TabBar(
                   isScrollable: true,
                   tabs: [
-                    Tab(text: 'Personal Details'),
-                    Tab(text: 'Parent / Guardian Details'),
-                    Tab(text: 'Academic Details'),
+                    Tab(text: 'Overview'),
+                    Tab(text: 'Parents'),
+                    Tab(text: 'Academic History'),
                     Tab(text: 'Attendance'),
                     Tab(text: 'Fees'),
-                    Tab(text: 'Documents'),
-                    Tab(text: 'Hostel'),
+                    Tab(text: 'Exams/Results'),
                     Tab(text: 'Transport'),
-                    Tab(text: 'Exams & Results'),
+                    Tab(text: 'Hostel'),
+                    Tab(text: 'Library'),
+                    Tab(text: 'Documents'),
                   ],
                 ),
               ],
@@ -130,10 +134,11 @@ class _ProfileScaffold extends StatelessWidget {
                 _AcademicTab(student: student),
                 StudentAttendanceTab(student: student),
                 _FeesTab(student: student),
-                _DocumentsTab(student: student),
-                _HostelTab(student: student),
-                _TransportTab(student: student),
                 StudentExamResultsTab(student: student),
+                _TransportTab(student: student),
+                _HostelTab(student: student),
+                _LibraryTab(student: student),
+                _DocumentsTab(student: student),
               ],
             ),
           ),
@@ -157,7 +162,7 @@ class _PersonalTab extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SectionHeader(
-            title: 'Personal Details',
+            title: 'Overview',
             actions: [
               OutlinedButton.icon(
                 onPressed: () => _showPhotoDialog(context, ref, student),
@@ -229,7 +234,7 @@ class _ParentsTab extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SectionHeader(
-            title: 'Parent / Guardian Details',
+            title: 'Parents',
             actions: [
               FilledButton.icon(
                 onPressed: () => _showParentDialog(context, ref, student),
@@ -349,7 +354,7 @@ class _AcademicTab extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SectionHeader(
-            title: 'Academic Details',
+            title: 'Academic History',
             actions: [
               FilledButton.icon(
                 onPressed: () => _showClassDialog(context, ref, student),
@@ -575,6 +580,30 @@ class _FeeGroupSection extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _LibraryTab extends StatelessWidget {
+  const _LibraryTab({required this.student});
+
+  final StudentProfileModel student;
+
+  @override
+  Widget build(BuildContext context) {
+    return _TabSurface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionHeader(title: 'Library'),
+          const SizedBox(height: 12),
+          AppEmptyState(
+            message:
+                'Library circulation history for ${student.fullName} will appear here when a student-library history endpoint is available.',
+            icon: Icons.local_library_outlined,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1819,22 +1848,7 @@ class _SmallBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: const Color(0xFFFEF3C7),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: const Color(0xFF92400E),
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
+    return AppStatusBadge(label: label, color: AppDesignTokens.amber);
   }
 }
 
@@ -1846,23 +1860,10 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = status == 'ACTIVE';
-    final color = active ? const Color(0xFF16A34A) : const Color(0xFF64748B);
-
-    return Container(
-      height: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        status,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
+    return AppStatusBadge(
+      label: status,
+      color: active ? AppDesignTokens.success : AppDesignTokens.muted,
+      icon: active ? Icons.check_circle_outline : Icons.pause_circle_outline,
     );
   }
 }
@@ -2763,24 +2764,15 @@ class _Field extends StatelessWidget {
 }
 
 Future<bool> _confirm(BuildContext context, String message) async {
-  final result = await showDialog<bool>(
+  return showAppConfirmDialog(
     context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Confirm action'),
-      content: Text(message),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Confirm'),
-        ),
-      ],
-    ),
+    title: 'Delete student document?',
+    message:
+        '$message This removes the document from the student profile. Academic, fee, attendance, and audit history remain governed by backend rules.',
+    confirmLabel: 'Delete',
+    confirmIcon: Icons.delete_outline,
+    destructive: true,
   );
-  return result ?? false;
 }
 
 String _address(StudentProfileModel student) {

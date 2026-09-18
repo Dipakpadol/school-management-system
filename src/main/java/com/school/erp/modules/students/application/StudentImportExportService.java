@@ -34,10 +34,12 @@ import com.school.erp.modules.students.api.dto.ParentMappingRequest;
 import com.school.erp.modules.students.api.dto.StudentAdmissionRequest;
 import com.school.erp.modules.students.api.dto.StudentProfileRequest;
 import com.school.erp.modules.students.api.dto.StudentResponse;
+import com.school.erp.modules.students.api.dto.StudentSearchRequest;
 import com.school.erp.modules.students.domain.Gender;
 import com.school.erp.modules.students.domain.ParentRelation;
 import com.school.erp.modules.students.domain.StudentStatus;
 import com.school.erp.modules.students.infrastructure.StudentRepository;
+import com.school.erp.modules.students.infrastructure.StudentSpecifications;
 import com.school.erp.modules.transport.api.dto.TransportAssignmentRequest;
 import com.school.erp.modules.transport.application.TransportService;
 
@@ -135,10 +137,43 @@ public class StudentImportExportService {
 	}
 
 	@Transactional(readOnly = true)
+	public byte[] exportExcel(StudentSearchRequest request) {
+		byte[] content = excelExportService.export("students", STUDENT_COLUMNS, exportRows(request));
+		auditLogService.recordStandalone(new AuditLogEvent("STUDENTS", "Student", null, AuditAction.EXPORT, null, "Filtered Excel export"));
+		return content;
+	}
+
+	@Transactional(readOnly = true)
 	public byte[] exportCsv() {
 		byte[] content = csvExportService.export(STUDENT_COLUMNS, exportRows());
 		auditLogService.recordStandalone(new AuditLogEvent("STUDENTS", "Student", null, AuditAction.EXPORT, null, "CSV export"));
 		return content;
+	}
+
+	@Transactional(readOnly = true)
+	public byte[] exportCsv(StudentSearchRequest request) {
+		byte[] content = csvExportService.export(STUDENT_COLUMNS, exportRows(request));
+		auditLogService.recordStandalone(new AuditLogEvent("STUDENTS", "Student", null, AuditAction.EXPORT, null, "Filtered CSV export"));
+		return content;
+	}
+
+	@Transactional(readOnly = true)
+	public byte[] exportPdf(StudentSearchRequest request) {
+		List<Map<String, Object>> rows = reportRows(request);
+		byte[] content = pdfExportService.exportTable("Student Report", reportFilters(request), STUDENT_COLUMNS, rows);
+		auditLogService.recordStandalone(new AuditLogEvent(
+				"STUDENTS",
+				"Student",
+				null,
+				AuditAction.EXPORT,
+				null,
+				Map.of("format", "PDF", "filtered", true, "rowCount", rows.size())));
+		return content;
+	}
+
+	@Transactional(readOnly = true)
+	public List<Map<String, Object>> reportRows(StudentSearchRequest request) {
+		return exportRows(request);
 	}
 
 	public ImportResultDto importErrors(UUID batchId) {
@@ -557,6 +592,28 @@ public class StudentImportExportService {
 				.map(studentMapper::toProfileResponse)
 				.map(this::toExportRow)
 				.toList();
+	}
+
+	private List<Map<String, Object>> exportRows(StudentSearchRequest request) {
+		return studentRepository.findAll(StudentSpecifications.matching(request == null ? emptyStudentSearch() : request)).stream()
+				.map(studentMapper::toProfileResponse)
+				.map(this::toExportRow)
+				.toList();
+	}
+
+	private Map<String, Object> reportFilters(StudentSearchRequest request) {
+		StudentSearchRequest effective = request == null ? emptyStudentSearch() : request;
+		Map<String, Object> filters = new LinkedHashMap<>();
+		filters.put("Academic Year ID", effective.academicYearId());
+		filters.put("Class ID", effective.classId());
+		filters.put("Section ID", effective.sectionId());
+		filters.put("Status", effective.status());
+		filters.put("Search", effective.query());
+		return filters;
+	}
+
+	private StudentSearchRequest emptyStudentSearch() {
+		return new StudentSearchRequest(null, null, null, null, null, null, null, null, null, null);
 	}
 
 	private Map<String, Object> toExportRow(StudentResponse student) {

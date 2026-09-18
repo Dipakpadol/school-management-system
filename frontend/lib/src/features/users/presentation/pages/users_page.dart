@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
-import '../../../../core/widgets/admin_shell.dart';
-import '../../../../core/widgets/app_button.dart';
-import '../../../../core/widgets/app_error_state.dart';
-import '../../../../core/widgets/app_loading_state.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/upload/file_picker.dart';
+import '../../../../core/widgets/admin_shell.dart';
+import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_confirm_dialog.dart';
+import '../../../../core/widgets/app_error_state.dart';
+import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/models/user_models.dart';
 import '../../data/repositories/users_repository_impl.dart';
@@ -45,6 +47,15 @@ class _UsersPageState extends ConsumerState<UsersPage> {
       },
       child: Column(
         children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 24, 24, 12),
+            child: AppPageHeader(
+              title: 'User Management',
+              subtitle:
+                  'Manage user accounts, assigned roles, status, and account access for the ERP.',
+              icon: Icons.manage_accounts_outlined,
+            ),
+          ),
           _UserHeader(
             searchController: _searchController,
             onAdd: () => _showUserDialog(context, ref),
@@ -54,7 +65,6 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                   .set(_searchController.text.trim());
             },
           ),
-          const Divider(height: 1),
           Expanded(
             child: users.when(
               data: (items) => _UserList(users: items),
@@ -90,14 +100,10 @@ class _UserHeader extends ConsumerWidget {
     final selectedRole = ref.watch(userRoleFilterProvider);
     final selectedStatus = ref.watch(userStatusFilterProvider);
 
-    return Material(
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
-        child: Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          crossAxisAlignment: WrapCrossAlignment.center,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+      child: AppSectionCard(
+        child: AppFilterBar(
           children: [
             SizedBox(
               width: 320,
@@ -209,7 +215,14 @@ class _UserList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (users.isEmpty) {
-      return const Center(child: Text('No users found.'));
+      return AppEmptyState(
+        message: 'No users found.',
+        action: OutlinedButton.icon(
+          onPressed: () => ref.invalidate(usersProvider),
+          icon: const Icon(Icons.refresh),
+          label: const Text('Refresh'),
+        ),
+      );
     }
 
     return LayoutBuilder(
@@ -281,7 +294,10 @@ class _UserCard extends ConsumerWidget {
                     spacing: 8,
                     runSpacing: 6,
                     children: [
-                      _StatusChip(status: user.status),
+                      AppStatusBadge(
+                        label: _statusLabel(user.status),
+                        color: _statusColor(user.status),
+                      ),
                       _SoftChip(label: _sourceLabel(user.source)),
                       _SoftChip(label: roleText.isEmpty ? 'No role' : roleText),
                       if (user.createdAt != null)
@@ -334,7 +350,12 @@ Future<void> _handleAction(
     return;
   }
   if (action == 'delete') {
-    final confirmed = await _confirm(context, 'Delete ${user.displayName}?');
+    final confirmed = await _confirmDelete(
+      context,
+      title: 'Delete user account?',
+      message:
+          '${user.displayName} will no longer be able to sign in. Existing audit history and linked module records remain preserved.',
+    );
     if (!confirmed) {
       return;
     }
@@ -382,7 +403,7 @@ Future<void> _showUserDialog(
   final email = TextEditingController(text: user?.email ?? '');
   final username = TextEditingController(text: user?.username ?? '');
   final phone = TextEditingController(text: user?.phoneNumber ?? '');
-  final password = TextEditingController(text: 'Demo@12345678');
+  final password = TextEditingController();
   final formKey = GlobalKey<FormState>();
   final fallbackRole = availableRoles.isEmpty
       ? 'ADMIN'
@@ -460,8 +481,12 @@ Future<void> _showUserDialog(
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: password,
-                      decoration: const InputDecoration(labelText: 'Password'),
-                      validator: _required,
+                      decoration: const InputDecoration(
+                        labelText: 'Temporary password',
+                        helperText: 'Share this securely with the user.',
+                      ),
+                      obscureText: true,
+                      validator: _passwordValidator,
                     ),
                   ],
                 ],
@@ -526,7 +551,7 @@ Future<void> _showResetPasswordDialog(
   WidgetRef ref,
   UserModel user,
 ) async {
-  final password = TextEditingController(text: 'Demo@12345678');
+  final password = TextEditingController();
   final formKey = GlobalKey<FormState>();
 
   await showDialog<void>(
@@ -538,8 +563,12 @@ Future<void> _showResetPasswordDialog(
           key: formKey,
           child: TextFormField(
             controller: password,
-            decoration: const InputDecoration(labelText: 'New password'),
-            validator: _required,
+            decoration: const InputDecoration(
+              labelText: 'New password',
+              helperText: 'Use a temporary password and share it securely.',
+            ),
+            obscureText: true,
+            validator: _passwordValidator,
           ),
         ),
         actions: [
@@ -575,39 +604,6 @@ Future<void> _showResetPasswordDialog(
   );
 
   password.dispose();
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = switch (status) {
-      'ACTIVE' => const Color(0xFF16A34A),
-      'PENDING_APPROVAL' => const Color(0xFFB45309),
-      'LOCKED' => const Color(0xFFDC2626),
-      _ => const Color(0xFF64748B),
-    };
-
-    return Container(
-      height: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        status,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
 }
 
 class _SoftChip extends StatelessWidget {
@@ -655,6 +651,19 @@ String _sourceLabel(String source) {
   return source == 'SIGN_UP' ? 'Sign up' : 'Admin created';
 }
 
+String _statusLabel(String status) {
+  return status.replaceAll('_', ' ');
+}
+
+Color _statusColor(String status) {
+  return switch (status) {
+    'ACTIVE' => const Color(0xFF16A34A),
+    'PENDING_APPROVAL' => const Color(0xFFB45309),
+    'LOCKED' || 'DISABLED' => const Color(0xFFDC2626),
+    _ => const Color(0xFF64748B),
+  };
+}
+
 String _dateLabel(DateTime date) {
   final month = date.month.toString().padLeft(2, '0');
   final day = date.day.toString().padLeft(2, '0');
@@ -668,6 +677,17 @@ String? _required(String? value) {
   return null;
 }
 
+String? _passwordValidator(String? value) {
+  final required = _required(value);
+  if (required != null) {
+    return required;
+  }
+  if (value!.length < 8) {
+    return 'Password must be at least 8 characters';
+  }
+  return null;
+}
+
 String? _blankToNull(String value) {
   return value.trim().isEmpty ? null : value.trim();
 }
@@ -676,25 +696,19 @@ bool _isDomainManagedRole(String roleName) {
   return roleName == 'STUDENT' || roleName == 'TEACHER';
 }
 
-Future<bool> _confirm(BuildContext context, String message) async {
-  final result = await showDialog<bool>(
+Future<bool> _confirmDelete(
+  BuildContext context, {
+  required String title,
+  required String message,
+}) async {
+  return showAppConfirmDialog(
     context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Confirm action'),
-      content: Text(message),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Confirm'),
-        ),
-      ],
-    ),
+    title: title,
+    message: message,
+    confirmLabel: 'Delete',
+    confirmIcon: Icons.delete_outline,
+    destructive: true,
   );
-  return result ?? false;
 }
 
 void _snack(BuildContext context, String message) {

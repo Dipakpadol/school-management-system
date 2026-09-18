@@ -32,7 +32,7 @@ public class DashboardController {
 
 	@Operation(summary = "Get live dashboard summary")
 	@GetMapping("/summary")
-	@PreAuthorize("isAuthenticated()")
+	@PreAuthorize("hasAuthority('REPORTS_READ')")
 	public ResponseEntity<ApiResponse<DashboardSummaryResponse>> summary(HttpServletRequest request) {
 		return ResponseEntity.ok(ApiResponse.success(
 				dashboardService.summary(),
@@ -43,7 +43,7 @@ public class DashboardController {
 
 	@Operation(summary = "Get today's attendance summary")
 	@GetMapping("/today-attendance")
-	@PreAuthorize("isAuthenticated()")
+	@PreAuthorize("hasAuthority('ATTENDANCE_READ')")
 	public ResponseEntity<ApiResponse<TodayAttendanceResponse>> todayAttendance(
 			@RequestParam(required = false) UUID academicYearId,
 			@RequestParam(required = false) UUID classId,

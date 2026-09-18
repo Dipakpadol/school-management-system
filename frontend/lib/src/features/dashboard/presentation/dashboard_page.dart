@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router/app_routes.dart';
+import '../../../core/theme/app_design_system.dart';
 import '../../../core/widgets/admin_shell.dart';
 import '../../../core/widgets/app_error_state.dart';
 import '../../../core/widgets/app_loading_state.dart';
+import '../../../core/widgets/app_page_layout.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
 import '../domain/entities/dashboard_metric.dart';
 import '../domain/entities/dashboard_overview.dart';
@@ -81,105 +83,76 @@ class _DashboardContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-          sliver: SliverToBoxAdapter(
-            child: _DashboardHeader(
-              systemStatus: overview.systemStatus,
-              onRefresh: onRefresh,
+    return AppPageLayout(
+      children: [
+        AppPageHeader(
+          title: 'School ERP Admin',
+          subtitle:
+              'Admissions, fees, attendance, hostel, reports, communication, and settings.',
+          icon: Icons.dashboard_outlined,
+          actions: [
+            Tooltip(
+              message: 'Refresh dashboard',
+              child: IconButton.outlined(
+                onPressed: onRefresh,
+                icon: const Icon(Icons.refresh),
+              ),
             ),
-          ),
+            _StatusPill(status: overview.systemStatus),
+          ],
         ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-          sliver: _MetricGrid(metrics: overview.metrics),
+        _MetricGrid(metrics: overview.metrics),
+        const _SectionIntro(
+          title: 'Live activity',
+          subtitle:
+              'Recent actions, birthdays, and notifications from the canonical dashboard APIs.',
         ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(24, 18, 24, 8),
-          sliver: SliverToBoxAdapter(
-            child: Text(
-              'Live activity',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-            ),
-          ),
+        _DashboardPanels(
+          recentActivities: overview.recentActivities,
+          notifications: overview.notifications,
+          birthdaysToday: overview.birthdaysToday,
         ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
-          sliver: SliverToBoxAdapter(
-            child: _DashboardPanels(
-              recentActivities: overview.recentActivities,
-              notifications: overview.notifications,
-              birthdaysToday: overview.birthdaysToday,
-            ),
-          ),
+        const _SectionIntro(
+          title: 'Module access',
+          subtitle: 'Available modules for the signed-in role.',
         ),
+        _ModuleGrid(modules: modules),
       ],
     );
   }
 }
 
-class _DashboardHeader extends StatelessWidget {
-  const _DashboardHeader({required this.systemStatus, required this.onRefresh});
+class _SectionIntro extends StatelessWidget {
+  const _SectionIntro({required this.title, this.subtitle});
 
-  final String systemStatus;
-  final VoidCallback onRefresh;
+  final String title;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        runSpacing: 12,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'School ERP Admin',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Admissions, fees, attendance, hostel, reports, and settings.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.outline,
-                ),
-              ),
-            ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: theme.textTheme.titleLarge?.copyWith(
+            color: AppDesignTokens.ink,
+            fontWeight: FontWeight.w900,
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Tooltip(
-                message: 'Refresh dashboard',
-                child: IconButton.outlined(
-                  onPressed: onRefresh,
-                  icon: const Icon(Icons.refresh),
-                ),
-              ),
-              const SizedBox(width: 10),
-              _StatusPill(status: systemStatus),
-            ],
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            subtitle!,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppDesignTokens.muted,
+              height: 1.4,
+            ),
           ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -445,33 +418,10 @@ class _StatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final healthy = status.toUpperCase() == 'UP';
-    final color = healthy ? const Color(0xFF16A34A) : const Color(0xFFDC2626);
-
-    return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            healthy ? Icons.check_circle_outline : Icons.warning_amber_outlined,
-            size: 18,
-            color: color,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'API $status',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
+    return AppStatusBadge(
+      label: 'API $status',
+      color: healthy ? AppDesignTokens.success : AppDesignTokens.danger,
+      icon: healthy ? Icons.check_circle_outline : Icons.warning_amber_outlined,
     );
   }
 }
@@ -483,81 +433,16 @@ class _MetricGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final columns = width >= 1200
-        ? 4
-        : width >= 820
-        ? 2
-        : 1;
-
-    return SliverGrid.builder(
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: columns,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        mainAxisExtent: 112,
-      ),
-      itemCount: metrics.length,
-      itemBuilder: (context, index) {
-        return _MetricCard(metric: metrics[index]);
-      },
-    );
-  }
-}
-
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({required this.metric});
-
-  final DashboardMetric metric;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            SizedBox.square(
-              dimension: 44,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: metric.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(metric.icon, color: metric.color),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    metric.value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    metric.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.outline,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+    return AppStatGrid(
+      children: [
+        for (final metric in metrics)
+          AppStatCard(
+            label: metric.label,
+            value: metric.value,
+            icon: metric.icon,
+            color: metric.color,
+          ),
+      ],
     );
   }
 }
@@ -569,28 +454,16 @@ class _ModuleGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final columns = width >= 1280
-        ? 3
-        : width >= 840
-        ? 2
-        : 1;
-
-    return SliverGrid.builder(
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: columns,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        mainAxisExtent: 138,
-      ),
-      itemCount: modules.length,
-      itemBuilder: (context, index) {
-        final module = modules[index];
-        return _ModuleCard(
-          module: module,
-          onTap: () => context.go(AppRoutes.module(module.id)),
-        );
-      },
+    return AppStatGrid(
+      minItemWidth: 320,
+      maxColumns: 3,
+      children: [
+        for (final module in modules)
+          _ModuleCard(
+            module: module,
+            onTap: () => context.go(AppRoutes.module(module.id)),
+          ),
+      ],
     );
   }
 }

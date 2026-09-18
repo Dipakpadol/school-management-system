@@ -10,8 +10,10 @@ import '../../features/auth/presentation/controllers/auth_controller.dart';
 import '../../features/dashboard/domain/menu_policy.dart';
 import '../../features/dashboard/presentation/controllers/menu_controller.dart';
 import '../layout/responsive_breakpoints.dart';
+import '../theme/app_design_system.dart';
+import 'app_page_layout.dart';
 
-class AdminShell extends ConsumerWidget {
+class AdminShell extends ConsumerStatefulWidget {
   const AdminShell({
     required this.title,
     required this.child,
@@ -26,7 +28,14 @@ class AdminShell extends ConsumerWidget {
   final String? activeModuleId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AdminShell> createState() => _AdminShellState();
+}
+
+class _AdminShellState extends ConsumerState<AdminShell> {
+  bool _navigationCollapsed = false;
+
+  @override
+  Widget build(BuildContext context) {
     final compact = ResponsiveBreakpoints.isCompact(context);
     final user = ref.watch(authControllerProvider).user;
     final menuIds = ref
@@ -38,19 +47,22 @@ class AdminShell extends ConsumerWidget {
         );
     final sections = _visibleSections(user, menuIds);
     final activeUri = GoRouterState.of(context).uri;
+    final autoCollapsed =
+        MediaQuery.sizeOf(context).width < ResponsiveBreakpoints.medium;
+    final effectiveCollapsed = autoCollapsed || _navigationCollapsed;
 
     if (compact) {
       return Scaffold(
         appBar: AppBar(
-          title: Text(title),
-          actions: [_ProfileMenu(onLogout: onLogout)],
+          title: Text(widget.title),
+          actions: [_ProfileMenu(onLogout: widget.onLogout)],
         ),
         drawer: _ModuleDrawer(
-          activeModuleId: activeModuleId,
+          activeModuleId: widget.activeModuleId,
           activeUri: activeUri,
           sections: sections,
         ),
-        body: child,
+        body: widget.child,
       );
     }
 
@@ -58,17 +70,22 @@ class AdminShell extends ConsumerWidget {
       body: Row(
         children: [
           _DesktopNavigation(
-            activeModuleId: activeModuleId,
+            activeModuleId: widget.activeModuleId,
             activeUri: activeUri,
             sections: sections,
+            collapsed: effectiveCollapsed,
+            toggleEnabled: !autoCollapsed,
+            onToggleCollapsed: () {
+              setState(() => _navigationCollapsed = !_navigationCollapsed);
+            },
           ),
           const VerticalDivider(width: 1),
           Expanded(
             child: Column(
               children: [
-                _TopBar(title: title, onLogout: onLogout),
+                _TopBar(title: widget.title, onLogout: widget.onLogout),
                 const Divider(height: 1),
-                Expanded(child: child),
+                Expanded(child: widget.child),
               ],
             ),
           ),
@@ -86,21 +103,94 @@ class _TopBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authControllerProvider).user;
+    final roleLabel = _roleLabel(user);
+
     return Container(
       height: 64,
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        children: [
-          Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const Spacer(),
-          _ProfileMenu(onLogout: onLogout),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final tight = constraints.maxWidth < 620;
+          final veryTight = constraints.maxWidth < 480;
+
+          return Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              if (!veryTight) ...[
+                const _AcademicYearChip(),
+                const SizedBox(width: 10),
+              ],
+              if (!veryTight) ...[
+                Tooltip(
+                  message: 'Notifications',
+                  child: IconButton.outlined(
+                    onPressed: () => context.go(AppRoutes.notifications),
+                    icon: const Icon(Icons.notifications_none_outlined),
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              if (!tight && roleLabel.isNotEmpty) ...[
+                AppStatusBadge(
+                  label: roleLabel,
+                  color: AppDesignTokens.teal,
+                  icon: Icons.verified_user_outlined,
+                ),
+                const SizedBox(width: 10),
+              ],
+              _ProfileMenu(onLogout: onLogout),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _AcademicYearChip extends StatelessWidget {
+  const _AcademicYearChip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Academic year context',
+      child: Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: AppDesignTokens.tint(AppDesignTokens.primary),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.calendar_month_outlined,
+              size: 18,
+              color: AppDesignTokens.primary,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '2026-27',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: AppDesignTokens.primary,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -155,6 +245,18 @@ class _ProfileMenu extends ConsumerWidget {
                   color: Theme.of(context).colorScheme.outline,
                 ),
               ),
+              if ((user?.roles ?? const []).isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  (user?.roles ?? const []).join(', '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppDesignTokens.teal,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -184,27 +286,53 @@ class _DesktopNavigation extends StatelessWidget {
   const _DesktopNavigation({
     required this.activeUri,
     required this.sections,
+    required this.collapsed,
+    required this.toggleEnabled,
+    required this.onToggleCollapsed,
     this.activeModuleId,
   });
 
   final Uri activeUri;
   final List<_SidebarSection> sections;
+  final bool collapsed;
+  final bool toggleEnabled;
+  final VoidCallback onToggleCollapsed;
   final String? activeModuleId;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 292,
+      width: collapsed ? 84 : 292,
       child: ColoredBox(
         color: Colors.white,
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            padding: EdgeInsets.fromLTRB(
+              collapsed ? 12 : 16,
+              16,
+              collapsed ? 12 : 16,
+              12,
+            ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  collapsed ? CrossAxisAlignment.center : CrossAxisAlignment.start,
               children: [
-                const _BrandHeader(),
-                const SizedBox(height: 22),
+                _BrandHeader(collapsed: collapsed),
+                const SizedBox(height: 12),
+                IconButton.outlined(
+                  tooltip: toggleEnabled
+                      ? collapsed
+                            ? 'Expand navigation'
+                            : 'Collapse navigation'
+                      : 'Navigation is compact on this screen',
+                  onPressed: toggleEnabled ? onToggleCollapsed : null,
+                  icon: Icon(
+                    collapsed
+                        ? Icons.keyboard_double_arrow_right
+                        : Icons.keyboard_double_arrow_left,
+                  ),
+                ),
+                const SizedBox(height: 14),
                 Expanded(
                   child: ListView(
                     children: [
@@ -212,15 +340,22 @@ class _DesktopNavigation extends StatelessWidget {
                         icon: Icons.dashboard_outlined,
                         label: 'Dashboard',
                         selected: _isDashboardActive(activeUri, activeModuleId),
+                        collapsed: collapsed,
                         onTap: () => context.go(AppRoutes.dashboard),
                       ),
                       const SizedBox(height: 8),
                       for (final section in sections)
-                        _NavSection(
-                          section: section,
-                          activeUri: activeUri,
-                          activeModuleId: activeModuleId,
-                        ),
+                        collapsed
+                            ? _CollapsedNavSection(
+                                section: section,
+                                activeUri: activeUri,
+                                activeModuleId: activeModuleId,
+                              )
+                            : _NavSection(
+                                section: section,
+                                activeUri: activeUri,
+                                activeModuleId: activeModuleId,
+                              ),
                     ],
                   ),
                 ),
@@ -250,7 +385,10 @@ class _ModuleDrawer extends StatelessWidget {
       child: SafeArea(
         child: Column(
           children: [
-            const Padding(padding: EdgeInsets.all(16), child: _BrandHeader()),
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: _BrandHeader(collapsed: false),
+            ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -354,12 +492,85 @@ class _NavSection extends StatelessWidget {
   }
 }
 
-class _BrandHeader extends StatelessWidget {
-  const _BrandHeader();
+class _CollapsedNavSection extends StatelessWidget {
+  const _CollapsedNavSection({
+    required this.section,
+    required this.activeUri,
+    this.activeModuleId,
+  });
+
+  final _SidebarSection section;
+  final Uri activeUri;
+  final String? activeModuleId;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final active = section.isActive(activeUri, activeModuleId);
+    final foreground = active
+        ? AppDesignTokens.primary
+        : theme.colorScheme.onSurfaceVariant;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Tooltip(
+        message: section.label,
+        child: PopupMenuButton<_SidebarItem>(
+          tooltip: section.label,
+          onSelected: (item) => context.go(item.route),
+          itemBuilder: (context) => [
+            for (final item in section.items)
+              PopupMenuItem(
+                value: item,
+                child: Row(
+                  children: [
+                    Icon(item.icon, size: 19, color: foreground),
+                    const SizedBox(width: 10),
+                    Flexible(child: Text(item.label)),
+                  ],
+                ),
+              ),
+          ],
+          child: Material(
+            color: active
+                ? AppDesignTokens.tint(AppDesignTokens.primary)
+                : Colors.transparent,
+            borderRadius: AppDesignTokens.borderRadius,
+            child: SizedBox.square(
+              dimension: 48,
+              child: Icon(section.icon, color: foreground, size: 22),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BrandHeader extends StatelessWidget {
+  const _BrandHeader({required this.collapsed});
+
+  final bool collapsed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    if (collapsed) {
+      return Tooltip(
+        message: 'School ERP Admin Panel',
+        child: SizedBox.square(
+          dimension: 48,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary,
+              borderRadius: AppDesignTokens.borderRadius,
+            ),
+            child: const Icon(Icons.school_outlined, color: Colors.white),
+          ),
+        ),
+      );
+    }
 
     return Row(
       children: [
@@ -368,7 +579,7 @@ class _BrandHeader extends StatelessWidget {
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: theme.colorScheme.primary,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: AppDesignTokens.borderRadius,
             ),
             child: const Icon(Icons.school_outlined, color: Colors.white),
           ),
@@ -407,6 +618,7 @@ class _NavItem extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.compact = false,
+    this.collapsed = false,
   });
 
   final IconData icon;
@@ -414,20 +626,44 @@ class _NavItem extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final bool compact;
+  final bool collapsed;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final background = selected ? const Color(0xFFDBEAFE) : Colors.transparent;
+    final background = selected
+        ? AppDesignTokens.tint(AppDesignTokens.primary, 0.14)
+        : Colors.transparent;
     final foreground = selected
         ? theme.colorScheme.primary
         : theme.colorScheme.onSurfaceVariant;
 
+    if (collapsed) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Tooltip(
+          message: label,
+          child: Material(
+            color: background,
+            borderRadius: AppDesignTokens.borderRadius,
+            child: InkWell(
+              borderRadius: AppDesignTokens.borderRadius,
+              onTap: onTap,
+              child: SizedBox.square(
+                dimension: 48,
+                child: Icon(icon, color: foreground, size: 22),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Material(
       color: background,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: AppDesignTokens.borderRadius,
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDesignTokens.borderRadius,
         onTap: onTap,
         child: SizedBox(
           height: compact ? 40 : 44,
@@ -562,76 +798,42 @@ String _initials(String value) {
       .toUpperCase();
 }
 
+String _roleLabel(AuthUser? user) {
+  final roles = user?.roles ?? const [];
+  if (roles.isEmpty) {
+    return '';
+  }
+  return roles
+      .take(2)
+      .map((role) => _titleCase(role.replaceAll('_', ' ')))
+      .join(', ');
+}
+
+String _titleCase(String value) {
+  return value
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((word) => word.isNotEmpty)
+      .map((word) {
+        final lower = word.toLowerCase();
+        return '${lower[0].toUpperCase()}${lower.substring(1)}';
+      })
+      .join(' ');
+}
+
 const _sidebarSections = <_SidebarSection>[
   _SidebarSection(
-    id: 'administration',
-    label: 'Administration',
-    icon: Icons.admin_panel_settings_outlined,
-    items: [
-      _SidebarItem(
-        id: 'users',
-        label: 'User Management',
-        icon: Icons.manage_accounts_outlined,
-        route: AppRoutes.users,
-        moduleId: 'users',
-      ),
-      _SidebarItem(
-        id: 'roles',
-        label: 'Role & Permission',
-        icon: Icons.verified_user_outlined,
-        route: AppRoutes.roles,
-        moduleId: 'roles',
-      ),
-      _SidebarItem(
-        id: 'settings',
-        label: 'Settings',
-        icon: Icons.tune_outlined,
-        route: AppRoutes.settings,
-        moduleId: 'settings',
-      ),
-      _SidebarItem(
-        id: 'audit-logs',
-        label: 'Audit Logs',
-        icon: Icons.manage_search_outlined,
-        route: AppRoutes.auditLogs,
-        moduleId: 'audit-logs',
-      ),
-    ],
-  ),
-  _SidebarSection(
-    id: 'academic',
-    label: 'Academic',
+    id: 'academics',
+    label: 'ACADEMICS',
     icon: Icons.account_tree_outlined,
     items: [
       _SidebarItem(
         id: 'academic-years',
-        label: 'Academic Year Management',
+        label: 'Academic Years',
         icon: Icons.calendar_month_outlined,
         route: '/academic?section=academic-years',
         moduleId: 'academic',
         defaultForPath: AppRoutes.academic,
-      ),
-      _SidebarItem(
-        id: 'teachers',
-        label: 'Teacher Management',
-        icon: Icons.badge_outlined,
-        route: AppRoutes.teachers,
-        moduleId: 'teachers',
-      ),
-    ],
-  ),
-  _SidebarSection(
-    id: 'student',
-    label: 'Student Management',
-    icon: Icons.school_outlined,
-    items: [
-      _SidebarItem(
-        id: 'students',
-        label: 'Student Management',
-        icon: Icons.groups_outlined,
-        route: AppRoutes.students,
-        moduleId: 'students',
-        activePrefixes: ['/students'],
       ),
       _SidebarItem(
         id: 'student-attendance',
@@ -648,23 +850,67 @@ const _sidebarSections = <_SidebarSection>[
         moduleId: 'exams',
         activePrefixes: ['/exams'],
       ),
+    ],
+  ),
+  _SidebarSection(
+    id: 'people',
+    label: 'PEOPLE',
+    icon: Icons.groups_outlined,
+    items: [
       _SidebarItem(
-        id: 'documents',
-        label: 'Documents',
-        icon: Icons.description_outlined,
-        route: '/students?section=documents',
+        id: 'students',
+        label: 'Students',
+        icon: Icons.school_outlined,
+        route: AppRoutes.students,
         moduleId: 'students',
+        activePrefixes: ['/students'],
+      ),
+      _SidebarItem(
+        id: 'teachers',
+        label: 'Teachers',
+        icon: Icons.badge_outlined,
+        route: AppRoutes.teachers,
+        moduleId: 'teachers',
+      ),
+      _SidebarItem(
+        id: 'staff',
+        label: 'Staff',
+        icon: Icons.badge_outlined,
+        route: AppRoutes.staff,
+        moduleId: 'staff',
+        activePrefixes: ['/modules/staff'],
+      ),
+      _SidebarItem(
+        id: 'staff-attendance',
+        label: 'Staff Attendance',
+        icon: Icons.fact_check_outlined,
+        route: '${AppRoutes.staff}?section=attendance',
+        moduleId: 'staff',
+      ),
+      _SidebarItem(
+        id: 'leave',
+        label: 'Leave Management',
+        icon: Icons.event_available_outlined,
+        route: '${AppRoutes.staff}?section=leave',
+        moduleId: 'staff',
+      ),
+      _SidebarItem(
+        id: 'payroll',
+        label: 'Payroll',
+        icon: Icons.request_quote_outlined,
+        route: '${AppRoutes.staff}?section=payroll',
+        moduleId: 'staff',
       ),
     ],
   ),
   _SidebarSection(
-    id: 'fees management',
-    label: 'Fees Management',
+    id: 'finance',
+    label: 'FINANCE',
     icon: Icons.payments_outlined,
     items: [
       _SidebarItem(
-        id: 'academic fees management',
-        label: 'Academic Fees Management',
+        id: 'academic-fees',
+        label: 'Fees',
         icon: Icons.category_outlined,
         route: '/fees?section=categories',
         moduleId: 'fees',
@@ -673,38 +919,39 @@ const _sidebarSections = <_SidebarSection>[
     ],
   ),
   _SidebarSection(
-    id: 'hostel management',
-    label: 'Hostel Management',
-    icon: Icons.apartment_outlined,
+    id: 'operations',
+    label: 'OPERATIONS',
+    icon: Icons.business_center_outlined,
     items: [
       _SidebarItem(
-        id: 'hostel management',
-        label: 'Hostel Management',
+        id: 'hostel',
+        label: 'Hostel',
         icon: Icons.meeting_room_outlined,
         route: '/hostels?section=rooms',
         moduleId: 'hostel',
         defaultForPath: AppRoutes.hostel,
       ),
-    ],
-  ),
-  _SidebarSection(
-    id: 'transport management',
-    label: 'Transport Management',
-    icon: Icons.directions_bus_outlined,
-    items: [
       _SidebarItem(
-        id: 'transport management',
-        label: 'Transport Management',
+        id: 'transport',
+        label: 'Transport',
         icon: Icons.directions_bus_filled_outlined,
         route: '/transport?section=vehicles',
         moduleId: 'transport',
         defaultForPath: AppRoutes.transport,
       ),
+      _SidebarItem(
+        id: 'library',
+        label: 'Library',
+        icon: Icons.local_library_outlined,
+        route: AppRoutes.library,
+        moduleId: 'library',
+        activePrefixes: ['/modules/library'],
+      ),
     ],
   ),
   _SidebarSection(
     id: 'communication',
-    label: 'Communication',
+    label: 'COMMUNICATION',
     icon: Icons.campaign_outlined,
     items: [
       _SidebarItem(
@@ -715,13 +962,28 @@ const _sidebarSections = <_SidebarSection>[
         moduleId: 'notifications',
         defaultForPath: AppRoutes.notifications,
       ),
+      _SidebarItem(
+        id: 'communications',
+        label: 'Communications',
+        icon: Icons.campaign_outlined,
+        route: AppRoutes.communications,
+        moduleId: 'communications',
+        activePrefixes: ['/modules/communications'],
+      ),
     ],
   ),
   _SidebarSection(
-    id: 'reports',
-    label: 'Reports',
-    icon: Icons.analytics_outlined,
+    id: 'documents',
+    label: 'DOCUMENTS',
+    icon: Icons.description_outlined,
     items: [
+      _SidebarItem(
+        id: 'documents',
+        label: 'Student Documents',
+        icon: Icons.description_outlined,
+        route: '/students?section=documents',
+        moduleId: 'students',
+      ),
       _SidebarItem(
         id: 'student-reports',
         label: 'Student Reports',
@@ -757,6 +1019,48 @@ const _sidebarSections = <_SidebarSection>[
         icon: Icons.manage_search_outlined,
         route: '/reports?section=audit',
         moduleId: 'reports',
+      ),
+      _SidebarItem(
+        id: 'library-reports',
+        label: 'Library Reports',
+        icon: Icons.local_library_outlined,
+        route: '/reports?section=library',
+        moduleId: 'reports',
+      ),
+    ],
+  ),
+  _SidebarSection(
+    id: 'administration',
+    label: 'ADMINISTRATION',
+    icon: Icons.admin_panel_settings_outlined,
+    items: [
+      _SidebarItem(
+        id: 'users',
+        label: 'Users',
+        icon: Icons.manage_accounts_outlined,
+        route: AppRoutes.users,
+        moduleId: 'users',
+      ),
+      _SidebarItem(
+        id: 'roles',
+        label: 'Roles & Permissions',
+        icon: Icons.verified_user_outlined,
+        route: AppRoutes.roles,
+        moduleId: 'roles',
+      ),
+      _SidebarItem(
+        id: 'settings',
+        label: 'Settings',
+        icon: Icons.tune_outlined,
+        route: AppRoutes.settings,
+        moduleId: 'settings',
+      ),
+      _SidebarItem(
+        id: 'audit-logs',
+        label: 'Audit Logs',
+        icon: Icons.manage_search_outlined,
+        route: AppRoutes.auditLogs,
+        moduleId: 'audit-logs',
       ),
     ],
   ),

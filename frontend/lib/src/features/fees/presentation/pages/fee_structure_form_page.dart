@@ -8,6 +8,7 @@ import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../academic/data/models/academic_models.dart' as academic_models;
 import '../../../academic/presentation/controllers/academic_providers.dart'
@@ -690,40 +691,24 @@ class _FormHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          runSpacing: 12,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: 'Back',
-                  onPressed: onBack,
-                  icon: const Icon(Icons.arrow_back),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-                ),
-              ],
-            ),
-            AppButton(
-              label: readOnly ? 'Save changes' : 'Save',
-              icon: Icons.save_outlined,
-              isLoading: saving,
-              onPressed: onSave,
-            ),
-          ],
+    return AppPageHeader(
+      title: title,
+      subtitle:
+          'Define academic scope, fee items, installments, and activation status.',
+      icon: Icons.category_outlined,
+      actions: [
+        IconButton.outlined(
+          tooltip: 'Back',
+          onPressed: onBack,
+          icon: const Icon(Icons.arrow_back),
         ),
-      ),
+        AppButton(
+          label: readOnly ? 'Save changes' : 'Save',
+          icon: Icons.save_outlined,
+          isLoading: saving,
+          onPressed: onSave,
+        ),
+      ],
     );
   }
 }

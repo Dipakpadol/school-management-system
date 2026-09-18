@@ -18,7 +18,7 @@ class PublicAboutPage extends StatelessWidget {
           const PublicPageHero(
             title: 'About Our School',
             subtitle:
-                'A public-facing introduction to the school, its values, leadership, and learning environment.',
+                'A school introduction covering values, leadership, facilities, and the learning environment.',
             icon: Icons.info_outline,
           ),
           PublicSection(
@@ -29,7 +29,7 @@ class PublicAboutPage extends StatelessWidget {
               builder: (context, constraints) {
                 final stacked = constraints.maxWidth < 820;
                 final text = Text(
-                  'Start International School is a progressive campus for students from pre-primary to senior secondary classes. The school focuses on academic discipline, curiosity, confidence, and responsible citizenship. Facilities such as digital classrooms, transport, hostel, library, labs, sports spaces, and ERP-enabled communication support a complete school experience.',
+                  'Star International School is a progressive campus for students from pre-primary to senior secondary classes. The school focuses on academic discipline, curiosity, confidence, and responsible citizenship. Facilities such as digital classrooms, transport, hostel, library, labs, sports spaces, and ERP-enabled communication support a complete school experience.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: PublicSiteColors.text,
                     height: 1.65,
@@ -42,10 +42,9 @@ class PublicAboutPage extends StatelessWidget {
                     children: [
                       const AspectRatio(
                         aspectRatio: 16 / 10,
-                        child: PublicNetworkImage(
-                          imageUrl:
-                              'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1200&q=80',
-                          label: 'School classroom',
+                        child: PublicAssetImage(
+                          imageAsset: PublicWebsiteAssets.schoolGroup,
+                          label: 'Star International School group photo',
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -59,10 +58,9 @@ class PublicAboutPage extends StatelessWidget {
                     const Expanded(
                       child: AspectRatio(
                         aspectRatio: 16 / 10,
-                        child: PublicNetworkImage(
-                          imageUrl:
-                              'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1200&q=80',
-                          label: 'School classroom',
+                        child: PublicAssetImage(
+                          imageAsset: PublicWebsiteAssets.schoolGroup,
+                          label: 'Star International School group photo',
                         ),
                       ),
                     ),

@@ -486,6 +486,37 @@ public class TransportService {
 				.map(transportMapper::toAssignmentResponse);
 	}
 
+	@Transactional(readOnly = true)
+	public List<TransportStudentAssignmentResponse> assignmentReport(
+			UUID academicYearId,
+			UUID vehicleId,
+			UUID routeId,
+			UUID studentId,
+			TransportStatus status) {
+		if (academicYearId != null) {
+			academicHierarchyService.loadAcademicYear(academicYearId);
+		}
+		if (vehicleId != null) {
+			loadVehicle(vehicleId);
+		}
+		if (routeId != null) {
+			TransportRoute route = loadRoute(routeId);
+			if (academicYearId != null && !route.getAcademicYear().getId().equals(academicYearId)) {
+				throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Route does not belong to the selected academic year.");
+			}
+			if (vehicleId != null && route.getVehicle() != null && !route.getVehicle().getId().equals(vehicleId)) {
+				throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Route does not belong to the selected vehicle.");
+			}
+		}
+		if (studentId != null) {
+			studentRepository.findByIdAndDeletedFalse(studentId)
+					.orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
+		}
+		return assignmentRepository.findReportAssignments(academicYearId, vehicleId, routeId, studentId, status).stream()
+				.map(transportMapper::toStudentAssignmentSummary)
+				.toList();
+	}
+
 	@Transactional
 	public Optional<StudentTransportAssignmentResponse> assignStudentDuringAdmission(
 			Student student,

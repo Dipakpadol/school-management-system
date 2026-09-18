@@ -12,10 +12,13 @@ const _allModuleIds = {
   'hostel',
   'transport',
   'teachers',
+  'staff',
   'attendance',
   'exams',
   'reports',
   'notifications',
+  'communications',
+  'library',
   'settings',
 };
 
@@ -29,6 +32,12 @@ const _modulePermissions = <String, Set<String>>{
   'hostel': {'HOSTEL_READ', 'HOSTEL_MANAGE'},
   'transport': {'TRANSPORT_READ', 'TRANSPORT_MANAGE'},
   'teachers': {'TEACHERS_READ', 'TEACHERS_MANAGE'},
+  'staff': {
+    'STAFF_READ',
+    'LEAVE_READ',
+    'PAYROLL_READ',
+    'PAYROLL_PROCESS',
+  },
   'attendance': {'ATTENDANCE_READ', 'ATTENDANCE_MARK'},
   'exams': {'EXAMS_READ', 'EXAMS_MANAGE'},
   'reports': {'REPORTS_READ', 'REPORTS_MANAGE'},
@@ -36,6 +45,20 @@ const _modulePermissions = <String, Set<String>>{
     'NOTIFICATIONS_READ',
     'NOTIFICATIONS_MANAGE',
     'NOTIFICATIONS_SEND',
+  },
+  'communications': {
+    'COMMUNICATION_READ',
+    'COMMUNICATION_CREATE',
+    'COMMUNICATION_UPDATE',
+    'COMMUNICATION_PUBLISH',
+  },
+  'library': {
+    'LIBRARY_READ',
+    'LIBRARY_CREATE',
+    'LIBRARY_UPDATE',
+    'LIBRARY_ISSUE',
+    'LIBRARY_RETURN',
+    'LIBRARY_FINE',
   },
   'settings': {'SETTINGS_READ', 'SETTINGS_UPDATE'},
 };
@@ -52,8 +75,10 @@ const _roleModuleFallback = <String, Set<String>>{
     'notifications',
     'transport',
     'teachers',
+    'staff',
     'roles',
     'settings',
+    'library',
   },
   'TEACHER': {
     'students',
@@ -62,12 +87,37 @@ const _roleModuleFallback = <String, Set<String>>{
     'exams',
     'reports',
     'teachers',
+    'communications',
+    'library',
   },
-  'ACCOUNTANT': {'students', 'fees', 'reports'},
-  'RECEPTIONIST': {'students', 'fees', 'notifications', 'transport'},
-  'WARDEN': {'students', 'hostel', 'attendance', 'reports'},
-  'STUDENT': {'students', 'academic', 'attendance', 'fees'},
-  'PARENT': {'students', 'academic', 'attendance', 'fees', 'notifications'},
+  'ACCOUNTANT': {'students', 'fees', 'reports', 'staff', 'communications'},
+  'RECEPTIONIST': {
+    'students',
+    'fees',
+    'notifications',
+    'transport',
+    'staff',
+    'communications',
+    'library',
+  },
+  'WARDEN': {'students', 'hostel', 'attendance', 'reports', 'library'},
+  'STUDENT': {
+    'students',
+    'academic',
+    'attendance',
+    'fees',
+    'communications',
+    'library',
+  },
+  'PARENT': {
+    'students',
+    'academic',
+    'attendance',
+    'fees',
+    'notifications',
+    'communications',
+    'library',
+  },
 };
 
 List<ErpModule> visibleErpModules(AuthUser? user) {
@@ -132,6 +182,16 @@ String? moduleIdForPath(String path) {
   }
   if (path == '/teachers' || path.startsWith('/teachers/')) {
     return 'teachers';
+  }
+  if (path == '/modules/staff' || path.startsWith('/modules/staff/')) {
+    return 'staff';
+  }
+  if (path == '/modules/communications' ||
+      path.startsWith('/modules/communications/')) {
+    return 'communications';
+  }
+  if (path == '/modules/library' || path.startsWith('/modules/library/')) {
+    return 'library';
   }
   if (path == '/users' || path.startsWith('/users/')) {
     return 'users';

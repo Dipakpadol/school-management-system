@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_design_system.dart';
+
 class AppInfoCard extends StatelessWidget {
   const AppInfoCard({
     required this.title,
@@ -32,10 +34,10 @@ class AppInfoCard extends StatelessWidget {
                 dimension: 44,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE0F2FE),
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppDesignTokens.tint(AppDesignTokens.primary),
+                    borderRadius: AppDesignTokens.borderRadius,
                   ),
-                  child: Icon(icon, color: const Color(0xFF0369A1)),
+                  child: Icon(icon, color: AppDesignTokens.primary),
                 ),
               ),
               const SizedBox(width: 12),

@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
-import '../../../../core/widgets/admin_shell.dart';
-import '../../../../core/widgets/app_error_state.dart';
-import '../../../../core/widgets/app_loading_state.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/upload/file_picker.dart';
+import '../../../../core/widgets/admin_shell.dart';
+import '../../../../core/widgets/app_confirm_dialog.dart';
+import '../../../../core/widgets/app_error_state.dart';
+import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/models/fee_models.dart';
 import '../../data/repositories/fees_repository_impl.dart';
@@ -64,6 +66,13 @@ class _FeesHeader extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const AppPageHeader(
+              title: 'Fees Management',
+              subtitle:
+                  'Manage fee categories, structures, assignments, receipts, defaulters, and exports.',
+              icon: Icons.payments_outlined,
+            ),
+            const SizedBox(height: 16),
             Wrap(
               spacing: 10,
               runSpacing: 10,
@@ -469,10 +478,7 @@ class _StructureListState extends ConsumerState<_StructureList> {
                                 value: 'assign',
                                 child: Text('Assign to class'),
                               ),
-                              PopupMenuItem(
-                                value: 'edit',
-                                child: Text('Edit'),
-                              ),
+                              PopupMenuItem(value: 'edit', child: Text('Edit')),
                               PopupMenuItem(
                                 value: 'delete',
                                 child: Text('Delete'),
@@ -766,9 +772,7 @@ class _AssignmentListState extends ConsumerState<_AssignmentList> {
     ref.invalidate(feeAssignmentsPageProvider(_filter));
     ref.invalidate(feeDefaultersProvider(const FeeDefaulterFilter()));
     ref.invalidate(
-      feeDefaultersPageProvider(
-        const FeeDefaulterFilter(size: _pageSize),
-      ),
+      feeDefaultersPageProvider(const FeeDefaulterFilter(size: _pageSize)),
     );
   }
 
@@ -1025,7 +1029,7 @@ class _ListSurface extends StatelessWidget {
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
             ),
-            if (action != null) action!,
+            ?action,
           ],
         ),
         const SizedBox(height: 16),
@@ -1401,8 +1405,7 @@ Future<bool> _showDiscountDialog(
                             .applyDiscount(assignment.id, {
                               'discountType': discountType,
                               'calculationType': calculationType,
-                              'value':
-                                  double.tryParse(value.text.trim()) ?? 0,
+                              'value': double.tryParse(value.text.trim()) ?? 0,
                               'reason': reason.text.trim(),
                               'approvedBy': _blankToNull(approvedBy.text),
                             });
@@ -1505,24 +1508,15 @@ Future<void> _runPickedFeeImport(
 }
 
 Future<bool> _confirm(BuildContext context, String message) async {
-  final result = await showDialog<bool>(
+  return showAppConfirmDialog(
     context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Confirm action'),
-      content: Text(message),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Confirm'),
-        ),
-      ],
-    ),
+    title: 'Delete fee record?',
+    message:
+        '$message This removes the selected fee setup record from active management. Linked collections and historical ledgers remain governed by backend rules.',
+    confirmLabel: 'Delete',
+    confirmIcon: Icons.delete_outline,
+    destructive: true,
   );
-  return result ?? false;
 }
 
 void _snack(BuildContext context, String message) {

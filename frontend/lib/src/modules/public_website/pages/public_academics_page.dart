@@ -24,7 +24,7 @@ class PublicAcademicsPage extends StatelessWidget {
           PublicSection(
             backgroundColor: Colors.white,
             child: const PublicInfoBand(
-              title: 'Academic Year 2026-27',
+              title: 'Current Academic Year',
               description:
                   'The academic year is planned with term-wise learning goals, activities, assessments, parent meetings, and result publication through the ERP workflow.',
               icon: Icons.calendar_month_outlined,

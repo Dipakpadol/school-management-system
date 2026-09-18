@@ -21,7 +21,7 @@ class SchoolProfile {
     required this.phone,
     required this.email,
     required this.officeHours,
-    required this.heroImageUrl,
+    required this.heroImageAsset,
     required this.socialLinks,
   });
 
@@ -32,7 +32,7 @@ class SchoolProfile {
   final String phone;
   final String email;
   final String officeHours;
-  final String heroImageUrl;
+  final String heroImageAsset;
   final List<SocialLink> socialLinks;
 }
 
@@ -61,12 +61,14 @@ class FacilityItem {
   const FacilityItem({
     required this.title,
     required this.description,
+    required this.imageAsset,
     required this.icon,
     required this.color,
   });
 
   final String title;
   final String description;
+  final String imageAsset;
   final IconData icon;
   final Color color;
 }
@@ -75,13 +77,13 @@ class PublicEventItem {
   const PublicEventItem({
     required this.title,
     required this.category,
-    required this.dateLabel,
+    required this.infoLabel,
     required this.description,
   });
 
   final String title;
   final String category;
-  final String dateLabel;
+  final String infoLabel;
   final String description;
 }
 
@@ -89,12 +91,12 @@ class GalleryItem {
   const GalleryItem({
     required this.title,
     required this.category,
-    required this.imageUrl,
+    required this.imageAsset,
   });
 
   final String title;
   final String category;
-  final String imageUrl;
+  final String imageAsset;
 }
 
 class AdmissionClass {

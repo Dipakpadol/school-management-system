@@ -7,6 +7,7 @@ import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../students/data/models/student_models.dart';
 import '../../../students/presentation/controllers/students_providers.dart';
@@ -302,11 +303,10 @@ class _StudentFeeAssignmentPageState
                       students: items,
                     ),
                     error: (error, _) => AppErrorState(
-                        message:
-                            'Unable to load class students. Please try again.\n${_message(error)}',
-                      onRetry: () => ref.invalidate(
-                        classFeeStudentsProvider(key!),
-                      ),
+                      message:
+                          'Unable to load class students. Please try again.\n${_message(error)}',
+                      onRetry: () =>
+                          ref.invalidate(classFeeStudentsProvider(key!)),
                     ),
                     loading: () =>
                         const AppLoadingState(label: 'Loading students'),
@@ -451,40 +451,24 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          runSpacing: 12,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: 'Back',
-                  onPressed: onBack,
-                  icon: const Icon(Icons.arrow_back),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Assign fee to class',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-                ),
-              ],
-            ),
-            AppButton(
-              label: 'Assign',
-              icon: Icons.groups_outlined,
-              isLoading: saving,
-              onPressed: onSave,
-            ),
-          ],
+    return AppPageHeader(
+      title: 'Assign Fee To Class',
+      subtitle:
+          'Choose an academic year, class, fee structures, and assignment date.',
+      icon: Icons.groups_outlined,
+      actions: [
+        IconButton.outlined(
+          tooltip: 'Back',
+          onPressed: onBack,
+          icon: const Icon(Icons.arrow_back),
         ),
-      ),
+        AppButton(
+          label: 'Assign',
+          icon: Icons.groups_outlined,
+          isLoading: saving,
+          onPressed: onSave,
+        ),
+      ],
     );
   }
 }

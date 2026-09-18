@@ -8,6 +8,7 @@ import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/models/fee_models.dart';
 import '../../data/repositories/fees_repository_impl.dart';
@@ -54,9 +55,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
   String? _assignmentId;
   String? _academicYearId;
   String? _defaultsAppliedAssignmentId;
-  FeeListFilter _fallbackFilter = const FeeListFilter(
-    size: _fallbackPageSize,
-  );
+  FeeListFilter _fallbackFilter = const FeeListFilter(size: _fallbackPageSize);
   String _paymentMode = 'CASH';
   double _selectedBalanceAmount = 0;
   bool _assessLateFee = true;
@@ -157,9 +156,8 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
       controller: _assignmentSearchController,
       onApply: _applyAssignmentSearch,
       onReset: _resetAssignmentSearch,
-      onRefresh: () => ref.invalidate(
-        feeAssignmentsPageProvider(_fallbackFilter),
-      ),
+      onRefresh: () =>
+          ref.invalidate(feeAssignmentsPageProvider(_fallbackFilter)),
     );
     if (page.content.isEmpty) {
       return _buildEmptyAssignments(selector: selector);
@@ -230,10 +228,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
                   onSave: _saving || !canSubmit ? null : _submit,
                 ),
                 const SizedBox(height: 12),
-                if (selector != null) ...[
-                  selector,
-                  const SizedBox(height: 12),
-                ],
+                if (selector != null) ...[selector, const SizedBox(height: 12)],
                 if (summary != null) ...[
                   _StudentSummaryPanel(summary: summary),
                   const SizedBox(height: 12),
@@ -372,10 +367,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
                     ),
                   ),
                 ),
-                if (footer != null) ...[
-                  const SizedBox(height: 12),
-                  footer,
-                ],
+                if (footer != null) ...[const SizedBox(height: 12), footer],
                 if (_receipt != null) ...[
                   const SizedBox(height: 12),
                   _ReceiptPanel(receipt: _receipt!),
@@ -405,10 +397,7 @@ class _PaymentCollectionPageState extends ConsumerState<PaymentCollectionPage> {
                 onSave: null,
               ),
               const SizedBox(height: 12),
-              if (selector != null) ...[
-                selector,
-                const SizedBox(height: 12),
-              ],
+              if (selector != null) ...[selector, const SizedBox(height: 12)],
               _EmptyAssignmentsPanel(
                 onAssignFee: () => context.go(AppRoutes.newFeeAssignment),
               ),
@@ -717,40 +706,24 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          runSpacing: 12,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: 'Back',
-                  onPressed: onBack,
-                  icon: const Icon(Icons.arrow_back),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Collect payment',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-                ),
-              ],
-            ),
-            AppButton(
-              label: 'Collect',
-              icon: Icons.point_of_sale_outlined,
-              isLoading: saving,
-              onPressed: onSave,
-            ),
-          ],
+    return AppPageHeader(
+      title: 'Collect Payment',
+      subtitle:
+          'Select a student fee assignment, confirm payable amount, and collect the receipt payment.',
+      icon: Icons.point_of_sale_outlined,
+      actions: [
+        IconButton.outlined(
+          tooltip: 'Back',
+          onPressed: onBack,
+          icon: const Icon(Icons.arrow_back),
         ),
-      ),
+        AppButton(
+          label: 'Collect',
+          icon: Icons.point_of_sale_outlined,
+          isLoading: saving,
+          onPressed: onSave,
+        ),
+      ],
     );
   }
 }

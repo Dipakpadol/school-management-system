@@ -7,6 +7,7 @@ import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_info_card.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/models/student_models.dart';
 import '../controllers/students_providers.dart';
@@ -69,32 +70,19 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      child: SizedBox(
-        height: 64,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              IconButton(
-                tooltip: 'Back',
-                onPressed: onBack,
-                icon: const Icon(Icons.arrow_back),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+      child: AppPageHeader(
+        title: title,
+        subtitle: 'Select a class division to view students and assignments.',
+        icon: Icons.groups_outlined,
+        actions: [
+          IconButton.outlined(
+            tooltip: 'Back',
+            onPressed: onBack,
+            icon: const Icon(Icons.arrow_back),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -114,7 +102,10 @@ class _SectionGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (sections.isEmpty) {
-      return const Center(child: Text('No divisions found.'));
+      return const AppEmptyState(
+        message: 'No divisions found for this class.',
+        icon: Icons.groups_outlined,
+      );
     }
 
     return LayoutBuilder(

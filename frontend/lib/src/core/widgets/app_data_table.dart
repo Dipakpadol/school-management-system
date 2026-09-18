@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_design_system.dart';
+
 class AppTableColumn<T> {
   const AppTableColumn({
     required this.label,
@@ -30,33 +32,39 @@ class AppDataTable<T> extends StatelessWidget {
       builder: (context, constraints) {
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: constraints.maxWidth),
-            child: DataTable(
-              showCheckboxColumn: false,
-              columnSpacing: 28,
-              headingRowHeight: 42,
-              dataRowMinHeight: 54,
-              dataRowMaxHeight: 64,
-              columns: [
-                for (final column in columns)
-                  DataColumn(
-                    numeric: column.numeric,
-                    label: Text(column.label, overflow: TextOverflow.ellipsis),
-                  ),
-              ],
-              rows: [
-                for (final item in items)
-                  DataRow(
-                    onSelectChanged: onRowTap == null
-                        ? null
-                        : (_) => onRowTap?.call(item),
-                    cells: [
-                      for (final column in columns)
-                        DataCell(column.cellBuilder(context, item)),
-                    ],
-                  ),
-              ],
+          child: ClipRRect(
+            borderRadius: AppDesignTokens.borderRadius,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: DataTable(
+                showCheckboxColumn: false,
+                columnSpacing: 28,
+                headingRowHeight: 44,
+                dataRowMinHeight: 54,
+                dataRowMaxHeight: 68,
+                columns: [
+                  for (final column in columns)
+                    DataColumn(
+                      numeric: column.numeric,
+                      label: Text(
+                        column.label,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                rows: [
+                  for (final item in items)
+                    DataRow(
+                      onSelectChanged: onRowTap == null
+                          ? null
+                          : (_) => onRowTap?.call(item),
+                      cells: [
+                        for (final column in columns)
+                          DataCell(column.cellBuilder(context, item)),
+                      ],
+                    ),
+                ],
+              ),
             ),
           ),
         );

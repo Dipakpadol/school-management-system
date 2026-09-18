@@ -29,4 +29,9 @@ public interface SubjectTeacherMappingRepository extends BaseRepository<SubjectT
 	List<SubjectTeacherMapping> findByTeacherIdAndClassEntityAcademicYearIdAndActiveTrueAndDeletedFalseOrderByEffectiveFromDesc(
 			UUID teacherId,
 			UUID academicYearId);
+
+	boolean existsByTeacherIdAndClassEntityIdAndSectionIdAndActiveTrueAndDeletedFalse(
+			UUID teacherId,
+			UUID classId,
+			UUID sectionId);
 }

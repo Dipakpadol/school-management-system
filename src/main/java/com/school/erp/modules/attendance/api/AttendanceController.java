@@ -18,6 +18,7 @@ import com.school.erp.modules.academic.api.dto.AcademicYearResponse;
 import com.school.erp.modules.academic.api.dto.ClassResponse;
 import com.school.erp.modules.academic.api.dto.SectionResponse;
 import com.school.erp.modules.academic.application.AcademicHierarchyService;
+import com.school.erp.modules.attendance.api.dto.AttendanceSummaryResponse;
 import com.school.erp.modules.attendance.api.dto.AttendanceStudentResponse;
 import com.school.erp.modules.attendance.api.dto.DailyAttendanceRequest;
 import com.school.erp.modules.attendance.api.dto.DailyAttendanceResponse;
@@ -94,9 +95,10 @@ public class AttendanceController {
 			@RequestParam UUID academicYearId,
 			@RequestParam UUID classId,
 			@RequestParam UUID sectionId,
+			@RequestParam(required = false, name = "date") LocalDate date,
 			HttpServletRequest request) {
 		return ok(
-				attendanceService.getStudents(academicYearId, classId, sectionId),
+				attendanceService.getStudents(academicYearId, classId, sectionId, date),
 				"Attendance students fetched successfully",
 				request);
 	}
@@ -135,6 +137,38 @@ public class AttendanceController {
 		return ok(
 				attendanceService.getStudentSummary(studentId, academicYearId),
 				"Student attendance summary fetched successfully",
+				request);
+	}
+
+	@GetMapping("/summary")
+	@PreAuthorize("hasAuthority('ATTENDANCE_READ')")
+	@Operation(summary = "Get class attendance summary")
+	public ResponseEntity<ApiResponse<AttendanceSummaryResponse>> summary(
+			@RequestParam UUID academicYearId,
+			@RequestParam UUID classId,
+			@RequestParam UUID sectionId,
+			@RequestParam LocalDate fromDate,
+			@RequestParam LocalDate toDate,
+			HttpServletRequest request) {
+		return ok(
+				attendanceService.getClassSummary(academicYearId, classId, sectionId, fromDate, toDate),
+				"Attendance summary fetched successfully",
+				request);
+	}
+
+	@GetMapping("/monthly")
+	@PreAuthorize("hasAuthority('ATTENDANCE_READ')")
+	@Operation(summary = "Get class monthly attendance summary")
+	public ResponseEntity<ApiResponse<AttendanceSummaryResponse>> monthly(
+			@RequestParam UUID academicYearId,
+			@RequestParam UUID classId,
+			@RequestParam UUID sectionId,
+			@RequestParam int year,
+			@RequestParam int month,
+			HttpServletRequest request) {
+		return ok(
+				attendanceService.getMonthlySummary(academicYearId, classId, sectionId, year, month),
+				"Monthly attendance summary fetched successfully",
 				request);
 	}
 

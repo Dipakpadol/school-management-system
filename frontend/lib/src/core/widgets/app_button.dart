@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_design_system.dart';
+
 class AppButton extends StatelessWidget {
   const AppButton({
     required this.label,
@@ -37,12 +39,9 @@ class AppButton extends StatelessWidget {
 
     return SizedBox(
       width: expand ? double.infinity : null,
-      height: 48,
+      height: AppDesignTokens.touchTarget,
       child: FilledButton(
         onPressed: isLoading ? null : onPressed,
-        style: FilledButton.styleFrom(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
         child: child,
       ),
     );

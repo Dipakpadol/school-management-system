@@ -6,6 +6,7 @@ class DashboardSummaryModel {
     required this.totalStudents,
     required this.totalStaff,
     required this.totalTeachers,
+    required this.nonTeachingStaff,
     required this.totalParents,
     required this.totalUsers,
     required this.activeUsers,
@@ -13,6 +14,10 @@ class DashboardSummaryModel {
     required this.todayAttendancePercentage,
     required this.totalFeeCollected,
     required this.pendingFeeAmount,
+    required this.totalLibraryBooks,
+    required this.availableLibraryCopies,
+    required this.libraryOverdueLoans,
+    required this.pendingLibraryFineAmount,
     required this.recentActivities,
     required this.notifications,
     required this.birthdaysToday,
@@ -23,6 +28,7 @@ class DashboardSummaryModel {
       totalStudents: _intValue(json['totalStudents']),
       totalStaff: _intValue(json['totalStaff']),
       totalTeachers: _intValue(json['totalTeachers']),
+      nonTeachingStaff: _intValue(json['nonTeachingStaff']),
       totalParents: _intValue(json['totalParents']),
       totalUsers: _intValue(json['totalUsers']),
       activeUsers: _intValue(json['activeUsers']),
@@ -32,6 +38,12 @@ class DashboardSummaryModel {
       ),
       totalFeeCollected: _doubleValue(json['totalFeeCollected']),
       pendingFeeAmount: _doubleValue(json['pendingFeeAmount']),
+      totalLibraryBooks: _intValue(json['totalLibraryBooks']),
+      availableLibraryCopies: _intValue(json['availableLibraryCopies']),
+      libraryOverdueLoans: _intValue(json['libraryOverdueLoans']),
+      pendingLibraryFineAmount: _doubleValue(
+        json['pendingLibraryFineAmount'],
+      ),
       recentActivities: _list(
         json['recentActivities'],
       ).map(DashboardActivityModel.fromJson).toList(),
@@ -47,6 +59,7 @@ class DashboardSummaryModel {
   final int totalStudents;
   final int totalStaff;
   final int totalTeachers;
+  final int nonTeachingStaff;
   final int totalParents;
   final int totalUsers;
   final int activeUsers;
@@ -54,6 +67,10 @@ class DashboardSummaryModel {
   final double todayAttendancePercentage;
   final double totalFeeCollected;
   final double pendingFeeAmount;
+  final int totalLibraryBooks;
+  final int availableLibraryCopies;
+  final int libraryOverdueLoans;
+  final double pendingLibraryFineAmount;
   final List<DashboardActivityModel> recentActivities;
   final List<DashboardNotificationModel> notifications;
   final List<DashboardBirthdayModel> birthdaysToday;

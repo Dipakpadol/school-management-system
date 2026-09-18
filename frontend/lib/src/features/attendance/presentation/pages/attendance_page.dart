@@ -4,10 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/download/file_downloader.dart';
+import '../../../../core/theme/app_design_system.dart';
 import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_error_state.dart';
+import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../academic/data/models/academic_models.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../dashboard/presentation/controllers/dashboard_controller.dart';
 import '../../data/models/attendance_models.dart';
 import '../../data/repositories/attendance_repository_impl.dart';
 
@@ -23,6 +28,8 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
   List<AcademicClassModel> _classes = const [];
   List<AcademicDivisionModel> _sections = const [];
   List<AttendanceStudentModel> _students = const [];
+  AttendanceSummaryModel? _dailySummary;
+  AttendanceSummaryModel? _monthlySummary;
   final Map<String, String> _statuses = {};
   final Map<String, String> _remarks = {};
   String? _yearId;
@@ -52,6 +59,22 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
       },
       child: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+            child: AppPageHeader(
+              title: 'Student Attendance',
+              subtitle:
+                  'Mark daily attendance, review daily and monthly summaries, and export the selected class attendance.',
+              icon: Icons.fact_check_outlined,
+              actions: [
+                OutlinedButton.icon(
+                  onPressed: () => context.go(AppRoutes.teacherAttendance),
+                  icon: const Icon(Icons.badge_outlined),
+                  label: const Text('Teacher attendance'),
+                ),
+              ],
+            ),
+          ),
           _filters(context),
           const Divider(height: 1),
           Expanded(child: _body()),
@@ -61,10 +84,11 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
   }
 
   Widget _filters(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: AppSectionCard(
+        title: 'Attendance Filters',
+        subtitle: 'Select academic year, class, division, and attendance date.',
         child: Wrap(
           spacing: 12,
           runSpacing: 12,
@@ -83,6 +107,8 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                   _classes = const [];
                   _sections = const [];
                   _students = const [];
+                  _dailySummary = null;
+                  _monthlySummary = null;
                 });
                 if (value != null) {
                   _loadClasses(value);
@@ -100,6 +126,8 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                   _sectionId = null;
                   _sections = const [];
                   _students = const [];
+                  _dailySummary = null;
+                  _monthlySummary = null;
                 });
                 if (value != null) {
                   _loadSections(value);
@@ -111,7 +139,14 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
               label: 'Division',
               value: _sectionId,
               items: _sections.map((item) => MapEntry(item.id, item.name)),
-              onChanged: (value) => setState(() => _sectionId = value),
+              onChanged: (value) {
+                setState(() {
+                  _sectionId = value;
+                  _students = const [];
+                  _dailySummary = null;
+                  _monthlySummary = null;
+                });
+              },
             ),
             OutlinedButton.icon(
               onPressed: _pickDate,
@@ -147,31 +182,22 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
 
   Widget _body() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const AppLoadingState(label: 'Loading attendance');
     }
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_error!),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _loadAttendance,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-            ),
-          ],
-        ),
-      );
+      return AppErrorState(message: _error!, onRetry: _loadAttendance);
     }
     if (_students.isEmpty) {
-      return const Center(
-        child: Text('No students found for selected class and division.'),
+      return AppEmptyState(
+        message: _yearId == null || _classId == null || _sectionId == null
+            ? 'Select academic year, class, division, and date to load attendance.'
+            : 'No students found for the selected class and division.',
+        icon: Icons.groups_outlined,
       );
     }
     return Column(
       children: [
+        if (_dailySummary != null || _monthlySummary != null) _summaryStrip(),
         Expanded(
           child: ListView.separated(
             padding: const EdgeInsets.all(18),
@@ -257,6 +283,83 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
     );
   }
 
+  Widget _summaryStrip() {
+    final daily = _dailySummary;
+    final monthly = _monthlySummary;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 4),
+      child: AppStatGrid(
+        minItemWidth: 160,
+        maxColumns: 5,
+        children: [
+          _summaryTile(
+            'Eligible',
+            daily?.eligibleStudentCount,
+            Icons.groups_outlined,
+            AppDesignTokens.primary,
+          ),
+          _summaryTile(
+            'Present',
+            daily?.presentCount,
+            Icons.check_circle_outline,
+            AppDesignTokens.success,
+          ),
+          _summaryTile(
+            'Absent',
+            daily?.absentCount,
+            Icons.cancel_outlined,
+            AppDesignTokens.danger,
+          ),
+          _summaryTile(
+            'Late',
+            daily?.lateCount,
+            Icons.schedule_outlined,
+            AppDesignTokens.warning,
+          ),
+          _summaryTile(
+            'Half day',
+            daily?.halfDayCount,
+            Icons.timelapse_outlined,
+            AppDesignTokens.amber,
+          ),
+          _summaryTile(
+            'Leave',
+            daily?.leaveCount,
+            Icons.event_available_outlined,
+            AppDesignTokens.teal,
+          ),
+          _summaryTile(
+            'Daily %',
+            _formatPercent(daily?.attendancePercentage),
+            Icons.percent_outlined,
+            AppDesignTokens.violet,
+          ),
+          _summaryTile(
+            'Monthly %',
+            _formatPercent(monthly?.attendancePercentage),
+            Icons.calendar_month_outlined,
+            AppDesignTokens.primaryDark,
+          ),
+          _summaryTile(
+            'Month records',
+            monthly?.totalRecords,
+            Icons.fact_check_outlined,
+            AppDesignTokens.muted,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryTile(String label, Object? value, IconData icon, Color color) {
+    return AppStatCard(
+      label: label,
+      value: value?.toString() ?? '-',
+      icon: icon,
+      color: color,
+    );
+  }
+
   Widget _dropdown({
     required double width,
     required String label,
@@ -313,18 +416,36 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
     setState(() {
       _loading = true;
       _error = null;
+      _dailySummary = null;
+      _monthlySummary = null;
     });
     final repository = ref.read(attendanceRepositoryProvider);
+    final selectedDate = _dateLabel(_date);
     final studentsResult = await repository.students(
       academicYearId: _yearId!,
       classId: _classId!,
       sectionId: _sectionId!,
+      date: selectedDate,
     );
     final dailyResult = await repository.daily(
       academicYearId: _yearId!,
       classId: _classId!,
       sectionId: _sectionId!,
-      date: _dateLabel(_date),
+      date: selectedDate,
+    );
+    final summaryResult = await repository.summary(
+      academicYearId: _yearId!,
+      classId: _classId!,
+      sectionId: _sectionId!,
+      fromDate: selectedDate,
+      toDate: selectedDate,
+    );
+    final monthlyResult = await repository.monthly(
+      academicYearId: _yearId!,
+      classId: _classId!,
+      sectionId: _sectionId!,
+      year: _date.year,
+      month: _date.month,
     );
     if (!mounted) {
       return;
@@ -352,6 +473,14 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
       },
       failure: (_) {},
     );
+    summaryResult.when(
+      success: (summary) => _dailySummary = summary,
+      failure: (_) {},
+    );
+    monthlyResult.when(
+      success: (summary) => _monthlySummary = summary,
+      failure: (_) {},
+    );
     setState(() => _loading = false);
   }
 
@@ -377,11 +506,19 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
     if (!mounted) {
       return;
     }
+    var saved = false;
     result.when(
-      success: (_) => _snack('Attendance saved successfully.'),
+      success: (_) {
+        ref.invalidate(dashboardOverviewProvider);
+        saved = true;
+        _snack('Attendance saved successfully.');
+      },
       failure: (failure) => _snack(failure.message),
     );
     setState(() => _saving = false);
+    if (saved) {
+      await _loadAttendance();
+    }
   }
 
   Future<void> _export() async {
@@ -408,8 +545,14 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
     );
+    if (!mounted) {
+      return;
+    }
     if (picked != null) {
       setState(() => _date = picked);
+      if (_yearId != null && _classId != null && _sectionId != null) {
+        await _loadAttendance();
+      }
     }
   }
 
@@ -437,6 +580,16 @@ String _dateLabel(DateTime date) {
   final month = date.month.toString().padLeft(2, '0');
   final day = date.day.toString().padLeft(2, '0');
   return '${date.year}-$month-$day';
+}
+
+String _formatPercent(double? value) {
+  if (value == null) {
+    return '-';
+  }
+  if (value == value.roundToDouble()) {
+    return '${value.toInt()}%';
+  }
+  return '${value.toStringAsFixed(1)}%';
 }
 
 String? _blankToNull(String? value) {

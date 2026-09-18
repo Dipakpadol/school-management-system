@@ -17,7 +17,7 @@ class PublicEventsPage extends StatelessWidget {
           const PublicPageHero(
             title: 'Events and News',
             subtitle:
-                'Announcements, events, circulars, and notices using reusable dummy data for future API integration.',
+                'Announcements, events, circulars, and notices for families and students.',
             icon: Icons.event_note_outlined,
           ),
           PublicSection(

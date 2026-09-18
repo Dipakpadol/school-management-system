@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/download/file_downloader.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/network/page_payload.dart';
 import '../../../../core/result/result.dart';
 import '../../domain/repositories/reports_repository.dart';
 import '../datasources/reports_remote_data_source.dart';
@@ -23,6 +24,13 @@ class ReportsRepositoryImpl implements ReportsRepository {
   }
 
   @override
+  Future<Result<PagePayload<ReportPreviewRowModel>>> preview(
+    Map<String, dynamic> query,
+  ) {
+    return _guard(() => _remoteDataSource.preview(query));
+  }
+
+  @override
   Future<Result<void>> export(Map<String, dynamic> query) {
     return _guard(() async {
       final bytes = await _remoteDataSource.export(query);
@@ -30,7 +38,12 @@ class ReportsRepositoryImpl implements ReportsRepository {
           .toLowerCase()
           .replaceAll('_', '-');
       final format = (query['format'] as String? ?? 'CSV').toLowerCase();
-      await downloadBytes(bytes, '$reportType.$format', _contentType(format));
+      final extension = _extension(format);
+      await downloadBytes(
+        bytes,
+        '$reportType.$extension',
+        _contentType(format),
+      );
     });
   }
 
@@ -81,6 +94,14 @@ class ReportsRepositoryImpl implements ReportsRepository {
       'xlsx' || 'excel' =>
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       _ => 'text/csv',
+    };
+  }
+
+  String _extension(String format) {
+    return switch (format) {
+      'pdf' => 'pdf',
+      'xlsx' || 'excel' => 'xlsx',
+      _ => 'csv',
     };
   }
 }

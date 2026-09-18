@@ -110,6 +110,21 @@ public class LocalQaDataSeeder {
 				permission("ATTENDANCE_MARK", "Mark attendance"),
 				permission("REPORTS_READ", "Read reports"),
 				permission("NOTIFICATIONS_SEND", "Send notifications"),
+				permission("STAFF_READ", "Read staff"),
+				permission("STAFF_CREATE", "Create staff"),
+				permission("STAFF_UPDATE", "Update staff"),
+				permission("STAFF_DELETE", "Delete staff"),
+				permission("LEAVE_READ", "Read leave"),
+				permission("LEAVE_CREATE", "Create leave"),
+				permission("LEAVE_APPROVE", "Approve leave"),
+				permission("PAYROLL_READ", "Read payroll"),
+				permission("PAYROLL_CREATE", "Create payroll"),
+				permission("PAYROLL_UPDATE", "Update payroll"),
+				permission("PAYROLL_PROCESS", "Process payroll"),
+				permission("COMMUNICATION_READ", "Read communications"),
+				permission("COMMUNICATION_CREATE", "Create communications"),
+				permission("COMMUNICATION_UPDATE", "Update communications"),
+				permission("COMMUNICATION_PUBLISH", "Publish communications"),
 				permission("SETTINGS_READ", "Read settings"),
 				permission("SETTINGS_UPDATE", "Update settings"));
 
@@ -444,24 +459,38 @@ public class LocalQaDataSeeder {
 				"ATTENDANCE_READ", "ATTENDANCE_MARK",
 				"REPORTS_READ",
 				"NOTIFICATIONS_SEND",
+				"STAFF_READ", "STAFF_CREATE", "STAFF_UPDATE", "STAFF_DELETE",
+				"LEAVE_READ", "LEAVE_CREATE", "LEAVE_APPROVE",
+				"PAYROLL_READ", "PAYROLL_CREATE", "PAYROLL_UPDATE", "PAYROLL_PROCESS",
+				"COMMUNICATION_READ", "COMMUNICATION_CREATE", "COMMUNICATION_UPDATE", "COMMUNICATION_PUBLISH",
 				"SETTINGS_READ", "SETTINGS_UPDATE");
 		return List.of(
 				role(RoleName.SUPER_ADMIN, "Super Admin", "Full local QA platform owner access.", allPermissions),
 				role(RoleName.ADMIN, "Admin", "Local QA institution administrator access.", allPermissions),
 				role(RoleName.ACCOUNTANT, "Accountant", "Local QA fees and finance access.", List.of(
-						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "FEES_READ", "FEES_MANAGE", "REPORTS_READ")),
+						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "STAFF_READ", "FEES_READ", "FEES_MANAGE",
+						"PAYROLL_READ", "PAYROLL_CREATE", "PAYROLL_UPDATE", "PAYROLL_PROCESS",
+						"REPORTS_READ", "COMMUNICATION_READ")),
 				role(RoleName.PRINCIPAL, "Principal", "Local QA academic leadership access.", List.of(
-						"AUTH_PASSWORD_CHANGE", "USERS_READ", "STUDENTS_READ", "ACADEMIC_READ", "ACADEMIC_MANAGE", "REPORTS_READ")),
+						"AUTH_PASSWORD_CHANGE", "USERS_READ", "STUDENTS_READ", "ACADEMIC_READ", "ACADEMIC_MANAGE",
+						"REPORTS_READ", "STAFF_READ", "STAFF_UPDATE", "LEAVE_READ", "LEAVE_CREATE",
+						"LEAVE_APPROVE", "PAYROLL_READ", "COMMUNICATION_READ", "COMMUNICATION_CREATE",
+						"COMMUNICATION_UPDATE", "COMMUNICATION_PUBLISH")),
 				role(RoleName.TEACHER, "Teacher", "Local QA teaching staff access.", List.of(
-						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "ACADEMIC_READ", "ATTENDANCE_READ", "ATTENDANCE_MARK")),
+						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "ACADEMIC_READ", "ATTENDANCE_READ", "ATTENDANCE_MARK",
+						"LEAVE_READ", "LEAVE_CREATE", "COMMUNICATION_READ")),
 				role(RoleName.RECEPTIONIST, "Receptionist", "Local QA front office access.", List.of(
-						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "STUDENTS_CREATE", "STUDENTS_UPDATE", "FEES_READ")),
+						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "STUDENTS_CREATE", "STUDENTS_UPDATE", "FEES_READ",
+						"STAFF_READ", "COMMUNICATION_READ")),
 				role(RoleName.STUDENT, "Student", "Local QA student portal access.", List.of(
-						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "ACADEMIC_READ", "ATTENDANCE_READ", "FEES_READ")),
+						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "ACADEMIC_READ", "ATTENDANCE_READ", "FEES_READ",
+						"COMMUNICATION_READ")),
 				role(RoleName.PARENT, "Parent", "Local QA parent portal access.", List.of(
-						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "ACADEMIC_READ", "ATTENDANCE_READ", "FEES_READ")),
+						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "ACADEMIC_READ", "ATTENDANCE_READ", "FEES_READ",
+						"COMMUNICATION_READ")),
 				role(RoleName.WARDEN, "Warden", "Local QA hostel operations access.", List.of(
-						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "HOSTEL_READ", "HOSTEL_MANAGE", "REPORTS_READ")));
+						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "STAFF_READ", "HOSTEL_READ", "HOSTEL_MANAGE",
+						"REPORTS_READ", "COMMUNICATION_READ")));
 	}
 
 	private RoleSeed role(RoleName name, String displayName, String description, List<String> permissionCodes) {

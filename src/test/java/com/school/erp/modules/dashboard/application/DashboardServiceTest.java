@@ -3,6 +3,7 @@ package com.school.erp.modules.dashboard.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 
@@ -20,8 +21,18 @@ import com.school.erp.modules.attendance.infrastructure.AttendanceRecordReposito
 import com.school.erp.modules.fees.domain.FeeAssignmentStatus;
 import com.school.erp.modules.fees.infrastructure.FeeReportTotals;
 import com.school.erp.modules.fees.infrastructure.StudentFeeAssignmentRepository;
+import com.school.erp.modules.library.domain.LibraryBookCopyStatus;
+import com.school.erp.modules.library.domain.LibraryLoanStatus;
+import com.school.erp.modules.library.infrastructure.LibraryBookCopyRepository;
+import com.school.erp.modules.library.infrastructure.LibraryBookRepository;
+import com.school.erp.modules.library.infrastructure.LibraryFineRepository;
+import com.school.erp.modules.library.infrastructure.LibraryLoanRepository;
+import com.school.erp.modules.staff.domain.EmploymentStatus;
+import com.school.erp.modules.staff.domain.StaffType;
+import com.school.erp.modules.staff.infrastructure.StaffRepository;
 import com.school.erp.modules.students.domain.Gender;
 import com.school.erp.modules.students.domain.Student;
+import com.school.erp.modules.students.domain.StudentStatus;
 import com.school.erp.modules.students.infrastructure.StudentClassAssignmentRepository;
 import com.school.erp.modules.students.infrastructure.ParentGuardianRepository;
 import com.school.erp.modules.students.infrastructure.StudentRepository;
@@ -59,6 +70,21 @@ class DashboardServiceTest {
 	private StudentFeeAssignmentRepository assignmentRepository;
 
 	@Mock
+	private StaffRepository staffRepository;
+
+	@Mock
+	private LibraryBookRepository libraryBookRepository;
+
+	@Mock
+	private LibraryBookCopyRepository libraryBookCopyRepository;
+
+	@Mock
+	private LibraryLoanRepository libraryLoanRepository;
+
+	@Mock
+	private LibraryFineRepository libraryFineRepository;
+
+	@Mock
 	private AuditLogRepository auditLogRepository;
 
 	@Mock
@@ -75,6 +101,11 @@ class DashboardServiceTest {
 				attendanceRecordRepository,
 				userAccountRepository,
 				assignmentRepository,
+				staffRepository,
+				libraryBookRepository,
+				libraryBookCopyRepository,
+				libraryLoanRepository,
+				libraryFineRepository,
 				auditLogRepository);
 	}
 
@@ -84,16 +115,14 @@ class DashboardServiceTest {
 		when(parentGuardianRepository.countByDeletedFalse()).thenReturn(2L);
 		when(userAccountRepository.countByDeletedFalse()).thenReturn(7L);
 		when(userAccountRepository.countByStatusAndDeletedFalse(UserStatus.ACTIVE)).thenReturn(6L);
-		when(userAccountRepository.countByRoleNamesAndDeletedFalse(List.of("TEACHER"))).thenReturn(1L);
 		when(userAccountRepository.countByRoleNamesAndDeletedFalse(List.of("PARENT"))).thenReturn(1L);
-		when(userAccountRepository.countByRoleNamesAndDeletedFalse(List.of(
-				"SUPER_ADMIN",
-				"ADMIN",
-				"PRINCIPAL",
-				"TEACHER",
-				"ACCOUNTANT",
-				"RECEPTIONIST",
-				"WARDEN"))).thenReturn(5L);
+		when(staffRepository.countByStatusAndDeletedFalse(EmploymentStatus.ACTIVE)).thenReturn(5L);
+		when(staffRepository.countByStaffTypeAndStatusAndDeletedFalse(StaffType.TEACHING, EmploymentStatus.ACTIVE)).thenReturn(1L);
+		when(staffRepository.countByStaffTypeAndStatusAndDeletedFalse(StaffType.NON_TEACHING, EmploymentStatus.ACTIVE)).thenReturn(4L);
+		when(libraryBookRepository.countByDeletedFalse()).thenReturn(25L);
+		when(libraryBookCopyRepository.countByStatusAndDeletedFalse(LibraryBookCopyStatus.AVAILABLE)).thenReturn(18L);
+		when(libraryLoanRepository.countByStatusAndDueDateBeforeAndDeletedFalse(eq(LibraryLoanStatus.ACTIVE), any(LocalDate.class))).thenReturn(2L);
+		when(libraryFineRepository.pendingAmount()).thenReturn(new BigDecimal("75.00"));
 		when(assignmentRepository.summarizeAll(FeeAssignmentStatus.CANCELLED)).thenReturn(feeReportTotals);
 		when(feeReportTotals.getPaidAmount()).thenReturn(new BigDecimal("18000.00"));
 		when(feeReportTotals.getBalanceAmount()).thenReturn(new BigDecimal("60000.00"));
@@ -103,7 +132,13 @@ class DashboardServiceTest {
 						attendanceRecord(AttendanceStatus.PRESENT),
 						attendanceRecord(AttendanceStatus.ABSENT),
 						attendanceRecord(AttendanceStatus.LATE)));
-		when(studentClassAssignmentRepository.countActiveStudents(isNull(), isNull(), isNull())).thenReturn(4L);
+		when(studentClassAssignmentRepository.countEligibleStudents(
+				isNull(),
+				isNull(),
+				isNull(),
+				any(LocalDate.class),
+				eq(StudentStatus.INACTIVE)))
+				.thenReturn(4L);
 		when(auditLogRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(auditLog())));
 		when(studentRepository.findBirthdaysByMonthAndDay(anyInt(), anyInt(), any(Pageable.class)))
 				.thenReturn(List.of(studentWithBirthday()));
@@ -113,13 +148,18 @@ class DashboardServiceTest {
 		assertThat(response.totalStudents()).isEqualTo(3);
 		assertThat(response.totalStaff()).isEqualTo(5);
 		assertThat(response.totalTeachers()).isEqualTo(1);
+		assertThat(response.nonTeachingStaff()).isEqualTo(4);
 		assertThat(response.totalParents()).isEqualTo(2);
 		assertThat(response.totalUsers()).isEqualTo(7);
 		assertThat(response.activeUsers()).isEqualTo(6);
 		assertThat(response.inactiveUsers()).isEqualTo(1);
-		assertThat(response.todayAttendancePercentage()).isEqualByComparingTo("50.00");
+		assertThat(response.todayAttendancePercentage()).isEqualByComparingTo("75.00");
 		assertThat(response.totalFeeCollected()).isEqualByComparingTo("18000.00");
 		assertThat(response.pendingFeeAmount()).isEqualByComparingTo("60000.00");
+		assertThat(response.totalLibraryBooks()).isEqualTo(25);
+		assertThat(response.availableLibraryCopies()).isEqualTo(18);
+		assertThat(response.libraryOverdueLoans()).isEqualTo(2);
+		assertThat(response.pendingLibraryFineAmount()).isEqualByComparingTo("75.00");
 		assertThat(response.recentActivities()).hasSize(1);
 		assertThat(response.birthdaysToday()).hasSize(1);
 	}
@@ -129,7 +169,12 @@ class DashboardServiceTest {
 		when(studentRepository.countByDeletedFalse()).thenThrow(new IllegalStateException("students table missing"));
 		when(attendanceRecordRepository.findTodayDashboardRecords(any(LocalDate.class), isNull(), isNull(), isNull()))
 				.thenThrow(new IllegalStateException("attendance table missing"));
-		when(studentClassAssignmentRepository.countActiveStudents(isNull(), isNull(), isNull()))
+		when(studentClassAssignmentRepository.countEligibleStudents(
+				isNull(),
+				isNull(),
+				isNull(),
+				any(LocalDate.class),
+				eq(StudentStatus.INACTIVE)))
 				.thenThrow(new IllegalStateException("assignments table missing"));
 		when(auditLogRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
 		when(studentRepository.findBirthdaysByMonthAndDay(anyInt(), anyInt(), any(Pageable.class))).thenReturn(List.of());

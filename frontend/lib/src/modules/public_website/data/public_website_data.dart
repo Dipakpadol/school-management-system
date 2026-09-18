@@ -3,23 +3,51 @@ import 'package:flutter/material.dart';
 import '../../../app/router/app_routes.dart';
 import '../models/public_website_models.dart';
 
+abstract final class PublicWebsiteAssets {
+  static const schoolBuilding = 'assets/images/website/school-building.jpg';
+  static const schoolGroup = 'assets/images/website/school-group.jpg';
+  static const officePractical = 'assets/images/website/office-practical.jpg';
+  static const staffTeam = 'assets/images/website/staff-team.jpg';
+  static const staffTeamCropped =
+      'assets/images/website/staff-team-cropped.jpg';
+  static const sportsPractice = 'assets/images/website/sports-practice.jpg';
+  static const sportsGroundAction =
+      'assets/images/website/sports-ground-action.jpg';
+  static const culturalProgram = 'assets/images/website/cultural-program.jpg';
+  static const medicalRoleplay = 'assets/images/website/medical-roleplay.jpg';
+  static const scienceExhibition =
+      'assets/images/website/science-exhibition.jpg';
+  static const scienceExhibitionGuests =
+      'assets/images/website/science-exhibition-guests.jpg';
+  static const scienceExhibitionPresentation =
+      'assets/images/website/science-exhibition-presentation.jpg';
+  static const scienceExhibitionDisplay =
+      'assets/images/website/science-exhibition-display.jpg';
+  static const classGroup = 'assets/images/website/class-group.jpg';
+  static const educationalTrip = 'assets/images/website/educational-trip.jpg';
+  static const campusEvent = 'assets/images/website/campus-event.jpg';
+  static const welcomeBannerWide =
+      'assets/images/website/welcome-banner-wide.jpg';
+  static const welcomePoster = 'assets/images/website/welcome-poster.jpg';
+  static const schoolCommunityCropped =
+      'assets/images/website/school-community-cropped.jpg';
+  static const awardNotice = 'assets/images/website/award-notice.jpg';
+  static const ashadhiCelebration =
+      'assets/images/website/ashadhi-celebration.jpg';
+}
+
 const schoolProfile = SchoolProfile(
   name: 'Star International School',
   tagline: 'Learning with character, curiosity, and care.',
   admissionText:
-      'Admissions are open for Nursery to Class X for the 2026-27 academic year.',
+      'Admissions are open for Nursery to Class X for the current academic year.',
   address:
       'Kandari pati, Waghrul, Taluka: Badnapur, District: Jalna, Maharashtra, India, 431202',
-  phone: '+91 XXXXXXXXXX',
+  phone: '',
   email: 'info@starinternationalschool.com',
   officeHours: 'Monday to Saturday, 8:30 AM - 4:30 PM',
-  heroImageUrl:
-      'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1800&q=80',
-  socialLinks: [
-    SocialLink(label: 'Facebook', icon: Icons.public_outlined),
-    SocialLink(label: 'Instagram', icon: Icons.camera_alt_outlined),
-    SocialLink(label: 'YouTube', icon: Icons.smart_display_outlined),
-  ],
+  heroImageAsset: PublicWebsiteAssets.schoolBuilding,
+  socialLinks: [],
 );
 
 const publicNavItems = [
@@ -109,6 +137,7 @@ const facilities = [
     title: 'Transport',
     description:
         'GPS-ready bus routes, attendant support, and planned pickup points.',
+    imageAsset: PublicWebsiteAssets.schoolBuilding,
     icon: Icons.directions_bus_filled_outlined,
     color: Color(0xFF2563EB),
   ),
@@ -116,6 +145,7 @@ const facilities = [
     title: 'Hostel',
     description:
         'Separate supervised residences with nutritious meals and study hours.',
+    imageAsset: PublicWebsiteAssets.schoolGroup,
     icon: Icons.meeting_room_outlined,
     color: Color(0xFF7C3AED),
   ),
@@ -123,6 +153,7 @@ const facilities = [
     title: 'Library',
     description:
         'Age-wise reading collections, reference material, and digital catalog.',
+    imageAsset: PublicWebsiteAssets.classGroup,
     icon: Icons.local_library_outlined,
     color: Color(0xFFBE123C),
   ),
@@ -130,6 +161,7 @@ const facilities = [
     title: 'Computer Lab',
     description:
         'Modern systems for coding, digital literacy, research, and projects.',
+    imageAsset: PublicWebsiteAssets.scienceExhibition,
     icon: Icons.computer_outlined,
     color: Color(0xFF0F766E),
   ),
@@ -137,6 +169,7 @@ const facilities = [
     title: 'Sports Ground',
     description:
         'Outdoor fields and indoor games for fitness, teamwork, and discipline.',
+    imageAsset: PublicWebsiteAssets.sportsPractice,
     icon: Icons.sports_cricket_outlined,
     color: Color(0xFF15803D),
   ),
@@ -144,6 +177,7 @@ const facilities = [
     title: 'Digital Classroom',
     description:
         'Smart boards and multimedia support for engaging daily lessons.',
+    imageAsset: PublicWebsiteAssets.educationalTrip,
     icon: Icons.connected_tv_outlined,
     color: Color(0xFFB45309),
   ),
@@ -151,6 +185,7 @@ const facilities = [
     title: 'Safety and CCTV',
     description:
         'Visitor checks, supervised entry points, CCTV, and trained staff.',
+    imageAsset: PublicWebsiteAssets.campusEvent,
     icon: Icons.health_and_safety_outlined,
     color: Color(0xFF4338CA),
   ),
@@ -160,69 +195,138 @@ const events = [
   PublicEventItem(
     title: 'Admission enquiry desk is open',
     category: 'Notice',
-    dateLabel: 'July 15, 2026',
+    infoLabel: 'Office notice',
     description:
-        'Parents can visit the school office between 9:00 AM and 3:00 PM for admission guidance.',
+        'Parents can visit or contact the school office for admission guidance and application details.',
   ),
   PublicEventItem(
     title: 'Inter-house sports selections',
     category: 'Event',
-    dateLabel: 'August 2, 2026',
+    infoLabel: 'School calendar',
     description:
-        'Students from Classes VI to XII can register for athletics, football, basketball, and cricket.',
+        'Sports selections, practice schedules, and house events are published through school circulars.',
   ),
   PublicEventItem(
     title: 'Parent orientation program',
     category: 'Circular',
-    dateLabel: 'August 10, 2026',
+    infoLabel: 'Parent update',
     description:
-        'An orientation session for new parents will introduce academic planning, ERP access, and safety policies.',
+        'Orientation sessions introduce academic planning, ERP access, communication channels, and safety policies.',
   ),
   PublicEventItem(
     title: 'Science exhibition registrations',
     category: 'Announcement',
-    dateLabel: 'August 25, 2026',
+    infoLabel: 'Activity notice',
     description:
-        'Project registrations are open for the annual science exhibition and innovation showcase.',
+        'Science exhibition and project activity details are shared with eligible classes through circulars.',
   ),
 ];
 
 const galleryItems = [
   GalleryItem(
-    title: 'Morning Assembly',
+    title: 'School Building',
     category: 'Campus Life',
-    imageUrl:
-        'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=900&q=80',
+    imageAsset: PublicWebsiteAssets.schoolBuilding,
   ),
   GalleryItem(
-    title: 'Digital Classroom',
+    title: 'School Community',
+    category: 'Campus Life',
+    imageAsset: PublicWebsiteAssets.schoolGroup,
+  ),
+  GalleryItem(
+    title: 'Learning Activity',
     category: 'Academics',
-    imageUrl:
-        'https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&w=900&q=80',
+    imageAsset: PublicWebsiteAssets.officePractical,
   ),
   GalleryItem(
-    title: 'Library Reading Hour',
-    category: 'Library',
-    imageUrl:
-        'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=900&q=80',
+    title: 'Outdoor Games',
+    category: 'Sports',
+    imageAsset: PublicWebsiteAssets.sportsGroundAction,
+  ),
+  GalleryItem(
+    title: 'Staff and Guests',
+    category: 'Campus Life',
+    imageAsset: PublicWebsiteAssets.staffTeam,
+  ),
+  GalleryItem(
+    title: 'Staff Group',
+    category: 'Campus Life',
+    imageAsset: PublicWebsiteAssets.staffTeamCropped,
+  ),
+  GalleryItem(
+    title: 'Welcome Display',
+    category: 'Campus Life',
+    imageAsset: PublicWebsiteAssets.welcomeBannerWide,
+  ),
+  GalleryItem(
+    title: 'Welcome Poster',
+    category: 'Campus Life',
+    imageAsset: PublicWebsiteAssets.welcomePoster,
+  ),
+  GalleryItem(
+    title: 'Science Exhibition',
+    category: 'Academics',
+    imageAsset: PublicWebsiteAssets.scienceExhibition,
+  ),
+  GalleryItem(
+    title: 'Science Guests',
+    category: 'Academics',
+    imageAsset: PublicWebsiteAssets.scienceExhibitionGuests,
+  ),
+  GalleryItem(
+    title: 'Science Presentation',
+    category: 'Academics',
+    imageAsset: PublicWebsiteAssets.scienceExhibitionPresentation,
+  ),
+  GalleryItem(
+    title: 'Science Display',
+    category: 'Academics',
+    imageAsset: PublicWebsiteAssets.scienceExhibitionDisplay,
   ),
   GalleryItem(
     title: 'Sports Practice',
     category: 'Sports',
-    imageUrl:
-        'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=900&q=80',
+    imageAsset: PublicWebsiteAssets.sportsPractice,
   ),
   GalleryItem(
-    title: 'Science Activity',
+    title: 'Cultural Program',
     category: 'Activities',
-    imageUrl:
-        'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=900&q=80',
+    imageAsset: PublicWebsiteAssets.culturalProgram,
   ),
   GalleryItem(
-    title: 'Art and Culture',
+    title: 'Class Group',
     category: 'Activities',
-    imageUrl:
-        'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?auto=format&fit=crop&w=900&q=80',
+    imageAsset: PublicWebsiteAssets.classGroup,
+  ),
+  GalleryItem(
+    title: 'Community Group',
+    category: 'Campus Life',
+    imageAsset: PublicWebsiteAssets.schoolCommunityCropped,
+  ),
+  GalleryItem(
+    title: 'Student Role Play',
+    category: 'Activities',
+    imageAsset: PublicWebsiteAssets.medicalRoleplay,
+  ),
+  GalleryItem(
+    title: 'Achievement Notice',
+    category: 'Achievements',
+    imageAsset: PublicWebsiteAssets.awardNotice,
+  ),
+  GalleryItem(
+    title: 'Ashadhi Celebration',
+    category: 'Activities',
+    imageAsset: PublicWebsiteAssets.ashadhiCelebration,
+  ),
+  GalleryItem(
+    title: 'Educational Trip',
+    category: 'Activities',
+    imageAsset: PublicWebsiteAssets.educationalTrip,
+  ),
+  GalleryItem(
+    title: 'Campus Event',
+    category: 'Campus Life',
+    imageAsset: PublicWebsiteAssets.campusEvent,
   ),
 ];
 

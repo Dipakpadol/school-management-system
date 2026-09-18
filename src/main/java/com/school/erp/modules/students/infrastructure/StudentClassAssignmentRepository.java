@@ -1,11 +1,13 @@
 package com.school.erp.modules.students.infrastructure;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import com.school.erp.common.domain.BaseRepository;
 import com.school.erp.modules.students.domain.StudentClassAssignment;
+import com.school.erp.modules.students.domain.StudentStatus;
 
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -81,6 +83,48 @@ public interface StudentClassAssignmentRepository extends BaseRepository<Student
 			@Param("academicYearId") UUID academicYearId,
 			@Param("classId") UUID classId,
 			@Param("sectionId") UUID sectionId);
+
+	@EntityGraph(attributePaths = { "student" })
+	@Query("""
+			select assignment
+			from StudentClassAssignment assignment
+			join assignment.student student
+			where assignment.deleted = false
+			  and student.deleted = false
+			  and student.status <> :excludedStatus
+			  and assignment.academicYearEntity.id = :academicYearId
+			  and assignment.classEntity.id = :classId
+			  and assignment.sectionEntity.id = :sectionId
+			  and assignment.effectiveFrom <= :attendanceDate
+			  and (assignment.effectiveTo is null or assignment.effectiveTo >= :attendanceDate)
+			order by assignment.rollNumber asc, student.firstName asc, student.lastName asc, student.admissionNumber asc
+			""")
+	List<StudentClassAssignment> findEligibleByHierarchyOnDate(
+			@Param("academicYearId") UUID academicYearId,
+			@Param("classId") UUID classId,
+			@Param("sectionId") UUID sectionId,
+			@Param("attendanceDate") LocalDate attendanceDate,
+			@Param("excludedStatus") StudentStatus excludedStatus);
+
+	@Query("""
+			select count(distinct student.id)
+			from StudentClassAssignment assignment
+			join assignment.student student
+			where assignment.deleted = false
+			  and student.deleted = false
+			  and student.status <> :excludedStatus
+			  and (:academicYearId is null or assignment.academicYearEntity.id = :academicYearId)
+			  and (:classId is null or assignment.classEntity.id = :classId)
+			  and (:sectionId is null or assignment.sectionEntity.id = :sectionId)
+			  and assignment.effectiveFrom <= :attendanceDate
+			  and (assignment.effectiveTo is null or assignment.effectiveTo >= :attendanceDate)
+			""")
+	long countEligibleStudents(
+			@Param("academicYearId") UUID academicYearId,
+			@Param("classId") UUID classId,
+			@Param("sectionId") UUID sectionId,
+			@Param("attendanceDate") LocalDate attendanceDate,
+			@Param("excludedStatus") StudentStatus excludedStatus);
 
 	@Query("""
 			select count(assignment) > 0

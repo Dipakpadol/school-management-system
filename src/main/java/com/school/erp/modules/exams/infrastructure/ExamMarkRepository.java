@@ -48,6 +48,29 @@ public interface ExamMarkRepository extends BaseRepository<ExamMark, UUID> {
 			@Param("sectionId") UUID sectionId,
 			@Param("examTypeId") UUID examTypeId);
 
+	@EntityGraph(attributePaths = { "student", "examSchedule", "examSchedule.examType", "examSchedule.subjects", "examSchedule.subjects.subject", "subject" })
+	@Query("""
+			select mark
+			from ExamMark mark
+			where mark.deleted = false
+			  and mark.academicYear.id = :academicYearId
+			  and mark.classEntity.id = :classId
+			  and mark.section.id = :sectionId
+			  and (:examTypeId is null or mark.examSchedule.examType.id = :examTypeId)
+			  and (:examScheduleId is null or mark.examSchedule.id = :examScheduleId)
+			  and (:subjectId is null or mark.subject.id = :subjectId)
+			  and (:studentId is null or mark.student.id = :studentId)
+			order by mark.student.firstName asc, mark.examSchedule.examDate asc, mark.subject.name asc
+			""")
+	List<ExamMark> findResultReportMarks(
+			@Param("academicYearId") UUID academicYearId,
+			@Param("classId") UUID classId,
+			@Param("sectionId") UUID sectionId,
+			@Param("examTypeId") UUID examTypeId,
+			@Param("examScheduleId") UUID examScheduleId,
+			@Param("subjectId") UUID subjectId,
+			@Param("studentId") UUID studentId);
+
 	@EntityGraph(attributePaths = { "student", "examSchedule", "examSchedule.subjects", "examSchedule.subjects.subject", "subject", "classEntity", "section" })
 	@Query("""
 			select mark

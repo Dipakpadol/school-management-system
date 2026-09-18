@@ -13,6 +13,7 @@ abstract interface class AttendanceRepository {
     required String academicYearId,
     required String classId,
     required String sectionId,
+    required String date,
   });
 
   Future<Result<DailyAttendanceModel>> daily({
@@ -20,6 +21,22 @@ abstract interface class AttendanceRepository {
     required String classId,
     required String sectionId,
     required String date,
+  });
+
+  Future<Result<AttendanceSummaryModel>> summary({
+    required String academicYearId,
+    required String classId,
+    required String sectionId,
+    required String fromDate,
+    required String toDate,
+  });
+
+  Future<Result<AttendanceSummaryModel>> monthly({
+    required String academicYearId,
+    required String classId,
+    required String sectionId,
+    required int year,
+    required int month,
   });
 
   Future<Result<void>> saveDaily(Map<String, dynamic> payload);

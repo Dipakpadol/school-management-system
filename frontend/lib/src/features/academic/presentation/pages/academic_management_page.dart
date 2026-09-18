@@ -6,8 +6,10 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_confirm_dialog.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/models/academic_models.dart';
 import '../../data/repositories/academic_repository_impl.dart';
@@ -76,6 +78,15 @@ class _AcademicManagementPageState
 
     return Column(
       children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(24, 24, 24, 12),
+          child: AppPageHeader(
+            title: 'Academic Management',
+            subtitle:
+                'Maintain academic years, classes, divisions, and class structure for daily school operations.',
+            icon: Icons.account_tree_outlined,
+          ),
+        ),
         _TopBar(onAddYear: () => _showYearDialog()),
         const Divider(height: 1),
         Expanded(
@@ -98,7 +109,7 @@ class _AcademicManagementPageState
               );
 
               final classPanel = classes == null
-                  ? const _PlaceholderPanel(
+                  ? const _SetupPanel(
                       icon: Icons.school_outlined,
                       title: 'Classes',
                       message: 'No academic year selected.',
@@ -142,7 +153,7 @@ class _AcademicManagementPageState
                     );
 
               final divisionPanel = _selectedClassId == null
-                  ? const _PlaceholderPanel(
+                  ? const _SetupPanel(
                       icon: Icons.groups_2_outlined,
                       title: 'Divisions',
                       message: 'No class selected.',
@@ -450,24 +461,16 @@ class _AcademicManagementPageState
   }
 
   Future<bool> _confirm(String message) async {
-    final result = await showDialog<bool>(
+    final isRemove = message.startsWith('Remove');
+    return showAppConfirmDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm action'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
+      title: isRemove ? 'Remove subject mapping?' : 'Delete academic record?',
+      message:
+          '$message This updates academic master data and may affect future setup choices. Existing historical records remain governed by backend rules.',
+      confirmLabel: isRemove ? 'Remove' : 'Delete',
+      confirmIcon: isRemove ? Icons.link_off_outlined : Icons.delete_outline,
+      destructive: true,
     );
-    return result ?? false;
   }
 
   void _snack(String message) {
@@ -986,8 +989,8 @@ class _TileMenu extends StatelessWidget {
   }
 }
 
-class _PlaceholderPanel extends StatelessWidget {
-  const _PlaceholderPanel({
+class _SetupPanel extends StatelessWidget {
+  const _SetupPanel({
     required this.icon,
     required this.title,
     required this.message,
@@ -1062,14 +1065,7 @@ class _EmptyTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(padding: const EdgeInsets.all(16), child: Text(message)),
-    );
+    return AppEmptyState(message: message, icon: Icons.account_tree_outlined);
   }
 }
 

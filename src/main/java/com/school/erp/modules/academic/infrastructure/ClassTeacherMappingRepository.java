@@ -21,4 +21,9 @@ public interface ClassTeacherMappingRepository extends BaseRepository<ClassTeach
 	List<ClassTeacherMapping> findByTeacherIdAndClassEntityAcademicYearIdAndActiveTrueAndDeletedFalseOrderByEffectiveFromDesc(
 			UUID teacherId,
 			UUID academicYearId);
+
+	boolean existsByTeacherIdAndClassEntityIdAndSectionIdAndActiveTrueAndDeletedFalse(
+			UUID teacherId,
+			UUID classId,
+			UUID sectionId);
 }

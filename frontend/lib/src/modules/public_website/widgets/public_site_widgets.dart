@@ -213,7 +213,7 @@ class PublicEventCard extends StatelessWidget {
               children: [
                 _Tag(label: event.category),
                 Text(
-                  event.dateLabel,
+                  event.infoLabel,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: PublicSiteColors.muted,
                     fontWeight: FontWeight.w700,
@@ -258,35 +258,111 @@ class PublicGalleryTile extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       color: Colors.white,
+      child: InkWell(
+        onTap: () => _showGalleryPreview(context, item),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AspectRatio(
+              aspectRatio: 4 / 3,
+              child: PublicAssetImage(
+                imageAsset: item.imageAsset,
+                label: item.title,
+                borderRadius: BorderRadius.zero,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.category,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: PublicSiteColors.green,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.title,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: PublicSiteColors.ink,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class PublicFacilityCard extends StatelessWidget {
+  const PublicFacilityCard({required this.facility, super.key});
+
+  final FacilityItem facility;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      color: Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           AspectRatio(
-            aspectRatio: 4 / 3,
-            child: PublicNetworkImage(
-              imageUrl: item.imageUrl,
-              label: item.title,
-              borderRadius: BorderRadius.zero,
+            aspectRatio: 16 / 10,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                PublicAssetImage(
+                  imageAsset: facility.imageAsset,
+                  label: facility.title,
+                  borderRadius: BorderRadius.zero,
+                ),
+                Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: SizedBox.square(
+                      dimension: 42,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.92),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(facility.icon, color: facility.color),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.category,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: PublicSiteColors.green,
+                  facility.title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: PublicSiteColors.ink,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
                 Text(
-                  item.title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: PublicSiteColors.ink,
-                    fontWeight: FontWeight.w800,
+                  facility.description,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: PublicSiteColors.muted,
+                    height: 1.45,
                   ),
                 ),
               ],
@@ -298,16 +374,16 @@ class PublicGalleryTile extends StatelessWidget {
   }
 }
 
-class PublicNetworkImage extends StatelessWidget {
-  const PublicNetworkImage({
-    required this.imageUrl,
+class PublicAssetImage extends StatelessWidget {
+  const PublicAssetImage({
+    required this.imageAsset,
     required this.label,
     this.fit = BoxFit.cover,
     this.borderRadius = const BorderRadius.all(Radius.circular(8)),
     super.key,
   });
 
-  final String imageUrl;
+  final String imageAsset;
   final String label;
   final BoxFit fit;
   final BorderRadius borderRadius;
@@ -316,15 +392,11 @@ class PublicNetworkImage extends StatelessWidget {
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: borderRadius,
-      child: Image.network(
-        imageUrl,
+      child: Image.asset(
+        imageAsset,
         fit: fit,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) {
-            return child;
-          }
-          return _ImageFallback(label: label, loading: true);
-        },
+        width: double.infinity,
+        height: double.infinity,
         errorBuilder: (context, error, stackTrace) {
           return _ImageFallback(label: label);
         },
@@ -350,71 +422,77 @@ class PublicPageHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final compact = MediaQuery.sizeOf(context).width < 640;
 
-    return PublicSection(
-      backgroundColor: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 52),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final stacked = constraints.maxWidth < 760;
-          final intro = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox.square(
-                dimension: 54,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: PublicSiteColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: PublicSiteColors.primary, size: 30),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                title,
-                style: theme.textTheme.displaySmall?.copyWith(
-                  color: PublicSiteColors.ink,
-                  fontWeight: FontWeight.w900,
-                  height: 1.08,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                subtitle,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: PublicSiteColors.muted,
-                  height: 1.55,
-                ),
-              ),
-              if (action != null) ...[const SizedBox(height: 24), action!],
-            ],
-          );
-
-          final image = AspectRatio(
-            aspectRatio: stacked ? 16 / 10 : 16 / 9,
-            child: const PublicNetworkImage(
-              imageUrl:
-                  'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80',
-              label: 'Students in classroom',
+    return SizedBox(
+      width: double.infinity,
+      height: compact ? 420 : 340,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const PublicAssetImage(
+            imageAsset: PublicWebsiteAssets.schoolGroup,
+            label: 'Star International School campus',
+            borderRadius: BorderRadius.zero,
+          ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.46),
             ),
-          );
-
-          if (stacked) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [intro, const SizedBox(height: 32), image],
-            );
-          }
-
-          return Row(
-            children: [
-              Expanded(child: intro),
-              const SizedBox(width: 44),
-              Expanded(child: image),
-            ],
-          );
-        },
+          ),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1180),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox.square(
+                      dimension: 52,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(icon, color: Colors.white, size: 29),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 760),
+                      child: Text(
+                        title,
+                        style: theme.textTheme.displaySmall?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          height: 1.08,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 760),
+                      child: Text(
+                        subtitle,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: const Color(0xFFE5EEF9),
+                          height: 1.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (action != null) ...[
+                      const SizedBox(height: 22),
+                      action!,
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -624,11 +702,12 @@ class ContactInfoList extends StatelessWidget {
           title: 'Address',
           value: schoolProfile.address,
         ),
-        _ContactInfoRow(
-          icon: Icons.call_outlined,
-          title: 'Phone',
-          value: schoolProfile.phone,
-        ),
+        if (schoolProfile.phone.trim().isNotEmpty)
+          _ContactInfoRow(
+            icon: Icons.call_outlined,
+            title: 'Phone',
+            value: schoolProfile.phone,
+          ),
         _ContactInfoRow(
           icon: Icons.mail_outline,
           title: 'Email',
@@ -644,8 +723,8 @@ class ContactInfoList extends StatelessWidget {
   }
 }
 
-class MapPlaceholder extends StatelessWidget {
-  const MapPlaceholder({super.key});
+class CampusLocationPanel extends StatelessWidget {
+  const CampusLocationPanel({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -670,7 +749,7 @@ class MapPlaceholder extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Map placeholder',
+            'Campus Location',
             style: theme.textTheme.titleMedium?.copyWith(
               color: PublicSiteColors.ink,
               fontWeight: FontWeight.w800,
@@ -689,6 +768,55 @@ class MapPlaceholder extends StatelessWidget {
       ),
     );
   }
+}
+
+void _showGalleryPreview(BuildContext context, GalleryItem item) {
+  showDialog<void>(
+    context: context,
+    builder: (context) => Dialog(
+      insetPadding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 920),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: PublicAssetImage(
+                imageAsset: item.imageAsset,
+                label: item.title,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(8),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 14, 12, 14),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: PublicSiteColors.ink,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _ContactInfoRow extends StatelessWidget {
@@ -775,10 +903,9 @@ class _Tag extends StatelessWidget {
 }
 
 class _ImageFallback extends StatelessWidget {
-  const _ImageFallback({required this.label, this.loading = false});
+  const _ImageFallback({required this.label});
 
   final String label;
-  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -792,17 +919,11 @@ class _ImageFallback extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (loading)
-                const SizedBox.square(
-                  dimension: 28,
-                  child: CircularProgressIndicator(strokeWidth: 2.4),
-                )
-              else
-                const Icon(
-                  Icons.image_outlined,
-                  color: PublicSiteColors.green,
-                  size: 34,
-                ),
+              const Icon(
+                Icons.image_outlined,
+                color: PublicSiteColors.green,
+                size: 34,
+              ),
               const SizedBox(height: 10),
               Text(
                 label,

@@ -95,4 +95,30 @@ public interface HostelAllocationRepository extends BaseRepository<HostelAllocat
 	Optional<HostelAllocation> findFirstByStudentIdAndStatusAndDeletedFalseOrderByAllocationDateDesc(
 			UUID studentId,
 			HostelAllocationStatus status);
+
+	@EntityGraph(attributePaths = {
+			"student",
+			"student.classAssignments",
+			"academicYear",
+			"hostel",
+			"room",
+			"bed"
+	})
+	@Query("""
+			select allocation
+			from HostelAllocation allocation
+			where allocation.deleted = false
+			  and (:academicYearId is null or allocation.academicYear.id = :academicYearId)
+			  and (:hostelId is null or allocation.hostel.id = :hostelId)
+			  and (:roomId is null or allocation.room.id = :roomId)
+			  and (:studentId is null or allocation.student.id = :studentId)
+			  and (:status is null or allocation.status = :status)
+			order by allocation.academicYear.startDate desc, allocation.hostel.name asc, allocation.room.roomNumber asc, allocation.allocationDate asc
+			""")
+	List<HostelAllocation> findReportAllocations(
+			@Param("academicYearId") UUID academicYearId,
+			@Param("hostelId") UUID hostelId,
+			@Param("roomId") UUID roomId,
+			@Param("studentId") UUID studentId,
+			@Param("status") HostelAllocationStatus status);
 }

@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_confirm_dialog.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../dashboard/presentation/controllers/menu_controller.dart';
 import '../../../users/data/models/user_models.dart';
@@ -49,6 +51,15 @@ class _RolePermissionPageState extends ConsumerState<RolePermissionPage> {
         length: 2,
         child: Column(
           children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 24, 24, 12),
+              child: AppPageHeader(
+                title: 'Roles & Permissions',
+                subtitle:
+                    'Configure ERP roles, permission groups, and module access controls.',
+                icon: Icons.verified_user_outlined,
+              ),
+            ),
             const Material(
               color: Colors.white,
               child: TabBar(
@@ -59,7 +70,6 @@ class _RolePermissionPageState extends ConsumerState<RolePermissionPage> {
                 ],
               ),
             ),
-            const Divider(height: 1),
             Expanded(
               child: TabBarView(
                 children: [
@@ -76,13 +86,10 @@ class _RolePermissionPageState extends ConsumerState<RolePermissionPage> {
                               .set(_searchController.text.trim());
                         },
                       ),
-                      const Divider(height: 1),
                       Expanded(
                         child: roles.when(
-                          data: (items) => _RoleList(
-                            roles: items,
-                            permissions: permissions,
-                          ),
+                          data: (items) =>
+                              _RoleList(roles: items, permissions: permissions),
                           error: (error, _) => AppErrorState(
                             message: _message(error),
                             onRetry: () =>
@@ -122,14 +129,10 @@ class _RoleHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedStatus = ref.watch(roleManagementStatusFilterProvider);
 
-    return Material(
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
-        child: Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          crossAxisAlignment: WrapCrossAlignment.center,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+      child: AppSectionCard(
+        child: AppFilterBar(
           children: [
             SizedBox(
               width: 320,
@@ -197,7 +200,10 @@ class _RoleList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (roles.isEmpty) {
-      return const Center(child: Text('No roles found.'));
+      return const AppEmptyState(
+        message: 'No roles found.',
+        icon: Icons.verified_user_outlined,
+      );
     }
 
     final canEditSystemRoles =
@@ -274,7 +280,10 @@ class _RoleCard extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      _StatusChip(status: role.status),
+                      AppStatusBadge(
+                        label: _statusLabel(role.status),
+                        color: _statusColor(role.status),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -372,7 +381,12 @@ Future<void> _handleRoleAction(
   }
 
   if (action == 'delete') {
-    final confirmed = await _confirm(context, 'Delete ${role.displayName}?');
+    final confirmed = await _confirmDelete(
+      context,
+      title: 'Delete role?',
+      message:
+          '${role.displayName} will be removed from role management. Users with this role may lose the related permissions after the backend update.',
+    );
     if (!confirmed) {
       return;
     }
@@ -519,7 +533,10 @@ Future<void> _showRoleForm(
                       SizedBox(
                         height: 300,
                         child: permissions.isEmpty
-                            ? const Center(child: Text('No permissions found.'))
+                            ? const AppEmptyState(
+                                message: 'No permissions found.',
+                                icon: Icons.key_outlined,
+                              )
                             : ListView.builder(
                                 itemCount: permissions.length,
                                 itemBuilder: (context, index) {
@@ -727,35 +744,6 @@ class _DetailRow extends StatelessWidget {
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final active = status == 'ACTIVE';
-    final color = active ? const Color(0xFF16A34A) : const Color(0xFF64748B);
-
-    return Container(
-      height: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        _statusLabel(status),
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-}
-
 class _SoftChip extends StatelessWidget {
   const _SoftChip({required this.label});
 
@@ -806,14 +794,10 @@ class _PermissionsPanelState extends ConsumerState<_PermissionsPanel> {
 
     return Column(
       children: [
-        Material(
-          color: Colors.white,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              crossAxisAlignment: WrapCrossAlignment.center,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+          child: AppSectionCard(
+            child: AppFilterBar(
               children: [
                 SizedBox(
                   width: 300,
@@ -843,7 +827,10 @@ class _PermissionsPanelState extends ConsumerState<_PermissionsPanel> {
                     initialValue: status,
                     decoration: const InputDecoration(labelText: 'Status'),
                     items: const [
-                      DropdownMenuItem(value: null, child: Text('All statuses')),
+                      DropdownMenuItem(
+                        value: null,
+                        child: Text('All statuses'),
+                      ),
                       DropdownMenuItem(value: 'ACTIVE', child: Text('Active')),
                       DropdownMenuItem(
                         value: 'INACTIVE',
@@ -876,7 +863,6 @@ class _PermissionsPanelState extends ConsumerState<_PermissionsPanel> {
             ),
           ),
         ),
-        const Divider(height: 1),
         Expanded(
           child: permissions.when(
             data: (items) => _PermissionManagementList(permissions: items),
@@ -909,7 +895,10 @@ class _PermissionManagementList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (permissions.isEmpty) {
-      return const Center(child: Text('No permissions found.'));
+      return const AppEmptyState(
+        message: 'No permissions found.',
+        icon: Icons.key_outlined,
+      );
     }
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -931,10 +920,12 @@ class _PermissionManagementList extends ConsumerWidget {
                 child: Row(
                   children: [
                     CircleAvatar(
-                      backgroundColor:
-                          Theme.of(context).colorScheme.primaryContainer,
-                      foregroundColor:
-                          Theme.of(context).colorScheme.onPrimaryContainer,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer,
+                      foregroundColor: Theme.of(
+                        context,
+                      ).colorScheme.onPrimaryContainer,
                       child: const Icon(Icons.key_outlined),
                     ),
                     const SizedBox(width: 14),
@@ -950,14 +941,15 @@ class _PermissionManagementList extends ConsumerWidget {
                                   permission.name,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
+                                  style: Theme.of(context).textTheme.titleMedium
                                       ?.copyWith(fontWeight: FontWeight.w800),
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              _StatusChip(status: permission.status),
+                              AppStatusBadge(
+                                label: _statusLabel(permission.status),
+                                color: _statusColor(permission.status),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 4),
@@ -965,9 +957,7 @@ class _PermissionManagementList extends ConsumerWidget {
                             permission.code,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
+                            style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
                                   color: Theme.of(context).colorScheme.primary,
                                   fontWeight: FontWeight.w700,
@@ -1023,7 +1013,9 @@ Future<void> _showPermissionForm(
   final code = TextEditingController(text: permission?.code ?? '');
   final name = TextEditingController(text: permission?.name ?? '');
   final module = TextEditingController(text: permission?.moduleName ?? '');
-  final description = TextEditingController(text: permission?.description ?? '');
+  final description = TextEditingController(
+    text: permission?.description ?? '',
+  );
   final formKey = GlobalKey<FormState>();
   var status = permission?.status ?? 'ACTIVE';
 
@@ -1032,7 +1024,9 @@ Future<void> _showPermissionForm(
     builder: (dialogContext) {
       return StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: Text(permission == null ? 'Add permission' : 'Edit permission'),
+          title: Text(
+            permission == null ? 'Add permission' : 'Edit permission',
+          ),
           content: Form(
             key: formKey,
             child: SizedBox(
@@ -1068,7 +1062,10 @@ Future<void> _showPermissionForm(
                       initialValue: status,
                       decoration: const InputDecoration(labelText: 'Status'),
                       items: const [
-                        DropdownMenuItem(value: 'ACTIVE', child: Text('Active')),
+                        DropdownMenuItem(
+                          value: 'ACTIVE',
+                          child: Text('Active'),
+                        ),
                         DropdownMenuItem(
                           value: 'INACTIVE',
                           child: Text('Inactive'),
@@ -1079,7 +1076,9 @@ Future<void> _showPermissionForm(
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: description,
-                      decoration: const InputDecoration(labelText: 'Description'),
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                      ),
                       maxLines: 3,
                     ),
                   ],
@@ -1147,7 +1146,12 @@ Future<void> _deletePermission(
   WidgetRef ref,
   PermissionOptionModel permission,
 ) async {
-  final confirmed = await _confirm(context, 'Delete ${permission.name}?');
+  final confirmed = await _confirmDelete(
+    context,
+    title: 'Delete permission?',
+    message:
+        '${permission.name} will be removed from permission management. Roles depending on it may lose access after the backend update.',
+  );
   if (!confirmed || !context.mounted) {
     return;
   }
@@ -1176,6 +1180,10 @@ String _statusLabel(String status) {
   return status == 'ACTIVE' ? 'Active' : 'Inactive';
 }
 
+Color _statusColor(String status) {
+  return status == 'ACTIVE' ? const Color(0xFF16A34A) : const Color(0xFF64748B);
+}
+
 String? _required(String? value) {
   if (value == null || value.trim().isEmpty) {
     return 'Required';
@@ -1191,25 +1199,19 @@ Color themeError(BuildContext context) {
   return Theme.of(context).colorScheme.error;
 }
 
-Future<bool> _confirm(BuildContext context, String message) async {
-  final result = await showDialog<bool>(
+Future<bool> _confirmDelete(
+  BuildContext context, {
+  required String title,
+  required String message,
+}) async {
+  return showAppConfirmDialog(
     context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Confirm action'),
-      content: Text(message),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Confirm'),
-        ),
-      ],
-    ),
+    title: title,
+    message: message,
+    confirmLabel: 'Delete',
+    confirmIcon: Icons.delete_outline,
+    destructive: true,
   );
-  return result ?? false;
 }
 
 void _snack(BuildContext context, String message) {

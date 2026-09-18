@@ -6,9 +6,11 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_confirm_dialog.dart';
 import '../../../../core/widgets/app_data_table.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../fees/data/models/fee_models.dart';
 import '../../../fees/data/repositories/fees_repository_impl.dart';
@@ -110,6 +112,15 @@ class _TransportManagementPageState
       length: 4,
       child: Column(
         children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 24, 24, 12),
+            child: AppPageHeader(
+              title: 'Transport Management',
+              subtitle:
+                  'Manage buses, routes, pickup points, transport fees, drivers, and student assignments.',
+              icon: Icons.directions_bus_filled_outlined,
+            ),
+          ),
           Material(
             color: Colors.white,
             child: Row(
@@ -658,25 +669,15 @@ class _TransportManagementPageState
   }
 
   Future<bool> _confirm(String message) async {
-    final result = await showDialog<bool>(
+    return showAppConfirmDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm action'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.of(context).pop(true),
-            icon: const Icon(Icons.check_outlined),
-            label: const Text('Confirm'),
-          ),
-        ],
-      ),
+      title: 'Delete transport record?',
+      message:
+          '$message This updates transport operations and may affect route, vehicle, fee, or student assignment choices.',
+      confirmLabel: 'Delete',
+      confirmIcon: Icons.delete_outline,
+      destructive: true,
     );
-    return result ?? false;
   }
 
   void _snack(String message) {
@@ -1030,8 +1031,10 @@ class _TransportFeesTab extends ConsumerWidget {
                       )
                     : routes.when(
                         data: (items) {
-                          final effectiveRouteId =
-                              _knownTransportRouteId(items, selectedRouteId);
+                          final effectiveRouteId = _knownTransportRouteId(
+                            items,
+                            selectedRouteId,
+                          );
                           if (selectedRouteId != null &&
                               effectiveRouteId == null) {
                             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1067,9 +1070,8 @@ class _TransportFeesTab extends ConsumerWidget {
                             transportRoutesProvider(selectedYearId!),
                           ),
                         ),
-                        loading: () => const AppLoadingState(
-                          label: 'Loading routes',
-                        ),
+                        loading: () =>
+                            const AppLoadingState(label: 'Loading routes'),
                       ),
               ),
               SizedBox(
@@ -1157,7 +1159,9 @@ class _TransportFeesTab extends ConsumerWidget {
                 onPressed: key == null
                     ? null
                     : () {
-                        ref.invalidate(transportRoutesProvider(selectedYearId!));
+                        ref.invalidate(
+                          transportRoutesProvider(selectedYearId!),
+                        );
                         if (selectedRouteId != null) {
                           ref.invalidate(
                             transportPickupPointsProvider(selectedRouteId!),
@@ -1272,8 +1276,9 @@ class _TransportFeesTab extends ConsumerWidget {
                     },
                     error: (error, _) => AppErrorState(
                       message: _message(error),
-                      onRetry: () =>
-                          ref.invalidate(transportFeeStructuresPageProvider(key!)),
+                      onRetry: () => ref.invalidate(
+                        transportFeeStructuresPageProvider(key!),
+                      ),
                     ),
                     loading: () =>
                         const AppLoadingState(label: 'Loading transport fees'),
@@ -1720,25 +1725,15 @@ class _PickupPointsDialog extends ConsumerWidget {
     WidgetRef ref,
     TransportPickupPointModel point,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppConfirmDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete pickup point'),
-        content: Text(point.pointName),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.of(context).pop(true),
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Delete'),
-          ),
-        ],
-      ),
+      title: 'Delete pickup point',
+      message: point.pointName,
+      confirmLabel: 'Delete',
+      confirmIcon: Icons.delete_outline,
+      destructive: true,
     );
-    if (confirmed != true || !context.mounted) {
+    if (!confirmed || !context.mounted) {
       return;
     }
     final result = await ref
@@ -2411,8 +2406,7 @@ class _StudentTransportDialogState
               route.id == widget.assignment?.routeId,
         )
         .toList(growable: false);
-    if (_routeId != null &&
-        routeItems.every((route) => route.id != _routeId)) {
+    if (_routeId != null && routeItems.every((route) => route.id != _routeId)) {
       _routeId = null;
       _pickupPointId = null;
     }
@@ -2614,22 +2608,10 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = label == 'ACTIVE' || label == 'ASSIGNED';
-    final color = active ? Colors.green : Colors.orange;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: color.shade700,
-          fontWeight: FontWeight.w800,
-          fontSize: 12,
-        ),
-      ),
+    return AppStatusBadge(
+      label: label,
+      color: active ? const Color(0xFF16A34A) : const Color(0xFFF59E0B),
+      icon: active ? Icons.check_circle_outline : Icons.schedule_outlined,
     );
   }
 }

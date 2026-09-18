@@ -196,6 +196,21 @@ public class DatabaseMasterDataSeeder {
 				permission("ATTENDANCE_MARK", "Mark attendance"),
 				permission("REPORTS_READ", "Read reports"),
 				permission("NOTIFICATIONS_SEND", "Send notifications"),
+				permission("STAFF_READ", "Read staff"),
+				permission("STAFF_CREATE", "Create staff"),
+				permission("STAFF_UPDATE", "Update staff"),
+				permission("STAFF_DELETE", "Delete staff"),
+				permission("LEAVE_READ", "Read leave"),
+				permission("LEAVE_CREATE", "Create leave"),
+				permission("LEAVE_APPROVE", "Approve leave"),
+				permission("PAYROLL_READ", "Read payroll"),
+				permission("PAYROLL_CREATE", "Create payroll"),
+				permission("PAYROLL_UPDATE", "Update payroll"),
+				permission("PAYROLL_PROCESS", "Process payroll"),
+				permission("COMMUNICATION_READ", "Read communications"),
+				permission("COMMUNICATION_CREATE", "Create communications"),
+				permission("COMMUNICATION_UPDATE", "Update communications"),
+				permission("COMMUNICATION_PUBLISH", "Publish communications"),
 				permission("SETTINGS_READ", "Read settings"),
 				permission("SETTINGS_UPDATE", "Update settings"));
 	}
@@ -208,21 +223,28 @@ public class DatabaseMasterDataSeeder {
 				role(RoleName.PRINCIPAL, "Principal", "Academic and operational leadership access.", List.of(
 						"AUTH_PASSWORD_CHANGE", "USERS_READ", "STUDENTS_READ", "STUDENTS_UPDATE",
 						"ACADEMIC_READ", "ACADEMIC_MANAGE", "ATTENDANCE_READ", "REPORTS_READ",
-						"NOTIFICATIONS_SEND", "SETTINGS_READ")),
+						"NOTIFICATIONS_SEND", "STAFF_READ", "STAFF_UPDATE", "LEAVE_READ", "LEAVE_CREATE",
+						"LEAVE_APPROVE", "PAYROLL_READ", "COMMUNICATION_READ", "COMMUNICATION_CREATE",
+						"COMMUNICATION_UPDATE", "COMMUNICATION_PUBLISH", "SETTINGS_READ")),
 				role(RoleName.TEACHER, "Teacher", "Teaching staff access.", List.of(
 						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "ACADEMIC_READ", "ATTENDANCE_READ",
-						"ATTENDANCE_MARK", "REPORTS_READ")),
+						"ATTENDANCE_MARK", "REPORTS_READ", "LEAVE_READ", "LEAVE_CREATE", "COMMUNICATION_READ")),
 				role(RoleName.ACCOUNTANT, "Accountant", "Fees and finance access.", List.of(
-						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "FEES_READ", "FEES_MANAGE", "REPORTS_READ")),
+						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "STAFF_READ", "FEES_READ", "FEES_MANAGE",
+						"PAYROLL_READ", "PAYROLL_CREATE", "PAYROLL_UPDATE", "PAYROLL_PROCESS",
+						"REPORTS_READ", "COMMUNICATION_READ")),
 				role(RoleName.RECEPTIONIST, "Receptionist", "Front office access.", List.of(
 						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "STUDENTS_CREATE", "STUDENTS_UPDATE",
-						"FEES_READ", "NOTIFICATIONS_SEND")),
+						"FEES_READ", "STAFF_READ", "NOTIFICATIONS_SEND", "COMMUNICATION_READ")),
 				role(RoleName.STUDENT, "Student", "Student portal access.", List.of(
-						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "ACADEMIC_READ", "ATTENDANCE_READ", "FEES_READ")),
+						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "ACADEMIC_READ", "ATTENDANCE_READ", "FEES_READ",
+						"COMMUNICATION_READ")),
 				role(RoleName.PARENT, "Parent", "Parent portal access.", List.of(
-						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "ACADEMIC_READ", "ATTENDANCE_READ", "FEES_READ")),
+						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "ACADEMIC_READ", "ATTENDANCE_READ", "FEES_READ",
+						"COMMUNICATION_READ")),
 				role(RoleName.WARDEN, "Warden", "Hostel operations access.", List.of(
-						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "HOSTEL_READ", "HOSTEL_MANAGE", "REPORTS_READ")));
+						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "STAFF_READ", "HOSTEL_READ", "HOSTEL_MANAGE",
+						"REPORTS_READ", "COMMUNICATION_READ")));
 	}
 
 	private PermissionSeed permission(String code, String name) {

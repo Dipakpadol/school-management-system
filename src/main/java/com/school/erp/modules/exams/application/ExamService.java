@@ -213,6 +213,35 @@ public class ExamService {
 				.toList();
 	}
 
+	@Transactional(readOnly = true)
+	public List<ExamScheduleResponse> getScheduleReport(
+			UUID academicYearId,
+			UUID classId,
+			UUID sectionId,
+			UUID examTypeId,
+			UUID examScheduleId,
+			UUID subjectId) {
+		validateHierarchy(academicYearId, classId, sectionId);
+		if (examTypeId != null) {
+			loadType(examTypeId);
+		}
+		if (examScheduleId != null) {
+			loadSchedule(examScheduleId);
+		}
+		if (subjectId != null) {
+			validateSubjectAssigned(sectionId, subjectId);
+		}
+		return examScheduleRepository.findReportSchedules(
+				academicYearId,
+				classId,
+				sectionId,
+				examTypeId,
+				examScheduleId,
+				subjectId).stream()
+				.map(this::toScheduleResponse)
+				.toList();
+	}
+
 	@Transactional
 	public void deleteSchedule(UUID scheduleId) {
 		ExamSchedule schedule = loadSchedule(scheduleId);
@@ -324,6 +353,39 @@ public class ExamService {
 				"examTypeId", request.examTypeId(),
 				"students", results.size()));
 		return results;
+	}
+
+	@Transactional(readOnly = true)
+	public List<StudentResultResponse> getResultReport(
+			UUID academicYearId,
+			UUID classId,
+			UUID sectionId,
+			UUID examTypeId,
+			UUID examScheduleId,
+			UUID subjectId,
+			UUID studentId) {
+		validateHierarchy(academicYearId, classId, sectionId);
+		if (examTypeId != null) {
+			loadType(examTypeId);
+		}
+		if (examScheduleId != null) {
+			loadSchedule(examScheduleId);
+		}
+		if (subjectId != null) {
+			validateSubjectAssigned(sectionId, subjectId);
+		}
+		if (studentId != null) {
+			studentRepository.findByIdAndDeletedFalse(studentId)
+					.orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
+		}
+		return rankResults(examMarkRepository.findResultReportMarks(
+				academicYearId,
+				classId,
+				sectionId,
+				examTypeId,
+				examScheduleId,
+				subjectId,
+				studentId));
 	}
 
 	@Transactional(readOnly = true)

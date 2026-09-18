@@ -7,6 +7,7 @@ import '../../../../core/result/result.dart';
 import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/models/audit_log_models.dart';
 import '../../data/repositories/audit_logs_repository_impl.dart';
@@ -35,8 +36,16 @@ class _AuditLogsPageState extends ConsumerState<AuditLogsPage> {
       },
       child: Column(
         children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 24, 24, 12),
+            child: AppPageHeader(
+              title: 'Audit Logs',
+              subtitle:
+                  'Review user activity, module changes, and operational audit history across the ERP.',
+              icon: Icons.manage_search_outlined,
+            ),
+          ),
           const _AuditHeader(),
-          const Divider(height: 1),
           Expanded(
             child: logs.when(
               data: (items) => _AuditLogList(logs: items),
@@ -67,14 +76,10 @@ class _AuditHeader extends ConsumerWidget {
     final actionOptions = ref.watch(auditActionOptionsProvider);
     final userOptions = ref.watch(auditUserOptionsProvider);
 
-    return Material(
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
-        child: Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          crossAxisAlignment: WrapCrossAlignment.center,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+      child: AppSectionCard(
+        child: AppFilterBar(
           children: [
             SizedBox(
               width: 210,
@@ -239,7 +244,10 @@ class _AuditLogList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (logs.isEmpty) {
-      return const Center(child: Text('No audit logs found.'));
+      return const AppEmptyState(
+        message: 'No audit logs found.',
+        icon: Icons.manage_search_outlined,
+      );
     }
 
     return ListView.separated(

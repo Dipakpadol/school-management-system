@@ -26,12 +26,7 @@ class PublicFacilitiesPage extends StatelessWidget {
             child: PublicResponsiveGrid(
               children: [
                 for (final facility in facilities)
-                  PublicFeatureCard(
-                    title: facility.title,
-                    description: facility.description,
-                    icon: facility.icon,
-                    color: facility.color,
-                  ),
+                  PublicFacilityCard(facility: facility),
               ],
             ),
           ),

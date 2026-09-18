@@ -60,6 +60,13 @@ const erpModules = <ErpModule>[
     description: 'Teacher profiles, documents, classes, subjects.',
   ),
   ErpModule(
+    id: 'staff',
+    title: 'Staff Management',
+    icon: Icons.badge_outlined,
+    status: 'API ready',
+    description: 'Staff profiles, departments, leave, attendance, payroll.',
+  ),
+  ErpModule(
     id: 'attendance',
     title: 'Attendance',
     icon: Icons.fact_check_outlined,
@@ -86,6 +93,20 @@ const erpModules = <ErpModule>[
     icon: Icons.campaign_outlined,
     status: 'API ready',
     description: 'Templates, send-ready records, and delivery history.',
+  ),
+  ErpModule(
+    id: 'communications',
+    title: 'Communications',
+    icon: Icons.campaign_outlined,
+    status: 'API ready',
+    description: 'Announcements, circulars, notices, events, and history.',
+  ),
+  ErpModule(
+    id: 'library',
+    title: 'Library Management',
+    icon: Icons.local_library_outlined,
+    status: 'API ready',
+    description: 'Catalog, copies, memberships, circulation, fines, reports.',
   ),
   ErpModule(
     id: 'settings',

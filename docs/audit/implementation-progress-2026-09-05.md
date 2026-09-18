@@ -130,3 +130,206 @@ Additional validation notes:
 - Local default `JAVA_HOME` points to Java 8, which cannot run this project. Verification used installed JDK 21 at `C:\Program Files\Java\jdk-21.0.4`, matching `<java.version>21</java.version>`.
 - PostgreSQL/Flyway validation: BLOCKED - environment unavailable. Docker client exists, but the Docker daemon is not running; `psql`, `pg_isready`, and `postgres` are not in PATH. No Phase 3 migration was added in this entry.
 - Flutter validation: BLOCKED - previous `flutter --version`/`dart --version` attempts hung silently and were interrupted; `dart --version` was retried from `frontend/` after the pagination edits and again hung silently for 30 seconds before interruption. `dart format`, `flutter doctor`, `flutter analyze`, and `flutter test` were not run because the base toolchain command did not complete.
+
+## Phase 4 - Attendance, Reports, Dashboard
+
+Status: IMPLEMENTED AND BACKEND-TESTED. Phase 4 backend tests compile and pass on Java 21. Flutter analyzer/runtime validation and PostgreSQL/Flyway migration validation remain blocked by local toolchain/environment availability, not by known code failures.
+
+Completion snapshot:
+
+- Overall: 94%
+- Backend: 100%
+- Frontend: 90%
+- Testing: 82%
+
+### Phase 4 Work Completed
+
+| Requirement | Status | Files changed | Migration | API | UI | Tests | Notes |
+|---|---|---|---|---|---|---|---|
+| Academic Enrollment -> Student Attendance roster | TESTED | `AttendanceService.java`, `StudentClassAssignmentRepository.java`, `AttendanceController.java`, attendance Flutter data/repository/page files | `V29__phase4_attendance_roster_dashboard_reports.sql` | `GET /v1/attendance/students?date=yyyy-MM-dd` | Attendance screen sends selected date when loading roster | `AttendanceServiceTest`, full Maven suite | Roster now uses effective enrollment dates instead of only current active assignment. Deleted students and inactive students are excluded. |
+| Daily bulk attendance save/upsert | TESTED | `AttendanceService.java`, `AttendanceRecordRepository.java`, `AttendanceServiceTest.java` | `V29__phase4_attendance_roster_dashboard_reports.sql` | Existing `POST /v1/attendance/daily` | Existing mark-all/exceptions workflow preserved | `AttendanceServiceTest`, full Maven suite | Save validates request students against the date-effective roster and updates existing same-student/same-date records to avoid duplicate attendance after moves/promotions. |
+| Historical/date-effective attendance | TESTED | `AttendanceService.java`, `AttendanceRecordRepository.java`, `StudentClassAssignmentRepository.java` | `V29__phase4_attendance_roster_dashboard_reports.sql` | Existing history and daily attendance APIs | Attendance selected-date reload path implemented | `AttendanceServiceTest`, full Maven suite | Historical attendance reads preserve stored class/section context while roster and daily save use the date-effective assignment. |
+| Attendance summary/monthly endpoints | TESTED | `AttendanceSummaryResponse.java`, `AttendanceSummaryCalculator.java`, `AttendanceService.java`, `AttendanceController.java`, `AttendanceRecordRepository.java` | None beyond V29 indexes | `GET /v1/attendance/summary`, `GET /v1/attendance/monthly` | Summary strip surfaced on Attendance screen | `AttendanceServiceTest`, full Maven suite | Class/division summaries reuse canonical attendance records, date-effective eligible counts, and shared attendance percentage math. |
+| Teacher attendance and teacher class scope | TESTED | `AttendanceService.java`, `TeacherAttendanceService.java`, teacher/class/subject mapping repositories | None | Existing attendance and teacher attendance APIs | Existing teacher attendance/profile UI remains in place | `AttendanceServiceTest`, full Maven suite | Teacher users can access assigned classes and are rejected from unassigned classes. Teacher attendance uses the shared attendance percentage formula. |
+| Non-teaching staff attendance | DEFERRED | None | None | None | None | None | Deferred until a canonical non-teaching staff master and attendance identity model exists. |
+| Leave integration | DEFERRED | None | None | None | None | None | Deferred until a canonical leave approval module exists. |
+| Reports canonical exports/filtering | TESTED | `ReportsService.java`, `ReportsController.java`, `FeeImportExportService.java`, `StudentImportExportService.java`, `ExamReportExportService.java`, `HostelReportExportService.java`, `TransportReportExportService.java`, report repositories | None | `GET /v1/reports/options`, `GET /v1/reports/preview`, `GET /v1/reports/export` | Reports screen supports dynamic filters, preview paging, CSV/PDF/XLSX export | `ReportsServiceTest`, full Maven suite | Student, academic structure, attendance, fee, exam, hostel, transport, audit preview/export paths use canonical module services or report exporters. |
+| PDF export | TESTED | `PdfExportService.java`, module report exporters | None | Existing and report export routes | Reports export action uses `.pdf` files | `ReportsServiceTest`, full Maven suite | Report PDFs include title, school metadata, generated timestamp, applied filters, headers, and rows. |
+| Excel export | TESTED | `ExcelExportService.java`, module report exporters, reports Flutter data/repository | None | Existing and report export routes | Reports export action uses `.xlsx` files | `ReportsServiceTest`, full Maven suite | Report Excel routes preserve full filtered datasets; Flutter filename extension corrected to `.xlsx`. |
+| Dashboard canonical attendance/fee data and RBAC | TESTED | `DashboardService.java`, `DashboardController.java`, `DashboardServiceTest.java`, `dashboard_repository_impl.dart`, `attendance_page.dart` | None | `/v1/dashboard/summary`, `/v1/dashboard/today-attendance` | Dashboard falls back to attendance-only metrics when full summary is forbidden; attendance save invalidates dashboard provider | `DashboardServiceTest`, full Maven suite | Today attendance uses date-effective eligible student counts and shared attendance percentage math. Fee totals use canonical fee assignment totals. Summary is gated by `REPORTS_READ`; today attendance is gated by `ATTENDANCE_READ`. |
+| Flutter Attendance UI | IMPLEMENTED - TEST PENDING | Attendance Flutter data source, model, repository, page | None | Attendance roster, summary, monthly APIs | Date-aware roster and summary/monthly strip implemented | Static review only | Flutter/Dart toolchain did not respond, so analyzer/test validation remains blocked locally. |
+| Flutter Reports UI | IMPLEMENTED - TEST PENDING | Reports Flutter data source, model, repository, page | None | Reports options, preview, export APIs | Dynamic filters, preview paging, empty/error states, CSV/PDF/XLSX export implemented | Static review only | Flutter/Dart toolchain did not respond, so analyzer/test validation remains blocked locally. |
+| Flutter Dashboard UI | IMPLEMENTED - TEST PENDING | Dashboard Flutter repository/page, attendance invalidation | None | Dashboard summary and today-attendance APIs | Existing dashboard consumes canonical backend payloads and RBAC fallback | Static review only | Flutter/Dart toolchain did not respond, so analyzer/test validation remains blocked locally. |
+| V29 migration validation | BLOCKED | `V29__phase4_attendance_roster_dashboard_reports.sql` | V29 | N/A | N/A | Not run against PostgreSQL | Migration file exists; PostgreSQL/Flyway runtime validation could not run because local PostgreSQL tooling and Docker daemon were unavailable. |
+
+Verification:
+
+```powershell
+$env:JAVA_HOME='C:\Program Files\Java\jdk-21.0.4'; $env:Path="$env:JAVA_HOME\bin;$env:Path"; .\mvnw.cmd -q "-Dtest=AttendanceServiceTest" test
+$env:JAVA_HOME='C:\Program Files\Java\jdk-21.0.4'; $env:Path="$env:JAVA_HOME\bin;$env:Path"; .\mvnw.cmd -q "-Dtest=ReportsServiceTest" test
+$env:JAVA_HOME='C:\Program Files\Java\jdk-21.0.4'; $env:Path="$env:JAVA_HOME\bin;$env:Path"; .\mvnw.cmd -q "-Dtest=AttendanceServiceTest,ReportsServiceTest,DashboardServiceTest" test
+$env:JAVA_HOME='C:\Program Files\Java\jdk-21.0.4'; $env:Path="$env:JAVA_HOME\bin;$env:Path"; .\mvnw.cmd -q test
+```
+
+Result: PASS. 30 test classes, 156 tests, 0 failures, 0 errors, 0 skipped.
+
+Additional validation notes:
+
+- Local default `JAVA_HOME` still points to Java 8, which cannot compile this Java 21 project. Verification used installed JDK 21 at `C:\Program Files\Java\jdk-21.0.4`.
+- PostgreSQL/Flyway validation: BLOCKED - retry confirmed `psql`, `pg_isready`, and `postgres` are not in PATH. Docker client exists, but Docker daemon is not running. V29 has not been runtime-validated against PostgreSQL.
+- Flutter validation: BLOCKED - `dart --version` and `flutter --version` hung silently and were interrupted from `frontend/`; `flutter analyze` and `flutter test` were not run because base Flutter/Dart commands did not complete.
+
+Remaining Phase 4 items:
+
+- BLOCKED: Run `flutter analyze` and `flutter test` once the local Flutter/Dart toolchain responds.
+- BLOCKED: Run PostgreSQL/Flyway V29 validation once local PostgreSQL or Docker daemon is available.
+- DEFERRED: Non-teaching staff attendance.
+- DEFERRED: Leave integration.
+
+## Phase 5 - Staff Management, Leave, Payroll Foundation, Communication, Settings
+
+Status: IMPLEMENTED AND BACKEND-TESTED; FLUTTER/POSTGRESQL VALIDATION BLOCKED. Backend implementation is complete for the intended Phase 5 scope, the Phase 5 Flutter surfaces have been implemented and statically reviewed, and the full Maven suite passes on Java 21. Flutter analyzer/test validation and PostgreSQL/Flyway runtime validation remain blocked by local toolchain/environment availability.
+
+Completion snapshot:
+
+- Overall: 94%
+- Backend: 100%
+- Frontend: 95%
+- Testing: 88%
+
+### Phase 5 Current Status
+
+| Requirement | Status | Notes |
+|---|---|---|
+| Canonical Staff master/model | TESTED | Canonical staff entity, repositories, service layer, controller DTOs, Flutter data layer, and service tests exist. |
+| Teacher to Staff relationship | TESTED | Teacher records can link to staff identities; service tests cover teacher/staff linking and unlinking. |
+| Department CRUD | TESTED | Department create/update/list backend paths and Flutter management UI are implemented; service tests cover create/update behavior. |
+| Designation CRUD | TESTED | Designation create/update/list backend paths and Flutter management UI are implemented; service tests cover create/update behavior. |
+| Staff profile CRUD | TESTED | Staff create/update/list/get/deactivate/exit backend paths and Flutter UI are implemented; lifecycle paths are covered by service tests. |
+| Staff user-account linkage | TESTED | Staff-to-user validation and linkage logic exists and is covered by service tests. |
+| Non-teaching staff attendance | TESTED | Staff attendance roster/save logic supports non-teaching staff and is covered by service tests. |
+| Staff monthly attendance summary | TESTED | Daily, summary, monthly, and history APIs exist; summary/monthly/history behavior is covered. |
+| Leave types | TESTED | Leave type CRUD logic exists and create/default behavior is covered. |
+| Leave request workflow | TESTED | Leave request creation and overlap protection are covered. |
+| Leave approve/reject/cancel | TESTED | Approval, rejection, cancellation, and approval permission checks are covered. |
+| Leave to Attendance integration | TESTED | Approved leave applies staff attendance entries and is covered by tests. |
+| Payroll salary structure | TESTED | Salary structure create/update and calculated totals are covered. |
+| Staff salary assignment | TESTED | Assignment and effective-date closeout logic is covered. |
+| Payroll period generation | TESTED | Payroll generation is covered by service tests. |
+| Gross/deduction/net calculation | TESTED | Payroll calculation snapshots are covered by service tests. |
+| Payroll history preservation | TESTED | Generated payroll records preserve salary snapshots; preservation and mark-paid behavior are covered. |
+| Payroll RBAC/security | TESTED | Payroll service guards and controller permission gates are covered. |
+| Staff documents | TESTED | Staff document create/update/archive lifecycle is implemented and covered. |
+| Announcements | TESTED | Announcement publishing is covered by communication tests. |
+| Circulars / Notice Board | TESTED | Communication list/history covers circulars, and notice-board type support is implemented. |
+| Events | TESTED | Event communication creation and event-field validation path are covered. |
+| Communication audience targeting | TESTED | Staff/all audience counts and division audience validation are covered. |
+| Communication history | TESTED | Communication listing/history with filters and pagination is covered. |
+| School Profile settings | TESTED | Backend defaults, validation, and Flutter settings group rendering are implemented; settings tests cover grouped defaults. |
+| Academic/Exam/Fee settings | TESTED | Backend settings groups and Flutter settings fields are implemented; settings tests cover grouped defaults/validation. |
+| Notification / Email / SMS settings | TESTED | Backend settings groups and Flutter fields are implemented; sensitive email/SMS masking is covered. |
+| Security/Application settings | TESTED | Backend settings groups and Flutter fields are implemented; validation coverage exists for application/security-style settings. |
+| Sensitive settings masking | TESTED | Sensitive email/SMS settings are masked and masked values preserve existing secrets; service tests cover both. |
+| Settings RBAC | TESTED | Settings endpoints remain permission-gated and are covered by API security regression tests. |
+| Staff Reports integration | TESTED | Staff report export/preview integration is covered through reports and staff report exporter tests. |
+| Dashboard staff metrics integration | TESTED | Dashboard staff metrics use canonical staff data and are covered by dashboard tests. |
+| Flutter Staff UI | IMPLEMENTED - TEST PENDING | Staff workspace, routes, module registry/menu wiring, data source, repository, providers, staff forms, lifecycle actions, and documents UI are implemented; analyzer/test is blocked. |
+| Flutter Attendance/Leave UI | IMPLEMENTED - TEST PENDING | Staff attendance daily roster, monthly summary, history, leave type/request/review/cancel flows are implemented inside the staff workspace; analyzer/test is blocked. |
+| Flutter Payroll UI | IMPLEMENTED - TEST PENDING | Salary structures, salary assignments, payroll generation, payroll history/details, and mark-paid UI are implemented; analyzer/test is blocked. |
+| Flutter Communication UI | IMPLEMENTED - TEST PENDING | Announcements, circulars, notice-board items, events, audience targeting, publish/unpublish/archive, and history UI are implemented; analyzer/test is blocked. |
+| Flutter Settings UI | IMPLEMENTED - TEST PENDING | Settings UI now covers Phase 5 settings groups and masks sensitive email/SMS fields; analyzer/test is blocked. |
+| Phase 5 migration status | IMPLEMENTED - TEST PENDING | Latest migration is `V30__phase5_staff_leave_payroll_communication_settings.sql`; runtime validation is blocked by local PostgreSQL/Docker availability. |
+| Backend tests | TESTED | Full Maven suite passes on Java 21. |
+| Flutter analyze/test | BLOCKED | `flutter --version` hung silently and was interrupted; analyzer/tests were not run because the base toolchain command did not complete. |
+| PostgreSQL/Flyway validation | BLOCKED | Docker did not respond within the bounded check and local PostgreSQL tools are not in PATH. |
+
+### Phase 5 Work Completed
+
+| Area | Status | Files changed | Migration | API/UI | Tests | Notes |
+|---|---|---|---|---|---|---|
+| Staff master, departments, designations, documents | TESTED | `src/main/java/com/school/erp/modules/staff/**`, `frontend/lib/src/features/staff/**` | `V30__phase5_staff_leave_payroll_communication_settings.sql` | Staff backend APIs and Flutter staff workspace are implemented | `StaffServiceTest` | Canonical staff model exists with department, designation, teacher link, user link, staff documents, and lifecycle fields. |
+| Staff attendance and leave | TESTED | `StaffAttendanceService.java`, `StaffLeaveService.java`, staff attendance/leave DTOs/repositories, `frontend/lib/src/features/staff/**` | V30 | Backend APIs and Flutter staff attendance/leave UI are implemented | `StaffAttendanceServiceTest`, `StaffLeaveServiceTest` | Non-teaching staff attendance, staff summaries/history, leave request workflow, approval/rejection/cancellation, and attendance integration are covered. |
+| Payroll foundation | TESTED | `PayrollService.java`, payroll DTOs/entities/repositories, `frontend/lib/src/features/staff/**` | V30 | Backend APIs and Flutter payroll UI are implemented | `PayrollServiceTest` | Salary structures, assignments, payroll generation, gross/deduction/net snapshots, payroll record history, and mark-paid behavior are covered. |
+| Communication | TESTED | `src/main/java/com/school/erp/modules/communications/**`, `frontend/lib/src/features/communications/**` | V30 | Backend APIs and Flutter communication UI are implemented | `CommunicationServiceTest` | Announcements, circulars, notices, events, audience targeting, publication state, and history foundations are covered. |
+| Settings expansion | TESTED | `ApplicationSettingsService.java`, `frontend/lib/src/features/settings/presentation/pages/settings_page.dart` | None | Existing settings backend API and Flutter settings UI were expanded | `ApplicationSettingsServiceTest`, `ApiSecurityRegressionTest` | School, academic, exam, fee, notification, email, SMS, application, security, and backup settings defaults/validation are present; sensitive masking exists. |
+| Staff reports and dashboard staff metrics | TESTED | `ReportsService.java`, `StaffReportExportService.java`, `DashboardService.java`, `DashboardSummaryResponse.java`, Flutter reports/dashboard files | None | Existing reports/dashboard APIs and Flutter surfaces are expanded | `ReportsServiceTest`, `StaffReportExportServiceTest`, `DashboardServiceTest` | Staff reports are integrated into report options/export/preview, and dashboard staff counts use canonical staff records. |
+
+Verification:
+
+```powershell
+$env:JAVA_HOME='C:\Program Files\Java\jdk-21.0.4'; $env:Path="$env:JAVA_HOME\bin;$env:Path"; .\mvnw.cmd test
+```
+
+Result: PASS. 37 test classes, 221 tests, 0 failures, 0 errors, 0 skipped.
+
+Additional validation notes:
+
+- Local default `JAVA_HOME` still points to Java 8, which cannot compile this Java 21 project. Verification used installed JDK 21 at `C:\Program Files\Java\jdk-21.0.4`.
+- Latest migration: `V30__phase5_staff_leave_payroll_communication_settings.sql`.
+- PostgreSQL/Flyway validation: BLOCKED - `docker info` did not return within the bounded check and was interrupted; `psql`, `pg_isready`, and `postgres` are not in PATH. V30 has not been runtime-validated against PostgreSQL.
+- Flutter validation: BLOCKED - `flutter --version` hung silently from `frontend/` and was interrupted; `flutter analyze` and `flutter test` were not run because the base Flutter command did not complete.
+
+Remaining Phase 5 items:
+
+- BLOCKED: Run `flutter analyze` and `flutter test` once the local Flutter/Dart toolchain responds.
+- BLOCKED: Run PostgreSQL/Flyway V30 validation once local PostgreSQL or Docker daemon is available.
+
+Deferred beyond Phase 5:
+
+- DEFERRED: Partial refund ledger.
+- DEFERRED: Promotion/detention workflows.
+- DEFERRED: Historical certificate rendering.
+- DEFERRED: Advanced payroll accounting/disbursement beyond the Phase 5 payroll foundation.
+- DEFERRED: Final 18-module audit and re-score.
+
+## Phase 6 - Library Management
+
+Status: IMPLEMENTED AND BACKEND-TESTED; FLUTTER/POSTGRESQL VALIDATION BLOCKED. Backend implementation is complete for the intended Phase 6 scope, the Flutter library workspace has been implemented and statically reviewed, and the full Maven suite passes on Java 21. Flutter analyzer/test validation and PostgreSQL/Flyway runtime validation remain blocked by local toolchain/environment availability.
+
+Completion snapshot:
+
+- Overall: 94%
+- Backend: 100%
+- Frontend: 92%
+- Testing: 86%
+
+### Phase 6 Work Completed
+
+| Area | Status | Files changed | Migration | API/UI | Tests | Notes |
+|---|---|---|---|---|---|---|
+| Library master data | TESTED | `src/main/java/com/school/erp/modules/library/**` | `V31__phase6_library_management.sql` | Categories, authors, publishers, books | `LibraryServiceTest` | Book categories, authors, publishers, book metadata, active/inactive handling, and catalog search/filtering are implemented. |
+| Book copies and inventory statuses | TESTED | Library domain/service/controller/repositories, Flutter library feature files | V31 | `/v1/library/copies` and copy status actions | `LibraryServiceTest` | Copy accession numbers, availability, issued/lost/damaged/withdrawn states, shelf/location data, and inventory summary counts are implemented. |
+| Memberships | TESTED | Library membership domain/service/controller/repositories, Flutter library feature files | V31 | `/v1/library/memberships` | `LibraryServiceTest` | Student, teacher, and staff memberships validate canonical member identity, enforce duplicate membership protection, and support active/inactive lifecycle. |
+| Issue, return, overdue, lost/damaged, fines | TESTED | `LibraryService.java`, library entities/repositories/controller DTOs | V31 | Loan issue/return/lost and fine pay/waive APIs | `LibraryServiceTest` | Circulation rules use library settings for loan days, max active loans, and fine-per-day calculation. Returns can mark damaged copies; lost loans create pending fines. |
+| Library reports and exports | TESTED | `LibraryReportExportService.java`, `ReportsService.java`, report tests, Flutter reports page | None beyond V31 permissions | Report options/preview/export include library inventory, available, issued, overdue, member history, fine, and lost/damaged reports | `LibraryReportExportServiceTest`, `ReportsServiceTest` | Library reports support CSV/PDF/XLSX export, preview pagination, filtering, and `LIBRARY_READ` authorization. |
+| Dashboard library metrics | TESTED | `DashboardService.java`, `DashboardSummaryResponse.java`, Flutter dashboard model/repository | None | `/v1/dashboard/summary` | `DashboardServiceTest` | Dashboard summary now includes total library books, available copies, overdue loans, and pending library fine amount from canonical library repositories. |
+| RBAC, permissions, and menu | TESTED | `V31__phase6_library_management.sql`, `LibraryController.java`, `ApiSecurityRegressionTest.java`, Flutter route/menu policy/sidebar | V31 | `LIBRARY_READ`, `LIBRARY_CREATE`, `LIBRARY_UPDATE`, `LIBRARY_DELETE`, `LIBRARY_ISSUE`, `LIBRARY_RETURN`, `LIBRARY_FINE` | `ApiSecurityRegressionTest`, full Maven suite | Backend endpoints are permission-gated; role/menu seeds and Flutter module routing/sidebar policy are wired to module id `library`. |
+| Flutter Library UI | IMPLEMENTED - TEST PENDING | `frontend/lib/src/features/library/**`, router, API paths, dashboard/menu/sidebar/report integrations | None | Library management screen at `/modules/library` | Static review only | Summary, catalog, copies, memberships, circulation, fines, and reports handoff are implemented. Analyzer/test is blocked because Flutter/Dart commands hang locally. |
+| V31 migration status | IMPLEMENTED - TEST PENDING | `V31__phase6_library_management.sql` | V31 | Schema, settings, permissions, menu seed | Full Maven suite with H2 tests; PostgreSQL runtime validation blocked | Migration file exists and is latest. PostgreSQL/Flyway validation could not run because Docker daemon is unavailable and local PostgreSQL tools are not in PATH. |
+
+Verification:
+
+```powershell
+$env:JAVA_HOME='C:\Program Files\Java\jdk-21.0.4'; $env:Path="$env:JAVA_HOME\bin;$env:Path"; .\mvnw.cmd test
+```
+
+Result: PASS. 39 test classes, 236 tests, 0 failures, 0 errors, 0 skipped.
+
+Additional validation notes:
+
+- Local default `JAVA_HOME` still points to Java 8, which cannot compile this Java 21 project. Verification used installed JDK 21 at `C:\Program Files\Java\jdk-21.0.4`.
+- Latest migration: `V31__phase6_library_management.sql`.
+- PostgreSQL/Flyway validation: BLOCKED - `psql` and `pg_isready` are not in PATH. Docker CLI exists (`Docker version 26.1.4`), but `docker info` reports the Docker daemon is not running, so V31 has not been runtime-validated against PostgreSQL.
+- Flutter validation: BLOCKED - `dart format` and `flutter --version` hung silently and were interrupted; `flutter analyze` and `flutter test` were not run because the base Flutter/Dart commands did not complete.
+
+Remaining Phase 6 items:
+
+- BLOCKED: Run `flutter analyze` and `flutter test` once the local Flutter/Dart toolchain responds.
+- BLOCKED: Run PostgreSQL/Flyway V31 validation once local PostgreSQL or Docker daemon is available.
+
+Deferred beyond Phase 6:
+
+- DEFERRED: Backup and restore workflows.
+- DEFERRED: Mobile app packaging.
+- DEFERRED: Parent/student/teacher portal hardening beyond existing role-aware library read access.
+- DEFERRED: Final 18-module audit and re-score.

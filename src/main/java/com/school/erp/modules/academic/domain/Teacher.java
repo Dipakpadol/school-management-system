@@ -63,6 +63,9 @@ public class Teacher extends BaseEntity {
 	@Column(name = "user_account_id")
 	private UUID userAccountId;
 
+	@Column(name = "staff_id")
+	private UUID staffId;
+
 	@Column(nullable = false)
 	private boolean active = true;
 
@@ -143,6 +146,10 @@ public class Teacher extends BaseEntity {
 		this.status = status == null ? TeacherStatus.ACTIVE : status;
 		this.active = this.status == TeacherStatus.ACTIVE;
 		this.userAccountId = userAccountId;
+	}
+
+	public void linkStaff(UUID staffId) {
+		this.staffId = staffId;
 	}
 
 	private String normalizeEmployeeNumber(String value) {

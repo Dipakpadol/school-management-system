@@ -299,6 +299,34 @@ public class HostelService {
 				.map(this::toAllocationResponse);
 	}
 
+	@Transactional(readOnly = true)
+	public List<HostelAllocationResponse> allocationReport(
+			UUID academicYearId,
+			UUID hostelId,
+			UUID roomId,
+			UUID studentId,
+			HostelAllocationStatus status) {
+		if (academicYearId != null) {
+			academicHierarchyService.loadAcademicYear(academicYearId);
+		}
+		if (hostelId != null) {
+			loadHostel(hostelId);
+		}
+		if (roomId != null) {
+			HostelRoom room = loadRoom(roomId);
+			if (hostelId != null && !room.getHostel().getId().equals(hostelId)) {
+				throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Room does not belong to the selected hostel.");
+			}
+		}
+		if (studentId != null) {
+			studentRepository.findByIdAndDeletedFalse(studentId)
+					.orElseThrow(() -> new ResourceNotFoundException("Student", studentId));
+		}
+		return allocationRepository.findReportAllocations(academicYearId, hostelId, roomId, studentId, status).stream()
+				.map(this::toAllocationResponse)
+				.toList();
+	}
+
 	@Transactional
 	public HostelAllocationResponse assignStudentToRoom(UUID roomId, RoomStudentAssignmentRequest request) {
 		Student student = loadStudent(request.studentId());

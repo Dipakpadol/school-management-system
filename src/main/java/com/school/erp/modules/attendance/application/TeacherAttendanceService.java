@@ -1,7 +1,6 @@
 package com.school.erp.modules.attendance.application;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
@@ -275,18 +274,11 @@ public class TeacherAttendanceService {
 	}
 
 	private long count(List<TeacherAttendanceRecord> records, AttendanceStatus status) {
-		return records.stream().filter(record -> record.getStatus() == status).count();
+		return AttendanceSummaryCalculator.count(records, status, TeacherAttendanceRecord::getStatus);
 	}
 
 	private BigDecimal attendancePercentage(List<TeacherAttendanceRecord> records) {
-		long total = records.size();
-		if (total == 0) {
-			return BigDecimal.ZERO;
-		}
-		return BigDecimal.valueOf(count(records, AttendanceStatus.PRESENT) + count(records, AttendanceStatus.LATE))
-				.add(BigDecimal.valueOf(count(records, AttendanceStatus.HALF_DAY)).multiply(BigDecimal.valueOf(0.5)))
-				.multiply(BigDecimal.valueOf(100))
-				.divide(BigDecimal.valueOf(total), 2, RoundingMode.HALF_UP);
+		return AttendanceSummaryCalculator.percentage(records, TeacherAttendanceRecord::getStatus);
 	}
 
 	private AttendanceContext attendanceContext(AcademicYear selectedYear, List<TeacherAttendanceRecord> records) {

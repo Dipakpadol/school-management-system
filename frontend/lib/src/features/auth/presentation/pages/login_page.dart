@@ -6,6 +6,7 @@ import '../../../../app/router/app_routes.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../controllers/auth_controller.dart';
+import '../widgets/auth_page_shell.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -130,7 +131,7 @@ class _LoginForm extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'School Management System',
+                  'Star International School ERP',
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w800,
@@ -148,14 +149,14 @@ class _LoginForm extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Admin Panel',
+            'Secure staff and admin portal',
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.outline,
             ),
           ),
           const SizedBox(height: 28),
           if (errorMessage != null) ...[
-            _ErrorBanner(message: errorMessage!),
+            AuthNotice(message: errorMessage!, error: true),
             const SizedBox(height: 16),
           ],
           AppTextField(
@@ -215,40 +216,6 @@ class _LoginForm extends StatelessWidget {
                 child: const Text('Sign up'),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.error_outline, color: theme.colorScheme.onErrorContainer),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onErrorContainer,
-              ),
-            ),
           ),
         ],
       ),

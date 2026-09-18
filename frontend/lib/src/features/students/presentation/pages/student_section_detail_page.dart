@@ -10,6 +10,7 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_data_table.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../hostel/data/models/hostel_models.dart';
 import '../../../hostel/presentation/controllers/hostel_providers.dart';
@@ -153,42 +154,40 @@ class _DetailHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 24, 10),
-        child: Wrap(
-          spacing: 12,
-          runSpacing: 10,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            IconButton(
-              tooltip: 'Back',
-              onPressed: onBack,
-              icon: const Icon(Icons.arrow_back),
-            ),
-            AppButton(
-              label: 'Add student',
-              icon: Icons.person_add_alt_1_outlined,
-              onPressed: onAddStudent,
-            ),
-            OutlinedButton.icon(
-              onPressed: onImport,
-              icon: const Icon(Icons.upload_file_outlined),
-              label: const Text('Import students'),
-            ),
-            OutlinedButton.icon(
-              onPressed: onTemplate,
-              icon: const Icon(Icons.table_view_outlined),
-              label: const Text('Download template'),
-            ),
-            OutlinedButton.icon(
-              onPressed: onExport,
-              icon: const Icon(Icons.download_outlined),
-              label: const Text('Export students'),
-            ),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+      child: AppPageHeader(
+        title: 'Division Students',
+        subtitle:
+            'Manage students, class teachers, subject teachers, imports, templates, and exports for this division.',
+        icon: Icons.school_outlined,
+        actions: [
+          IconButton.outlined(
+            tooltip: 'Back',
+            onPressed: onBack,
+            icon: const Icon(Icons.arrow_back),
+          ),
+          AppButton(
+            label: 'Add student',
+            icon: Icons.person_add_alt_1_outlined,
+            onPressed: onAddStudent,
+          ),
+          OutlinedButton.icon(
+            onPressed: onImport,
+            icon: const Icon(Icons.upload_file_outlined),
+            label: const Text('Import students'),
+          ),
+          OutlinedButton.icon(
+            onPressed: onTemplate,
+            icon: const Icon(Icons.table_view_outlined),
+            label: const Text('Download template'),
+          ),
+          OutlinedButton.icon(
+            onPressed: onExport,
+            icon: const Icon(Icons.download_outlined),
+            label: const Text('Export students'),
+          ),
+        ],
       ),
     );
   }
@@ -363,11 +362,9 @@ class _StudentsTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (students.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Text('No students found.'),
-        ),
+      return const AppEmptyState(
+        message: 'No students found.',
+        icon: Icons.school_outlined,
       );
     }
 
@@ -413,22 +410,10 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final active = status == 'ACTIVE';
     final color = active ? const Color(0xFF16A34A) : const Color(0xFF64748B);
-
-    return Container(
-      height: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        status,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
+    return AppStatusBadge(
+      label: status,
+      color: color,
+      icon: active ? Icons.check_circle_outline : Icons.pause_circle_outline,
     );
   }
 }

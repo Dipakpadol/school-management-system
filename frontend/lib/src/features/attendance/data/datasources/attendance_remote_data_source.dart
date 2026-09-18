@@ -41,6 +41,7 @@ class AttendanceRemoteDataSource {
     required String academicYearId,
     required String classId,
     required String sectionId,
+    required String date,
   }) async {
     final response = await _apiClient.get<Map<String, dynamic>>(
       ApiPaths.attendanceStudents,
@@ -48,6 +49,7 @@ class AttendanceRemoteDataSource {
         'academicYearId': academicYearId,
         'classId': classId,
         'sectionId': sectionId,
+        'date': date,
       },
     );
     return _unwrapList(response.data, AttendanceStudentModel.fromJson);
@@ -69,6 +71,46 @@ class AttendanceRemoteDataSource {
       },
     );
     return DailyAttendanceModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<AttendanceSummaryModel> summary({
+    required String academicYearId,
+    required String classId,
+    required String sectionId,
+    required String fromDate,
+    required String toDate,
+  }) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.attendanceSummary,
+      queryParameters: {
+        'academicYearId': academicYearId,
+        'classId': classId,
+        'sectionId': sectionId,
+        'fromDate': fromDate,
+        'toDate': toDate,
+      },
+    );
+    return AttendanceSummaryModel.fromJson(_unwrapData(response.data));
+  }
+
+  Future<AttendanceSummaryModel> monthly({
+    required String academicYearId,
+    required String classId,
+    required String sectionId,
+    required int year,
+    required int month,
+  }) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      ApiPaths.attendanceMonthly,
+      queryParameters: {
+        'academicYearId': academicYearId,
+        'classId': classId,
+        'sectionId': sectionId,
+        'year': year,
+        'month': month,
+      },
+    );
+    return AttendanceSummaryModel.fromJson(_unwrapData(response.data));
   }
 
   Future<void> saveDaily(Map<String, dynamic> payload) async {

@@ -6,9 +6,11 @@ import '../../../../app/router/app_routes.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_confirm_dialog.dart';
 import '../../../../core/widgets/app_data_table.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../fees/presentation/controllers/fees_providers.dart';
 import '../../../fees/presentation/widgets/fee_widgets.dart';
@@ -102,6 +104,15 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
       length: 2,
       child: Column(
         children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 24, 24, 12),
+            child: AppPageHeader(
+              title: 'Hostel Management',
+              subtitle:
+                  'Manage hostel rooms, beds, allocations, hostel fees, and student residential status.',
+              icon: Icons.meeting_room_outlined,
+            ),
+          ),
           Material(
             color: Colors.white,
             child: Row(
@@ -465,8 +476,7 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                       size: page.size,
                       totalElements: page.totalElements,
                       totalPages: page.totalPages,
-                      onPageChanged: (page) =>
-                          setState(() => _feePage = page),
+                      onPageChanged: (page) => setState(() => _feePage = page),
                     ),
                   ],
                 );
@@ -587,25 +597,15 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
   }
 
   Future<void> _deleteHostel(HostelSummaryModel hostel) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppConfirmDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete hostel'),
-        content: Text(hostel.name),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.of(context).pop(true),
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Delete'),
-          ),
-        ],
-      ),
+      title: 'Delete hostel',
+      message: hostel.name,
+      confirmLabel: 'Delete',
+      confirmIcon: Icons.delete_outline,
+      destructive: true,
     );
-    if (confirmed != true || !mounted) {
+    if (!confirmed || !mounted) {
       return;
     }
     final result = await ref
@@ -773,25 +773,15 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
     HostelRoomSummaryModel room,
     String? academicYearId,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppConfirmDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete room'),
-        content: Text('${room.hostelName} - Room ${room.roomNumber}'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.of(context).pop(true),
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Delete'),
-          ),
-        ],
-      ),
+      title: 'Delete room',
+      message: '${room.hostelName} - Room ${room.roomNumber}',
+      confirmLabel: 'Delete',
+      confirmIcon: Icons.delete_outline,
+      destructive: true,
     );
-    if (confirmed != true || !mounted) {
+    if (!confirmed || !mounted) {
       return;
     }
     final result = await ref.read(hostelRepositoryProvider).deleteRoom(room.id);
@@ -993,7 +983,9 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                             );
                             final studentId = selectedStudentId;
                             if (studentId != null) {
-                              ref.invalidate(studentFeeSummaryProvider(studentId));
+                              ref.invalidate(
+                                studentFeeSummaryProvider(studentId),
+                              );
                               ref.invalidate(
                                 studentCurrentHostelAllocationProvider(
                                   StudentHostelAllocationKey(
@@ -1005,7 +997,9 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                               ref.invalidate(
                                 studentHostelAllocationsProvider(studentId),
                               );
-                              ref.invalidate(studentHostelFeesProvider(studentId));
+                              ref.invalidate(
+                                studentHostelFeesProvider(studentId),
+                              );
                             }
                             _snack(context, 'Student assigned to hostel room.');
                             Navigator.of(context).pop();
@@ -1163,7 +1157,9 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                       success: (_) {
                         ref.invalidate(hostelRoomDetailsProvider(currentKey));
                         ref.invalidate(hostelRoomsProvider(academicYearId));
-                        ref.invalidate(studentFeeSummaryProvider(student.studentId));
+                        ref.invalidate(
+                          studentFeeSummaryProvider(student.studentId),
+                        );
                         ref.invalidate(
                           studentCurrentHostelAllocationProvider(
                             StudentHostelAllocationKey(
@@ -1175,7 +1171,9 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                         ref.invalidate(
                           studentHostelAllocationsProvider(student.studentId),
                         );
-                        ref.invalidate(studentHostelFeesProvider(student.studentId));
+                        ref.invalidate(
+                          studentHostelFeesProvider(student.studentId),
+                        );
                         _snack(context, 'Hostel room changed.');
                         Navigator.of(context).pop();
                       },
@@ -1234,7 +1232,9 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                   success: (_) {
                     ref.invalidate(hostelRoomDetailsProvider(key));
                     ref.invalidate(hostelRoomsProvider(key.academicYearId));
-                    ref.invalidate(studentFeeSummaryProvider(student.studentId));
+                    ref.invalidate(
+                      studentFeeSummaryProvider(student.studentId),
+                    );
                     ref.invalidate(
                       studentCurrentHostelAllocationProvider(
                         StudentHostelAllocationKey(
@@ -1246,7 +1246,9 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
                     ref.invalidate(
                       studentHostelAllocationsProvider(student.studentId),
                     );
-                    ref.invalidate(studentHostelFeesProvider(student.studentId));
+                    ref.invalidate(
+                      studentHostelFeesProvider(student.studentId),
+                    );
                     _snack(context, 'Student vacated from room.');
                     Navigator.of(context).pop();
                   },
@@ -1591,25 +1593,15 @@ class _HostelManagementPageState extends ConsumerState<HostelManagementPage> {
     HostelFeeStructureModel structure,
     HostelFeeStructureFilter filter,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppConfirmDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete hostel fee'),
-        content: Text(structure.feeStructureName),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.of(context).pop(true),
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Delete'),
-          ),
-        ],
-      ),
+      title: 'Delete hostel fee',
+      message: structure.feeStructureName,
+      confirmLabel: 'Delete',
+      confirmIcon: Icons.delete_outline,
+      destructive: true,
     );
-    if (confirmed != true || !mounted) {
+    if (!confirmed || !mounted) {
       return;
     }
     final result = await ref
@@ -2112,22 +2104,10 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = label == 'ACTIVE' || label == 'PAID';
-    final color = active ? Colors.green : Colors.orange;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: color.shade700,
-          fontWeight: FontWeight.w800,
-          fontSize: 12,
-        ),
-      ),
+    return AppStatusBadge(
+      label: label,
+      color: active ? const Color(0xFF16A34A) : const Color(0xFFF59E0B),
+      icon: active ? Icons.check_circle_outline : Icons.schedule_outlined,
     );
   }
 }

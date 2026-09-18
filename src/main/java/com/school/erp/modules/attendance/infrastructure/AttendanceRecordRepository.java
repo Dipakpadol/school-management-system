@@ -39,6 +39,19 @@ public interface AttendanceRecordRepository extends BaseRepository<AttendanceRec
 			from AttendanceRecord record
 			where record.deleted = false
 			  and record.attendanceDate = :attendanceDate
+			  and record.student.id in :studentIds
+			order by record.updatedAt desc, record.createdAt desc
+			""")
+	List<AttendanceRecord> findByStudentIdsAndDate(
+			@Param("studentIds") List<UUID> studentIds,
+			@Param("attendanceDate") LocalDate attendanceDate);
+
+	@EntityGraph(attributePaths = { "student", "academicYear", "classEntity", "section" })
+	@Query("""
+			select record
+			from AttendanceRecord record
+			where record.deleted = false
+			  and record.attendanceDate = :attendanceDate
 			  and (:academicYearId is null or record.academicYear.id = :academicYearId)
 			  and (:classId is null or record.classEntity.id = :classId)
 			  and (:sectionId is null or record.section.id = :sectionId)
@@ -113,6 +126,24 @@ public interface AttendanceRecordRepository extends BaseRepository<AttendanceRec
 			order by record.attendanceDate asc, record.student.firstName asc, record.student.lastName asc
 			""")
 	List<AttendanceRecord> findForExport(
+			@Param("academicYearId") UUID academicYearId,
+			@Param("classId") UUID classId,
+			@Param("sectionId") UUID sectionId,
+			@Param("fromDate") LocalDate fromDate,
+			@Param("toDate") LocalDate toDate);
+
+	@EntityGraph(attributePaths = { "student", "academicYear", "classEntity", "section" })
+	@Query("""
+			select record
+			from AttendanceRecord record
+			where record.deleted = false
+			  and record.academicYear.id = :academicYearId
+			  and record.classEntity.id = :classId
+			  and record.section.id = :sectionId
+			  and record.attendanceDate between :fromDate and :toDate
+			order by record.attendanceDate asc, record.student.firstName asc, record.student.lastName asc
+			""")
+	List<AttendanceRecord> findClassSummaryRecords(
 			@Param("academicYearId") UUID academicYearId,
 			@Param("classId") UUID classId,
 			@Param("sectionId") UUID sectionId,

@@ -9,9 +9,10 @@ import '../../features/auth/presentation/pages/reset_password_page.dart';
 import '../../features/auth/presentation/pages/signup_page.dart';
 import '../../features/audit_logs/presentation/pages/audit_logs_page.dart';
 import '../../features/attendance/presentation/pages/attendance_page.dart';
+import '../../features/communications/presentation/pages/communication_management_page.dart';
 import '../../features/dashboard/domain/menu_policy.dart';
 import '../../features/dashboard/presentation/dashboard_page.dart';
-import '../../features/dashboard/presentation/module_placeholder_page.dart';
+import '../../features/dashboard/presentation/module_records_page.dart';
 import '../../features/fees/presentation/pages/fee_structure_form_page.dart';
 import '../../features/fees/presentation/pages/fee_assignments_page.dart';
 import '../../features/fees/presentation/pages/fee_defaulters_page.dart';
@@ -20,9 +21,11 @@ import '../../features/fees/presentation/pages/payment_collection_page.dart';
 import '../../features/fees/presentation/pages/student_fee_assignment_page.dart';
 import '../../features/exams/presentation/pages/exams_page.dart';
 import '../../features/hostel/presentation/pages/hostel_management_page.dart';
+import '../../features/library/presentation/pages/library_management_page.dart';
 import '../../features/notifications/presentation/pages/notification_management_page.dart';
 import '../../features/reports/presentation/pages/reports_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
+import '../../features/staff/presentation/pages/staff_management_page.dart';
 import '../../features/settings/presentation/pages/role_permission_page.dart';
 import '../../features/students/presentation/pages/student_profile_page.dart';
 import '../../features/students/presentation/pages/student_section_detail_page.dart';
@@ -223,6 +226,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const TeacherAttendancePage(),
       ),
       GoRoute(
+        path: AppRoutes.staff,
+        name: AppRouteName.staff,
+        builder: (context, state) => const StaffManagementPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.communications,
+        name: AppRouteName.communications,
+        builder: (context, state) => const CommunicationManagementPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.library,
+        name: AppRouteName.library,
+        builder: (context, state) => const LibraryManagementPage(),
+      ),
+      GoRoute(
         path: AppRoutes.users,
         name: AppRouteName.users,
         builder: (context, state) => const UsersPage(),
@@ -382,7 +400,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: AppRouteName.moduleDetail,
         builder: (context, state) {
           final moduleId = state.pathParameters['moduleId'] ?? '';
-          return ModulePlaceholderPage(moduleId: moduleId);
+          return ModuleRecordsPage(moduleId: moduleId);
         },
       ),
     ],

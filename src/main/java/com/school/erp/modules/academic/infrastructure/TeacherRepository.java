@@ -15,5 +15,9 @@ public interface TeacherRepository extends BaseRepository<Teacher, UUID> {
 
 	Optional<Teacher> findByEmployeeNumberIgnoreCaseAndDeletedFalse(String employeeNumber);
 
+	Optional<Teacher> findByUserAccountIdAndDeletedFalse(UUID userAccountId);
+
+	Optional<Teacher> findByStaffIdAndDeletedFalse(UUID staffId);
+
 	boolean existsByEmployeeNumberIgnoreCaseAndDeletedFalse(String employeeNumber);
 }

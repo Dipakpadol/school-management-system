@@ -6,6 +6,7 @@ import '../../../../app/router/app_routes.dart';
 import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../students/data/models/student_models.dart';
 import '../../../students/presentation/controllers/students_providers.dart';
@@ -81,14 +82,11 @@ class _FeeDefaultersPageState extends ConsumerState<FeeDefaultersPage> {
           ),
           const SizedBox(height: 16),
           defaulters.when(
-            data: (page) => _DefaulterResults(
-              page: page,
-              onPageChanged: _changePage,
-            ),
+            data: (page) =>
+                _DefaulterResults(page: page, onPageChanged: _changePage),
             error: (error, _) => AppErrorState(
               message: _message(error),
-              onRetry: () =>
-                  ref.invalidate(feeDefaultersPageProvider(_filter)),
+              onRetry: () => ref.invalidate(feeDefaultersPageProvider(_filter)),
             ),
             loading: () => const AppLoadingState(label: 'Loading defaulters'),
           ),
@@ -379,69 +377,44 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          runSpacing: 12,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: 'Back',
-                  onPressed: onBack,
-                  icon: const Icon(Icons.arrow_back),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Defaulters',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-                ),
-              ],
-            ),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: exporting ? null : () => onExport('csv'),
-                  icon: const Icon(Icons.table_view_outlined),
-                  label: const Text('CSV'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: exporting ? null : () => onExport('xlsx'),
-                  icon: const Icon(Icons.grid_on_outlined),
-                  label: const Text('Excel'),
-                ),
-                FilledButton.icon(
-                  onPressed: exporting ? null : () => onExport('pdf'),
-                  icon: exporting
-                      ? const SizedBox.square(
-                          dimension: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.picture_as_pdf_outlined),
-                  label: const Text('PDF'),
-                ),
-              ],
-            ),
-          ],
+    return AppPageHeader(
+      title: 'Fee Defaulters',
+      subtitle:
+          'Find overdue balances by academic year, class, division, fee source, and as-of date.',
+      icon: Icons.warning_amber_outlined,
+      actions: [
+        IconButton.outlined(
+          tooltip: 'Back',
+          onPressed: onBack,
+          icon: const Icon(Icons.arrow_back),
         ),
-      ),
+        OutlinedButton.icon(
+          onPressed: exporting ? null : () => onExport('csv'),
+          icon: const Icon(Icons.table_view_outlined),
+          label: const Text('CSV'),
+        ),
+        OutlinedButton.icon(
+          onPressed: exporting ? null : () => onExport('xlsx'),
+          icon: const Icon(Icons.grid_on_outlined),
+          label: const Text('Excel'),
+        ),
+        FilledButton.icon(
+          onPressed: exporting ? null : () => onExport('pdf'),
+          icon: exporting
+              ? const SizedBox.square(
+                  dimension: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.picture_as_pdf_outlined),
+          label: const Text('PDF'),
+        ),
+      ],
     );
   }
 }
 
 class _DefaulterResults extends StatelessWidget {
-  const _DefaulterResults({
-    required this.page,
-    required this.onPageChanged,
-  });
+  const _DefaulterResults({required this.page, required this.onPageChanged});
 
   final PagePayload<FeeDefaulterModel> page;
   final ValueChanged<int> onPageChanged;
@@ -451,9 +424,9 @@ class _DefaulterResults extends StatelessWidget {
     final items = page.content;
     if (items.isEmpty) {
       return const Card(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text('No defaulters found.'),
+        child: AppEmptyState(
+          message: 'No defaulters found.',
+          icon: Icons.payments_outlined,
         ),
       );
     }
