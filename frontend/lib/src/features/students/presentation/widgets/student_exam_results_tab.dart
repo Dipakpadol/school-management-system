@@ -420,14 +420,7 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final normalized = status.toUpperCase();
-    final color = switch (normalized) {
-      'PASS' || 'PASSED' || 'QUALIFIED' => const Color(0xFF16A34A),
-      'FAIL' || 'FAILED' => const Color(0xFFDC2626),
-      'ABSENT' => const Color(0xFF64748B),
-      _ => const Color(0xFF0891B2),
-    };
-    return AppStatusBadge(label: status.replaceAll('_', ' '), color: color);
+    return AppStatusBadge.status(status);
   }
 }
 

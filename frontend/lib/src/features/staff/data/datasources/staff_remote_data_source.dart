@@ -75,7 +75,10 @@ class StaffRemoteDataSource {
       ApiPaths.staff,
       queryParameters: filter.toQuery(),
     );
-    return PagePayload.fromJson(_unwrapData(response.data), StaffModel.fromJson);
+    return PagePayload.fromJson(
+      _unwrapData(response.data),
+      StaffModel.fromJson,
+    );
   }
 
   Future<StaffModel> createStaff(Map<String, dynamic> payload) async {

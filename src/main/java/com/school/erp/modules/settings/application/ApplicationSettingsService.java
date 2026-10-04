@@ -97,7 +97,9 @@ public class ApplicationSettingsService {
 			Map.entry("backup", ordered(Map.of(
 					"backupEnabled", "false",
 					"backupFrequency", "DAILY",
+					"backupTime", "02:00",
 					"backupRetentionDays", "30",
+					"backupRetentionCount", "10",
 					"backupLocation", ""))));
 
 	private final ApplicationSettingRepository settingRepository;
@@ -217,6 +219,14 @@ public class ApplicationSettingsService {
 		if ("backup".equals(groupName) && "backupRetentionDays".equals(key) && StringUtils.hasText(value)
 				&& !value.matches("^\\d{1,4}$")) {
 			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Backup retention days must be numeric.");
+		}
+		if ("backup".equals(groupName) && "backupRetentionCount".equals(key) && StringUtils.hasText(value)
+				&& !value.matches("^\\d{1,4}$")) {
+			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Backup retention count must be numeric.");
+		}
+		if ("backup".equals(groupName) && "backupTime".equals(key) && StringUtils.hasText(value)
+				&& !value.matches("^([01]\\d|2[0-3]):[0-5]\\d$")) {
+			throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Backup time must use HH:mm format.");
 		}
 		if (isBooleanSetting(groupName, key) && StringUtils.hasText(value)
 				&& !Set.of("true", "false").contains(value.toLowerCase())) {

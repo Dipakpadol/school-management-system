@@ -387,10 +387,7 @@ class _ModuleRecordCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      AppStatusBadge(
-                        label: _titleCase(record.status),
-                        color: _statusColor(record.status),
-                      ),
+                      AppStatusBadge.status(record.status),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -760,19 +757,6 @@ String? _required(String? value) {
     return 'Required';
   }
   return null;
-}
-
-Color _statusColor(String status) {
-  return switch (status.toUpperCase()) {
-    'ACTIVE' ||
-    'APPROVED' ||
-    'PAID' ||
-    'ISSUED' ||
-    'RETURNED' => const Color(0xFF16A34A),
-    'PENDING' || 'PARTIAL' || 'OVERDUE' => const Color(0xFFD97706),
-    'REJECTED' || 'INACTIVE' || 'DELETED' => const Color(0xFFDC2626),
-    _ => const Color(0xFF64748B),
-  };
 }
 
 void _snack(BuildContext context, String message) {

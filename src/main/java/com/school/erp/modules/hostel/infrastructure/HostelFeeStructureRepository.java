@@ -26,7 +26,7 @@ public interface HostelFeeStructureRepository extends BaseRepository<HostelFeeSt
 			where structure.deleted = false
 			  and (:academicYearId is null or structure.academicYear.id = :academicYearId)
 			  and (:hostelId is null or structure.hostel.id = :hostelId)
-			  and (:roomType is null or lower(structure.roomType) = lower(:roomType))
+			  and (:roomType is null or structure.roomType = :roomType)
 			order by structure.academicYear.startDate desc, structure.hostel.name asc, structure.roomType asc
 			""")
 	List<HostelFeeStructure> search(
@@ -41,7 +41,7 @@ public interface HostelFeeStructureRepository extends BaseRepository<HostelFeeSt
 			where structure.deleted = false
 			  and (:academicYearId is null or structure.academicYear.id = :academicYearId)
 			  and (:hostelId is null or structure.hostel.id = :hostelId)
-			  and (:roomType is null or lower(structure.roomType) = lower(:roomType))
+			  and (:roomType is null or structure.roomType = :roomType)
 			  and (:status is null or structure.status = :status)
 			""")
 	Page<HostelFeeStructure> search(
@@ -60,7 +60,7 @@ public interface HostelFeeStructureRepository extends BaseRepository<HostelFeeSt
 			  and structure.hostel.id = :hostelId
 			  and (
 			    structure.room.id = :roomId
-			    or (structure.room is null and structure.roomType is not null and lower(structure.roomType) = lower(:roomType))
+			    or (structure.room is null and structure.roomType is not null and structure.roomType = :roomType)
 			    or (structure.room is null and structure.roomType is null)
 			  )
 			order by
@@ -90,7 +90,7 @@ public interface HostelFeeStructureRepository extends BaseRepository<HostelFeeSt
 			  )
 			  and (
 			    (:roomType is null and structure.roomType is null)
-			    or (:roomType is not null and lower(structure.roomType) = lower(:roomType))
+			    or (:roomType is not null and structure.roomType = :roomType)
 			  )
 			""")
 	boolean existsDuplicateScope(

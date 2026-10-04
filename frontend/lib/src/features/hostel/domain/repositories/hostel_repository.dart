@@ -9,9 +9,7 @@ abstract interface class HostelRepository {
 
   Future<Result<List<HostelSummaryModel>>> hostels();
 
-  Future<Result<HostelSummaryModel>> createHostel(
-    Map<String, dynamic> payload,
-  );
+  Future<Result<HostelSummaryModel>> createHostel(Map<String, dynamic> payload);
 
   Future<Result<HostelSummaryModel>> updateHostel(
     String id,

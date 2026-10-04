@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import com.school.erp.modules.fees.api.dto.FeeStructureInstallmentRequest;
 import com.school.erp.modules.fees.api.dto.FeeStructureItemRequest;
@@ -27,8 +28,11 @@ import com.school.erp.modules.academic.infrastructure.AcademicYearRepository;
 import com.school.erp.modules.academic.infrastructure.ClassEntityRepository;
 import com.school.erp.modules.academic.infrastructure.SectionEntityRepository;
 import com.school.erp.modules.students.domain.Gender;
+import com.school.erp.modules.students.domain.ParentGuardian;
+import com.school.erp.modules.students.domain.ParentRelation;
 import com.school.erp.modules.students.domain.Student;
 import com.school.erp.modules.students.domain.StudentClassAssignment;
+import com.school.erp.modules.students.infrastructure.ParentGuardianRepository;
 import com.school.erp.modules.students.infrastructure.StudentRepository;
 import com.school.erp.modules.users.domain.Permission;
 import com.school.erp.modules.users.domain.Role;
@@ -65,6 +69,7 @@ public class LocalQaDataSeeder {
 	private final UserAccountRepository userAccountRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final StudentRepository studentRepository;
+	private final ParentGuardianRepository parentGuardianRepository;
 	private final AcademicYearRepository academicYearRepository;
 	private final ClassEntityRepository classEntityRepository;
 	private final SectionEntityRepository sectionEntityRepository;
@@ -125,6 +130,16 @@ public class LocalQaDataSeeder {
 				permission("COMMUNICATION_CREATE", "Create communications"),
 				permission("COMMUNICATION_UPDATE", "Update communications"),
 				permission("COMMUNICATION_PUBLISH", "Publish communications"),
+				permission("PORTAL_STUDENT_READ", "Read student portal"),
+				permission("PORTAL_PARENT_READ", "Read parent portal"),
+				permission("PORTAL_TEACHER_READ", "Read teacher portal"),
+				permission("PORTAL_TEACHER_ATTENDANCE", "Manage teacher portal attendance"),
+				permission("PORTAL_TEACHER_MARKS", "Manage teacher portal marks"),
+				permission("BACKUP_READ", "Read backups"),
+				permission("BACKUP_CREATE", "Create backups"),
+				permission("BACKUP_DOWNLOAD", "Download backups"),
+				permission("BACKUP_DELETE", "Delete backups"),
+				permission("BACKUP_RESTORE", "Restore backups"),
 				permission("SETTINGS_READ", "Read settings"),
 				permission("SETTINGS_UPDATE", "Update settings"));
 
@@ -142,9 +157,10 @@ public class LocalQaDataSeeder {
 		for (RoleSeed seed : roleSeeds()) {
 			Role role = roleRepository.findByNameAndDeletedFalse(seed.name())
 					.orElseGet(() -> roleRepository.save(new Role(seed.name(), seed.displayName(), seed.description())));
-			for (String permissionCode : seed.permissionCodes()) {
-				role.addPermission(permissions.get(permissionCode));
-			}
+			role.replacePermissions(seed.permissionCodes().stream()
+					.map(permissions::get)
+					.filter(java.util.Objects::nonNull)
+					.collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new)));
 			roles.put(seed.name(), roleRepository.save(role));
 		}
 		return roles;
@@ -170,6 +186,8 @@ public class LocalQaDataSeeder {
 		seedUser("reception@school.test", "reception", "Nisha", "Kapoor", "+919810000003", roles.get(RoleName.RECEPTIONIST));
 		seedUser("teacher@school.test", "teacher", "Arjun", "Menon", "+919810000004", roles.get(RoleName.TEACHER));
 		seedUser("warden@school.test", "warden", "Sanjay", "Nair", "+919810000005", roles.get(RoleName.WARDEN));
+		seedUser("student@school.test", "student", "Aarav", "Sharma", "+919810000006", roles.get(RoleName.STUDENT));
+		seedUser("parent@school.test", "parent", "Rajesh", "Sharma", "+919810000007", roles.get(RoleName.PARENT));
 	}
 
 	private void seedUser(String email, String username, String firstName, String lastName, String phoneNumber, Role role) {
@@ -274,11 +292,41 @@ public class LocalQaDataSeeder {
 							"Bengaluru",
 							"Karnataka",
 							"560001",
-							"India");
+					"India");
 					return studentRepository.save(newStudent);
 				});
+		if (QA_ADMISSION_NUMBER.equals(seed.admissionNumber())) {
+			student.linkUserAccount(userIdByEmail("student@school.test"));
+		}
 		linkDemoAssignment(student, academicYear, classEntity, section, seed.rollNumber());
+		if (QA_ADMISSION_NUMBER.equals(seed.admissionNumber())) {
+			linkDemoParent(student);
+		}
 		return student;
+	}
+
+	private void linkDemoParent(Student student) {
+		ParentGuardian parent = parentGuardianRepository.findByEmailIgnoreCaseAndDeletedFalse("parent@school.test")
+				.orElseGet(() -> new ParentGuardian("Rajesh", "Sharma", "parent@school.test", "+919810000007"));
+		parent.updateProfile(
+				"Rajesh",
+				"Sharma",
+				"parent@school.test",
+				"+919810000007",
+				null,
+				"Local QA parent",
+				"12 MG Road",
+				null,
+				"Bengaluru",
+				"Karnataka",
+				"560001",
+				"India",
+				userIdByEmail("parent@school.test"));
+		parent = parentGuardianRepository.save(parent);
+		if (!student.hasParentMapping(parent, ParentRelation.FATHER)) {
+			student.addParent(parent, ParentRelation.FATHER, true, true, true);
+			studentRepository.save(student);
+		}
 	}
 
 	private void seedAcademicHierarchy() {
@@ -443,6 +491,12 @@ public class LocalQaDataSeeder {
 		return new BigDecimal(value);
 	}
 
+	private UUID userIdByEmail(String email) {
+		return userAccountRepository.findByEmailIgnoreCaseAndDeletedFalse(email)
+				.map(UserAccount::getId)
+				.orElse(null);
+	}
+
 	private PermissionSeed permission(String code, String name) {
 		return new PermissionSeed(code, name, "Local QA seed for " + name.toLowerCase() + ".");
 	}
@@ -454,8 +508,12 @@ public class LocalQaDataSeeder {
 				"AUDIT_LOGS_READ",
 				"STUDENTS_READ", "STUDENTS_CREATE", "STUDENTS_UPDATE", "STUDENTS_DELETE",
 				"ACADEMIC_READ", "ACADEMIC_MANAGE",
+				"EXAMS_READ", "EXAMS_MANAGE",
 				"FEES_READ", "FEES_MANAGE",
 				"HOSTEL_READ", "HOSTEL_MANAGE",
+				"TRANSPORT_READ", "TRANSPORT_MANAGE",
+				"LIBRARY_READ", "LIBRARY_CREATE", "LIBRARY_UPDATE", "LIBRARY_DELETE",
+				"LIBRARY_ISSUE", "LIBRARY_RETURN", "LIBRARY_FINE",
 				"ATTENDANCE_READ", "ATTENDANCE_MARK",
 				"REPORTS_READ",
 				"NOTIFICATIONS_SEND",
@@ -463,34 +521,43 @@ public class LocalQaDataSeeder {
 				"LEAVE_READ", "LEAVE_CREATE", "LEAVE_APPROVE",
 				"PAYROLL_READ", "PAYROLL_CREATE", "PAYROLL_UPDATE", "PAYROLL_PROCESS",
 				"COMMUNICATION_READ", "COMMUNICATION_CREATE", "COMMUNICATION_UPDATE", "COMMUNICATION_PUBLISH",
+				"PORTAL_STUDENT_READ", "PORTAL_PARENT_READ", "PORTAL_TEACHER_READ",
+				"PORTAL_TEACHER_ATTENDANCE", "PORTAL_TEACHER_MARKS",
+				"BACKUP_READ", "BACKUP_CREATE", "BACKUP_DOWNLOAD", "BACKUP_DELETE", "BACKUP_RESTORE",
 				"SETTINGS_READ", "SETTINGS_UPDATE");
+		List<String> adminPermissions = allPermissions.stream()
+				.filter(permission -> !"BACKUP_RESTORE".equals(permission))
+				.toList();
 		return List.of(
 				role(RoleName.SUPER_ADMIN, "Super Admin", "Full local QA platform owner access.", allPermissions),
-				role(RoleName.ADMIN, "Admin", "Local QA institution administrator access.", allPermissions),
+				role(RoleName.ADMIN, "Admin", "Local QA institution administrator access.", adminPermissions),
 				role(RoleName.ACCOUNTANT, "Accountant", "Local QA fees and finance access.", List.of(
 						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "STAFF_READ", "FEES_READ", "FEES_MANAGE",
 						"PAYROLL_READ", "PAYROLL_CREATE", "PAYROLL_UPDATE", "PAYROLL_PROCESS",
 						"REPORTS_READ", "COMMUNICATION_READ")),
 				role(RoleName.PRINCIPAL, "Principal", "Local QA academic leadership access.", List.of(
 						"AUTH_PASSWORD_CHANGE", "USERS_READ", "STUDENTS_READ", "ACADEMIC_READ", "ACADEMIC_MANAGE",
-						"REPORTS_READ", "STAFF_READ", "STAFF_UPDATE", "LEAVE_READ", "LEAVE_CREATE",
-						"LEAVE_APPROVE", "PAYROLL_READ", "COMMUNICATION_READ", "COMMUNICATION_CREATE",
-						"COMMUNICATION_UPDATE", "COMMUNICATION_PUBLISH")),
+						"EXAMS_READ", "EXAMS_MANAGE",
+						"REPORTS_READ", "HOSTEL_READ", "TRANSPORT_READ", "TRANSPORT_MANAGE",
+						"LIBRARY_READ", "LIBRARY_CREATE", "LIBRARY_UPDATE", "LIBRARY_DELETE",
+						"LIBRARY_ISSUE", "LIBRARY_RETURN", "LIBRARY_FINE", "STAFF_READ", "STAFF_UPDATE",
+						"LEAVE_READ", "LEAVE_CREATE", "LEAVE_APPROVE", "PAYROLL_READ", "COMMUNICATION_READ",
+						"COMMUNICATION_CREATE", "COMMUNICATION_UPDATE", "COMMUNICATION_PUBLISH")),
 				role(RoleName.TEACHER, "Teacher", "Local QA teaching staff access.", List.of(
-						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "ACADEMIC_READ", "ATTENDANCE_READ", "ATTENDANCE_MARK",
-						"LEAVE_READ", "LEAVE_CREATE", "COMMUNICATION_READ")),
+						"AUTH_PASSWORD_CHANGE", "LEAVE_READ", "LEAVE_CREATE",
+						"PORTAL_TEACHER_READ", "PORTAL_TEACHER_ATTENDANCE", "PORTAL_TEACHER_MARKS",
+						"LIBRARY_READ")),
 				role(RoleName.RECEPTIONIST, "Receptionist", "Local QA front office access.", List.of(
 						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "STUDENTS_CREATE", "STUDENTS_UPDATE", "FEES_READ",
-						"STAFF_READ", "COMMUNICATION_READ")),
+						"STAFF_READ", "TRANSPORT_READ", "TRANSPORT_MANAGE", "LIBRARY_READ", "LIBRARY_CREATE",
+						"LIBRARY_UPDATE", "LIBRARY_ISSUE", "LIBRARY_RETURN", "LIBRARY_FINE", "COMMUNICATION_READ")),
 				role(RoleName.STUDENT, "Student", "Local QA student portal access.", List.of(
-						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "ACADEMIC_READ", "ATTENDANCE_READ", "FEES_READ",
-						"COMMUNICATION_READ")),
+						"AUTH_PASSWORD_CHANGE", "PORTAL_STUDENT_READ", "LIBRARY_READ")),
 				role(RoleName.PARENT, "Parent", "Local QA parent portal access.", List.of(
-						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "ACADEMIC_READ", "ATTENDANCE_READ", "FEES_READ",
-						"COMMUNICATION_READ")),
+						"AUTH_PASSWORD_CHANGE", "PORTAL_PARENT_READ", "LIBRARY_READ")),
 				role(RoleName.WARDEN, "Warden", "Local QA hostel operations access.", List.of(
 						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "STAFF_READ", "HOSTEL_READ", "HOSTEL_MANAGE",
-						"REPORTS_READ", "COMMUNICATION_READ")));
+						"REPORTS_READ", "LIBRARY_READ", "COMMUNICATION_READ")));
 	}
 
 	private RoleSeed role(RoleName name, String displayName, String description, List<String> permissionCodes) {

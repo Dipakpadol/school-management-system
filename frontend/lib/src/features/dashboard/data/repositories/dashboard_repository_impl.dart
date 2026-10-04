@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/formatters/app_formatters.dart';
 import '../../../../core/result/result.dart';
 import '../../domain/entities/dashboard_metric.dart';
 import '../../domain/entities/dashboard_overview.dart';
@@ -224,7 +225,6 @@ class DashboardRepositoryImpl implements DashboardRepository {
   }
 
   String _formatMoney(double value) {
-    final rounded = value.round();
-    return 'Rs ${_formatInt(rounded)}';
+    return AppFormatters.money(value, decimalDigits: 0);
   }
 }

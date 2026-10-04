@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
+import '../../../../core/formatters/app_formatters.dart';
 import '../../../../core/theme/app_design_system.dart';
 import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_confirm_dialog.dart';
@@ -2860,7 +2861,7 @@ String _feeScopeLabel(StudentFeeAssignmentModel fee) {
 }
 
 String _money(double value) {
-  return 'INR ${value.toStringAsFixed(2)}';
+  return AppFormatters.money(value);
 }
 
 HostelRoomSummaryModel? _profileHostelRoomById(

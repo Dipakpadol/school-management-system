@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/formatters/app_formatters.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
+import '../../../../core/widgets/app_page_layout.dart';
 
 class FeeStatusChip extends StatelessWidget {
   const FeeStatusChip({required this.status, super.key});
@@ -10,31 +12,7 @@ class FeeStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (status) {
-      'ACTIVE' || 'PAID' || 'COMPLETED' || 'ISSUED' || 'ASSIGNED' => const Color(0xFF16A34A),
-      'OVERDUE' || 'CANCELLED' || 'REJECTED' => const Color(0xFFDC2626),
-      'PARTIALLY_PAID' => const Color(0xFFF59E0B),
-      'UNASSIGNED' => const Color(0xFF2563EB),
-      _ => const Color(0xFF64748B),
-    };
-
-    return Container(
-      height: 26,
-      padding: const EdgeInsets.symmetric(horizontal: 9),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(13),
-      ),
-      child: Text(
-        status.replaceAll('_', ' '),
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
+    return AppStatusBadge.status(status);
   }
 }
 
@@ -47,7 +25,7 @@ class MoneyText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
-      'INR ${value.toStringAsFixed(2)}',
+      AppFormatters.money(value),
       overflow: TextOverflow.ellipsis,
       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
         fontWeight: emphasized ? FontWeight.w800 : FontWeight.w600,
@@ -94,12 +72,12 @@ class FeePaginationBar extends StatelessWidget {
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
-          IconButton(
+          IconButton.outlined(
             tooltip: 'First page',
             onPressed: hasPrevious ? () => onPageChanged(0) : null,
             icon: const Icon(Icons.first_page),
           ),
-          IconButton(
+          IconButton.outlined(
             tooltip: 'Previous page',
             onPressed: hasPrevious ? () => onPageChanged(page - 1) : null,
             icon: const Icon(Icons.chevron_left),
@@ -108,12 +86,12 @@ class FeePaginationBar extends StatelessWidget {
             totalPages == 0 ? '0 / 0' : '${page + 1} / $totalPages',
             style: Theme.of(context).textTheme.bodySmall,
           ),
-          IconButton(
+          IconButton.outlined(
             tooltip: 'Next page',
             onPressed: hasNext ? () => onPageChanged(page + 1) : null,
             icon: const Icon(Icons.chevron_right),
           ),
-          IconButton(
+          IconButton.outlined(
             tooltip: 'Last page',
             onPressed: hasNext ? () => onPageChanged(totalPages - 1) : null,
             icon: const Icon(Icons.last_page),

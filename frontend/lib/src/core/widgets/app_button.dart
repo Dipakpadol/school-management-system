@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_design_system.dart';
 
+enum AppButtonTone { primary, secondary, danger }
+
 class AppButton extends StatelessWidget {
   const AppButton({
     required this.label,
@@ -9,6 +11,7 @@ class AppButton extends StatelessWidget {
     this.icon,
     this.isLoading = false,
     this.expand = false,
+    this.tone = AppButtonTone.primary,
     super.key,
   });
 
@@ -17,6 +20,7 @@ class AppButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool isLoading;
   final bool expand;
+  final AppButtonTone tone;
 
   @override
   Widget build(BuildContext context) {
@@ -40,10 +44,24 @@ class AppButton extends StatelessWidget {
     return SizedBox(
       width: expand ? double.infinity : null,
       height: AppDesignTokens.touchTarget,
-      child: FilledButton(
-        onPressed: isLoading ? null : onPressed,
-        child: child,
-      ),
+      child: switch (tone) {
+        AppButtonTone.secondary => OutlinedButton(
+          onPressed: isLoading ? null : onPressed,
+          child: child,
+        ),
+        AppButtonTone.danger => FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: AppDesignTokens.danger,
+            foregroundColor: Colors.white,
+          ),
+          onPressed: isLoading ? null : onPressed,
+          child: child,
+        ),
+        AppButtonTone.primary => FilledButton(
+          onPressed: isLoading ? null : onPressed,
+          child: child,
+        ),
+      },
     );
   }
 }

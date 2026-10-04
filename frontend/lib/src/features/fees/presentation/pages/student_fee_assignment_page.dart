@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
+import '../../../../core/formatters/app_formatters.dart';
 import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_error_state.dart';
@@ -382,7 +383,7 @@ class _StudentFeeAssignmentPageState
               ],
             ),
             subtitle: Text(
-              '${structure.status} - INR ${structure.totalAmount.toStringAsFixed(2)}',
+              '${structure.status} - ${AppFormatters.money(structure.totalAmount)}',
             ),
           ),
       ],

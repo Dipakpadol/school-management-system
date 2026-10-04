@@ -5,15 +5,17 @@ import '../../../../core/result/result.dart';
 import '../../data/models/staff_models.dart';
 import '../../data/repositories/staff_repository_impl.dart';
 
-final staffDepartmentsProvider =
-    FutureProvider<List<StaffDepartmentModel>>((ref) {
-      return _resolve(ref.watch(staffRepositoryProvider).departments());
-    });
+final staffDepartmentsProvider = FutureProvider<List<StaffDepartmentModel>>((
+  ref,
+) {
+  return _resolve(ref.watch(staffRepositoryProvider).departments());
+});
 
-final staffDesignationsProvider =
-    FutureProvider<List<StaffDesignationModel>>((ref) {
-      return _resolve(ref.watch(staffRepositoryProvider).designations());
-    });
+final staffDesignationsProvider = FutureProvider<List<StaffDesignationModel>>((
+  ref,
+) {
+  return _resolve(ref.watch(staffRepositoryProvider).designations());
+});
 
 final staffPageProvider = FutureProvider.family<StaffPage, StaffFilter>((
   ref,
@@ -59,10 +61,11 @@ final staffLeavesProvider =
       return _resolve(ref.watch(staffRepositoryProvider).leaves(filter));
     });
 
-final salaryStructuresProvider =
-    FutureProvider<List<SalaryStructureModel>>((ref) {
-      return _resolve(ref.watch(staffRepositoryProvider).salaryStructures());
-    });
+final salaryStructuresProvider = FutureProvider<List<SalaryStructureModel>>((
+  ref,
+) {
+  return _resolve(ref.watch(staffRepositoryProvider).salaryStructures());
+});
 
 final staffSalaryAssignmentsProvider =
     FutureProvider.family<List<StaffSalaryAssignmentModel>, String>((
@@ -79,7 +82,9 @@ final payrollRecordsProvider =
       ref,
       filter,
     ) {
-      return _resolve(ref.watch(staffRepositoryProvider).payrollRecords(filter));
+      return _resolve(
+        ref.watch(staffRepositoryProvider).payrollRecords(filter),
+      );
     });
 
 Future<T> _resolve<T>(Future<Result<T>> resultFuture) async {

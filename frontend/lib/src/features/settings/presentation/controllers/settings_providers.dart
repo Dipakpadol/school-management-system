@@ -52,19 +52,18 @@ final permissionsProvider = FutureProvider<List<PermissionOptionModel>>((ref) {
   );
 });
 
-final permissionManagementProvider = FutureProvider<List<PermissionOptionModel>>((
-  ref,
-) {
-  return _resolve(
-    ref
-        .watch(settingsRepositoryProvider)
-        .permissions(
-          query: ref.watch(permissionSearchQueryProvider),
-          moduleName: ref.watch(permissionModuleFilterProvider),
-          status: ref.watch(permissionStatusFilterProvider),
-        ),
-  );
-});
+final permissionManagementProvider =
+    FutureProvider<List<PermissionOptionModel>>((ref) {
+      return _resolve(
+        ref
+            .watch(settingsRepositoryProvider)
+            .permissions(
+              query: ref.watch(permissionSearchQueryProvider),
+              moduleName: ref.watch(permissionModuleFilterProvider),
+              status: ref.watch(permissionStatusFilterProvider),
+            ),
+      );
+    });
 
 final selectedSettingsRoleIdProvider =
     NotifierProvider<SelectedSettingsRoleController, String?>(

@@ -38,13 +38,13 @@ public interface LibraryBookCopyRepository extends BaseRepository<LibraryBookCop
 			  and book.deleted = false
 			  and (:bookId is null or book.id = :bookId)
 			  and (:status is null or copy.status = :status)
-			  and (:keyword is null
-				or lower(copy.accessionNumber) like lower(concat('%', :keyword, '%'))
-				or lower(book.title) like lower(concat('%', :keyword, '%')))
+			  and (:keywordLike is null
+				or lower(copy.accessionNumber) like :keywordLike
+				or lower(book.title) like :keywordLike)
 			""")
 	Page<LibraryBookCopy> search(
 			@Param("bookId") UUID bookId,
 			@Param("status") LibraryBookCopyStatus status,
-			@Param("keyword") String keyword,
+			@Param("keywordLike") String keywordLike,
 			Pageable pageable);
 }

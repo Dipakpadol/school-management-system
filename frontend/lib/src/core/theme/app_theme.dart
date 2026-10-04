@@ -6,15 +6,37 @@ abstract final class AppTheme {
   static ThemeData light() {
     return ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: AppDesignTokens.primary,
-        surface: AppDesignTokens.background,
-      ).copyWith(
-        primary: AppDesignTokens.primary,
-        secondary: AppDesignTokens.teal,
-        error: AppDesignTokens.danger,
-      ),
+      colorScheme:
+          ColorScheme.fromSeed(
+            seedColor: AppDesignTokens.primary,
+            surface: AppDesignTokens.background,
+          ).copyWith(
+            primary: AppDesignTokens.primary,
+            secondary: AppDesignTokens.teal,
+            error: AppDesignTokens.danger,
+          ),
       scaffoldBackgroundColor: AppDesignTokens.background,
+      textTheme: Typography.material2021().black.copyWith(
+        headlineSmall: Typography.material2021().black.headlineSmall?.copyWith(
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0,
+        ),
+        titleLarge: Typography.material2021().black.titleLarge?.copyWith(
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0,
+        ),
+        titleMedium: Typography.material2021().black.titleMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0,
+        ),
+        bodyMedium: Typography.material2021().black.bodyMedium?.copyWith(
+          letterSpacing: 0,
+        ),
+        labelLarge: Typography.material2021().black.labelLarge?.copyWith(
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0,
+        ),
+      ),
       fontFamily: 'Roboto',
       cardTheme: const CardThemeData(
         elevation: 0,
@@ -32,7 +54,7 @@ abstract final class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white,
+        fillColor: AppDesignTokens.surface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 14,
@@ -55,10 +77,10 @@ abstract final class AppTheme {
       ),
       appBarTheme: const AppBarTheme(
         centerTitle: false,
-        backgroundColor: Colors.white,
+        backgroundColor: AppDesignTokens.surface,
         foregroundColor: AppDesignTokens.ink,
         elevation: 0,
-        surfaceTintColor: Colors.white,
+        surfaceTintColor: AppDesignTokens.surface,
       ),
       tabBarTheme: const TabBarThemeData(
         labelColor: AppDesignTokens.primary,
@@ -69,7 +91,7 @@ abstract final class AppTheme {
         unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w700),
       ),
       navigationRailTheme: const NavigationRailThemeData(
-        backgroundColor: Colors.white,
+        backgroundColor: AppDesignTokens.surface,
         indicatorColor: Color(0xFFDBEAFE),
         selectedIconTheme: IconThemeData(color: AppDesignTokens.primary),
         selectedLabelTextStyle: TextStyle(
@@ -112,14 +134,16 @@ abstract final class AppTheme {
         ),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
+        backgroundColor: AppDesignTokens.surface,
+        surfaceTintColor: AppDesignTokens.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppDesignTokens.radius),
         ),
       ),
       dataTableTheme: const DataTableThemeData(
-        headingRowColor: WidgetStatePropertyAll(Color(0xFFF8FAFC)),
+        headingRowColor: WidgetStatePropertyAll(
+          AppDesignTokens.backgroundMuted,
+        ),
         headingTextStyle: TextStyle(
           color: AppDesignTokens.ink,
           fontWeight: FontWeight.w900,
@@ -129,6 +153,22 @@ abstract final class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
+        elevation: 0,
+        showCloseIcon: true,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDesignTokens.radius),
+        ),
+      ),
+      tooltipTheme: TooltipThemeData(
+        waitDuration: const Duration(milliseconds: 450),
+        decoration: BoxDecoration(
+          color: AppDesignTokens.ink,
+          borderRadius: BorderRadius.circular(AppDesignTokens.radius),
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: AppDesignTokens.surface,
+        surfaceTintColor: AppDesignTokens.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppDesignTokens.radius),
         ),

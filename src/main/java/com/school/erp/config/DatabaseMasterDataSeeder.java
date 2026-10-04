@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import com.school.erp.modules.fees.api.dto.FeeStructureInstallmentRequest;
 import com.school.erp.modules.fees.api.dto.FeeStructureItemRequest;
@@ -153,12 +154,10 @@ public class DatabaseMasterDataSeeder {
 		for (RoleSeed seed : roleSeeds()) {
 			Role role = roleRepository.findByNameAndDeletedFalse(seed.name())
 					.orElseGet(() -> roleRepository.save(new Role(seed.name(), seed.displayName(), seed.description())));
-			for (String permissionCode : seed.permissionCodes()) {
-				Permission permission = permissions.get(permissionCode);
-				if (permission != null) {
-					role.addPermission(permission);
-				}
-			}
+			role.replacePermissions(seed.permissionCodes().stream()
+					.map(permissions::get)
+					.filter(java.util.Objects::nonNull)
+					.collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new)));
 			roleRepository.save(role);
 		}
 	}
@@ -188,10 +187,21 @@ public class DatabaseMasterDataSeeder {
 				permission("STUDENTS_DELETE", "Delete students"),
 				permission("ACADEMIC_READ", "Read academic setup"),
 				permission("ACADEMIC_MANAGE", "Manage academic setup"),
+				permission("EXAMS_READ", "Read exams"),
+				permission("EXAMS_MANAGE", "Manage exams"),
 				permission("FEES_READ", "Read fees"),
 				permission("FEES_MANAGE", "Manage fees"),
 				permission("HOSTEL_READ", "Read hostel"),
 				permission("HOSTEL_MANAGE", "Manage hostel"),
+				permission("TRANSPORT_READ", "Read transport"),
+				permission("TRANSPORT_MANAGE", "Manage transport"),
+				permission("LIBRARY_READ", "Read library"),
+				permission("LIBRARY_CREATE", "Create library records"),
+				permission("LIBRARY_UPDATE", "Update library records"),
+				permission("LIBRARY_DELETE", "Delete library records"),
+				permission("LIBRARY_ISSUE", "Issue library books"),
+				permission("LIBRARY_RETURN", "Return library books"),
+				permission("LIBRARY_FINE", "Manage library fines"),
 				permission("ATTENDANCE_READ", "Read attendance"),
 				permission("ATTENDANCE_MARK", "Mark attendance"),
 				permission("REPORTS_READ", "Read reports"),
@@ -211,40 +221,56 @@ public class DatabaseMasterDataSeeder {
 				permission("COMMUNICATION_CREATE", "Create communications"),
 				permission("COMMUNICATION_UPDATE", "Update communications"),
 				permission("COMMUNICATION_PUBLISH", "Publish communications"),
+				permission("PORTAL_STUDENT_READ", "Read student portal"),
+				permission("PORTAL_PARENT_READ", "Read parent portal"),
+				permission("PORTAL_TEACHER_READ", "Read teacher portal"),
+				permission("PORTAL_TEACHER_ATTENDANCE", "Manage teacher portal attendance"),
+				permission("PORTAL_TEACHER_MARKS", "Manage teacher portal marks"),
+				permission("BACKUP_READ", "Read backups"),
+				permission("BACKUP_CREATE", "Create backups"),
+				permission("BACKUP_DOWNLOAD", "Download backups"),
+				permission("BACKUP_DELETE", "Delete backups"),
+				permission("BACKUP_RESTORE", "Restore backups"),
 				permission("SETTINGS_READ", "Read settings"),
 				permission("SETTINGS_UPDATE", "Update settings"));
 	}
 
 	private List<RoleSeed> roleSeeds() {
 		List<String> allPermissions = permissionSeeds().stream().map(PermissionSeed::code).toList();
+		List<String> adminPermissions = allPermissions.stream()
+				.filter(permission -> !"BACKUP_RESTORE".equals(permission))
+				.toList();
 		return List.of(
 				role(RoleName.SUPER_ADMIN, "Super Admin", "Full platform owner access.", allPermissions),
-				role(RoleName.ADMIN, "Admin", "Institution administrator access.", allPermissions),
+				role(RoleName.ADMIN, "Admin", "Institution administrator access.", adminPermissions),
 				role(RoleName.PRINCIPAL, "Principal", "Academic and operational leadership access.", List.of(
 						"AUTH_PASSWORD_CHANGE", "USERS_READ", "STUDENTS_READ", "STUDENTS_UPDATE",
-						"ACADEMIC_READ", "ACADEMIC_MANAGE", "ATTENDANCE_READ", "REPORTS_READ",
-						"NOTIFICATIONS_SEND", "STAFF_READ", "STAFF_UPDATE", "LEAVE_READ", "LEAVE_CREATE",
-						"LEAVE_APPROVE", "PAYROLL_READ", "COMMUNICATION_READ", "COMMUNICATION_CREATE",
-						"COMMUNICATION_UPDATE", "COMMUNICATION_PUBLISH", "SETTINGS_READ")),
+						"ACADEMIC_READ", "ACADEMIC_MANAGE", "EXAMS_READ", "EXAMS_MANAGE", "ATTENDANCE_READ", "REPORTS_READ",
+						"NOTIFICATIONS_SEND", "HOSTEL_READ", "TRANSPORT_READ", "TRANSPORT_MANAGE",
+						"LIBRARY_READ", "LIBRARY_CREATE", "LIBRARY_UPDATE", "LIBRARY_DELETE",
+						"LIBRARY_ISSUE", "LIBRARY_RETURN", "LIBRARY_FINE", "STAFF_READ", "STAFF_UPDATE",
+						"LEAVE_READ", "LEAVE_CREATE", "LEAVE_APPROVE", "PAYROLL_READ", "COMMUNICATION_READ",
+						"COMMUNICATION_CREATE", "COMMUNICATION_UPDATE", "COMMUNICATION_PUBLISH", "SETTINGS_READ")),
 				role(RoleName.TEACHER, "Teacher", "Teaching staff access.", List.of(
-						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "ACADEMIC_READ", "ATTENDANCE_READ",
-						"ATTENDANCE_MARK", "REPORTS_READ", "LEAVE_READ", "LEAVE_CREATE", "COMMUNICATION_READ")),
+						"AUTH_PASSWORD_CHANGE", "LEAVE_READ", "LEAVE_CREATE",
+						"PORTAL_TEACHER_READ", "PORTAL_TEACHER_ATTENDANCE", "PORTAL_TEACHER_MARKS",
+						"LIBRARY_READ")),
 				role(RoleName.ACCOUNTANT, "Accountant", "Fees and finance access.", List.of(
 						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "STAFF_READ", "FEES_READ", "FEES_MANAGE",
 						"PAYROLL_READ", "PAYROLL_CREATE", "PAYROLL_UPDATE", "PAYROLL_PROCESS",
 						"REPORTS_READ", "COMMUNICATION_READ")),
 				role(RoleName.RECEPTIONIST, "Receptionist", "Front office access.", List.of(
 						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "STUDENTS_CREATE", "STUDENTS_UPDATE",
-						"FEES_READ", "STAFF_READ", "NOTIFICATIONS_SEND", "COMMUNICATION_READ")),
+						"FEES_READ", "STAFF_READ", "NOTIFICATIONS_SEND", "TRANSPORT_READ", "TRANSPORT_MANAGE",
+						"LIBRARY_READ", "LIBRARY_CREATE", "LIBRARY_UPDATE", "LIBRARY_ISSUE",
+						"LIBRARY_RETURN", "LIBRARY_FINE", "COMMUNICATION_READ")),
 				role(RoleName.STUDENT, "Student", "Student portal access.", List.of(
-						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "ACADEMIC_READ", "ATTENDANCE_READ", "FEES_READ",
-						"COMMUNICATION_READ")),
+						"AUTH_PASSWORD_CHANGE", "PORTAL_STUDENT_READ", "LIBRARY_READ")),
 				role(RoleName.PARENT, "Parent", "Parent portal access.", List.of(
-						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "ACADEMIC_READ", "ATTENDANCE_READ", "FEES_READ",
-						"COMMUNICATION_READ")),
+						"AUTH_PASSWORD_CHANGE", "PORTAL_PARENT_READ", "LIBRARY_READ")),
 				role(RoleName.WARDEN, "Warden", "Hostel operations access.", List.of(
 						"AUTH_PASSWORD_CHANGE", "STUDENTS_READ", "STAFF_READ", "HOSTEL_READ", "HOSTEL_MANAGE",
-						"REPORTS_READ", "COMMUNICATION_READ")));
+						"REPORTS_READ", "LIBRARY_READ", "COMMUNICATION_READ")));
 	}
 
 	private PermissionSeed permission(String code, String name) {
@@ -345,6 +371,9 @@ public class DatabaseMasterDataSeeder {
 							"India");
 					return studentRepository.save(created);
 				});
+		if ("ADM-DEMO-0001".equals(seed.admissionNumber())) {
+			student.linkUserAccount(userIdByEmail("student1@school.com"));
+		}
 		linkDemoAssignment(student, academicYear, classEntity, section, seed.rollNumber());
 
 		ParentGuardian parent = seedParent(seed);
@@ -358,6 +387,9 @@ public class DatabaseMasterDataSeeder {
 	private ParentGuardian seedParent(StudentSeed seed) {
 		ParentGuardian parent = parentGuardianRepository.findByEmailIgnoreCaseAndDeletedFalse(seed.parentEmail())
 				.orElseGet(() -> new ParentGuardian(seed.parentFirstName(), seed.parentLastName(), seed.parentEmail(), seed.parentPhoneNumber()));
+		UUID parentUserId = "ADM-DEMO-0001".equals(seed.admissionNumber())
+				? userIdByEmail("parent1@school.com")
+				: null;
 		parent.updateProfile(
 				seed.parentFirstName(),
 				seed.parentLastName(),
@@ -371,8 +403,14 @@ public class DatabaseMasterDataSeeder {
 				"Karnataka",
 				"560001",
 				"India",
-				null);
+				parentUserId);
 		return parentGuardianRepository.save(parent);
+	}
+
+	private UUID userIdByEmail(String email) {
+		return userAccountRepository.findByEmailIgnoreCaseAndDeletedFalse(email)
+				.map(UserAccount::getId)
+				.orElse(null);
 	}
 
 	private void seedAcademicHierarchy() {

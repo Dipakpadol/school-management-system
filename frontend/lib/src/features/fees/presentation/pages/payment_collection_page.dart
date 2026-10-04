@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
+import '../../../../core/formatters/app_formatters.dart';
 import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_error_state.dart';
@@ -1072,7 +1073,7 @@ bool _containsAssignment(
 }
 
 String _money(double value) {
-  return 'INR ${value.toStringAsFixed(2)}';
+  return AppFormatters.money(value);
 }
 
 String? _required(String? value) {

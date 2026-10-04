@@ -35,15 +35,18 @@ final libraryBooksProvider =
 
 final libraryCopiesProvider =
     FutureProvider.family<PagePayload<LibraryBookCopyModel>, LibraryCopyFilter>(
-  (ref, filter) {
-    return _resolve(ref.watch(libraryRepositoryProvider).copies(filter));
-  },
-);
+      (ref, filter) {
+        return _resolve(ref.watch(libraryRepositoryProvider).copies(filter));
+      },
+    );
 
-final libraryMembershipsProvider = FutureProvider.family<
-    PagePayload<LibraryMembershipModel>, LibraryMembershipFilter>((ref, filter) {
-  return _resolve(ref.watch(libraryRepositoryProvider).memberships(filter));
-});
+final libraryMembershipsProvider =
+    FutureProvider.family<
+      PagePayload<LibraryMembershipModel>,
+      LibraryMembershipFilter
+    >((ref, filter) {
+      return _resolve(ref.watch(libraryRepositoryProvider).memberships(filter));
+    });
 
 final libraryLoansProvider =
     FutureProvider.family<PagePayload<LibraryLoanModel>, LibraryLoanFilter>((

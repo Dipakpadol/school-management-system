@@ -18,9 +18,7 @@ abstract interface class LibraryRepository {
 
   Future<Result<List<LibraryAuthorModel>>> authors();
 
-  Future<Result<LibraryAuthorModel>> createAuthor(
-    Map<String, dynamic> payload,
-  );
+  Future<Result<LibraryAuthorModel>> createAuthor(Map<String, dynamic> payload);
 
   Future<Result<LibraryAuthorModel>> updateAuthor(
     String authorId,
@@ -38,9 +36,7 @@ abstract interface class LibraryRepository {
     Map<String, dynamic> payload,
   );
 
-  Future<Result<PagePayload<LibraryBookModel>>> books(
-    LibraryBookFilter filter,
-  );
+  Future<Result<PagePayload<LibraryBookModel>>> books(LibraryBookFilter filter);
 
   Future<Result<LibraryBookModel>> createBook(Map<String, dynamic> payload);
 
@@ -55,9 +51,7 @@ abstract interface class LibraryRepository {
     LibraryCopyFilter filter,
   );
 
-  Future<Result<LibraryBookCopyModel>> createCopy(
-    Map<String, dynamic> payload,
-  );
+  Future<Result<LibraryBookCopyModel>> createCopy(Map<String, dynamic> payload);
 
   Future<Result<LibraryBookCopyModel>> updateCopy(
     String copyId,
@@ -87,9 +81,7 @@ abstract interface class LibraryRepository {
     String membershipId,
   );
 
-  Future<Result<PagePayload<LibraryLoanModel>>> loans(
-    LibraryLoanFilter filter,
-  );
+  Future<Result<PagePayload<LibraryLoanModel>>> loans(LibraryLoanFilter filter);
 
   Future<Result<LibraryLoanModel>> issue(Map<String, dynamic> payload);
 
@@ -98,14 +90,9 @@ abstract interface class LibraryRepository {
     Map<String, dynamic> payload,
   );
 
-  Future<Result<LibraryLoanModel>> markLoanLost(
-    String loanId, {
-    String? note,
-  });
+  Future<Result<LibraryLoanModel>> markLoanLost(String loanId, {String? note});
 
-  Future<Result<PagePayload<LibraryFineModel>>> fines(
-    LibraryFineFilter filter,
-  );
+  Future<Result<PagePayload<LibraryFineModel>>> fines(LibraryFineFilter filter);
 
   Future<Result<LibraryFineModel>> payFine(
     String fineId,

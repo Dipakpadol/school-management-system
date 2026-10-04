@@ -4,10 +4,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/download/file_downloader.dart';
+import '../../../../core/formatters/app_formatters.dart';
 import '../../../../core/theme/app_design_system.dart';
 import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_error_state.dart';
+import '../../../../core/widgets/app_feedback.dart';
 import '../../../../core/widgets/app_loading_state.dart';
 import '../../../../core/widgets/app_page_layout.dart';
 import '../../../academic/data/models/academic_models.dart';
@@ -232,14 +234,18 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                           decoration: const InputDecoration(
                             labelText: 'Status',
                           ),
-                          items: _attendanceStatuses
-                              .map(
-                                (status) => DropdownMenuItem(
-                                  value: status,
-                                  child: Text(status.replaceAll('_', ' ')),
+                          items: [
+                            for (final status in _attendanceStatuses)
+                              DropdownMenuItem(
+                                value: status,
+                                child: Row(
+                                  children: [
+                                    AppStatusBadge.status(status),
+                                    const SizedBox(width: 8),
+                                  ],
                                 ),
-                              )
-                              .toList(),
+                              ),
+                          ],
                           onChanged: (value) {
                             if (value != null) {
                               setState(
@@ -568,18 +574,22 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    final lower = message.toLowerCase();
+    final tone = lower.contains('saved') || lower.contains('downloaded')
+        ? AppSnackTone.success
+        : lower.contains('select')
+        ? AppSnackTone.warning
+        : lower.contains('failed') || lower.contains('error')
+        ? AppSnackTone.error
+        : AppSnackTone.neutral;
+    showAppSnackBar(context, message, tone: tone);
   }
 }
 
 const _attendanceStatuses = ['PRESENT', 'ABSENT', 'LATE', 'HALF_DAY', 'LEAVE'];
 
 String _dateLabel(DateTime date) {
-  final month = date.month.toString().padLeft(2, '0');
-  final day = date.day.toString().padLeft(2, '0');
-  return '${date.year}-$month-$day';
+  return AppFormatters.isoDate(date);
 }
 
 String _formatPercent(double? value) {

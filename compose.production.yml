@@ -72,6 +72,18 @@ services:
       # Java
       JAVA_OPTS: ${JAVA_OPTS:--Xms256m -Xmx768m}
 
+      # Backup and restore
+      APP_BACKUP_STORAGE_PATH: ${APP_BACKUP_STORAGE_PATH:-/app/backups}
+      APP_BACKUP_PG_DUMP_PATH: ${APP_BACKUP_PG_DUMP_PATH:-pg_dump}
+      APP_BACKUP_PG_RESTORE_PATH: ${APP_BACKUP_PG_RESTORE_PATH:-pg_restore}
+      APP_BACKUP_PROCESS_TIMEOUT: ${APP_BACKUP_PROCESS_TIMEOUT:-10m}
+      APP_BACKUP_RETENTION_DAYS: ${APP_BACKUP_RETENTION_DAYS:-30}
+      APP_BACKUP_RETAIN_LAST: ${APP_BACKUP_RETAIN_LAST:-10}
+      APP_BACKUP_SCHEDULER_CRON: ${APP_BACKUP_SCHEDULER_CRON:-0 0 * * * *}
+
+    volumes:
+      - backup-data:/app/backups
+
     expose:
       - "8080"
 
@@ -179,6 +191,7 @@ services:
 
 volumes:
   postgres-data:
+  backup-data:
   letsencrypt:
   certbot-www:
 

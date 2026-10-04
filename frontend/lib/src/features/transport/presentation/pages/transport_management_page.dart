@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
+import '../../../../core/formatters/app_formatters.dart';
 import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_confirm_dialog.dart';
@@ -2608,9 +2609,8 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = label == 'ACTIVE' || label == 'ASSIGNED';
-    return AppStatusBadge(
-      label: label,
-      color: active ? const Color(0xFF16A34A) : const Color(0xFFF59E0B),
+    return AppStatusBadge.status(
+      label,
       icon: active ? Icons.check_circle_outline : Icons.schedule_outlined,
     );
   }
@@ -2757,7 +2757,7 @@ String _dateLabel(DateTime value) => value.toIso8601String().split('T').first;
 String _nullableDateLabel(DateTime? value) =>
     value == null ? '-' : _dateLabel(value);
 
-String _money(double value) => 'INR ${value.toStringAsFixed(2)}';
+String _money(double value) => AppFormatters.money(value);
 
 void _snack(BuildContext context, String message) {
   ScaffoldMessenger.of(context)

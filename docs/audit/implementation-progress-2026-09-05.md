@@ -333,3 +333,216 @@ Deferred beyond Phase 6:
 - DEFERRED: Mobile app packaging.
 - DEFERRED: Parent/student/teacher portal hardening beyond existing role-aware library read access.
 - DEFERRED: Final 18-module audit and re-score.
+
+## Phase 7 - Backup & Restore
+
+Status: IMPLEMENTED AND BACKEND-TESTED; FLUTTER/POSTGRESQL VALIDATION BLOCKED. Backend backup and restore workflows are implemented with metadata tracking, RBAC, checksum validation, restore safety checks, audit logging, retention support, and Hostinger container compatibility. The Flutter Backup & Restore UI has been implemented and statically reviewed, but analyzer/test validation is blocked because the local Flutter command does not return.
+
+Completion snapshot:
+
+- Overall: 93%
+- Backend: 100%
+- Frontend: 92%
+- Testing: 86%
+
+### Phase 7 Work Completed
+
+| Area | Status | Files changed | Migration | API/UI | Tests | Notes |
+|---|---|---|---|---|---|---|
+| Backup metadata and history model | TESTED | `src/main/java/com/school/erp/modules/backup/**` | `V32__phase7_backup_restore.sql` | `/v1/backups`, `/v1/backups/summary`, `/v1/backups/restores` | `BackupServiceTest`, full Maven suite | Backup records and restore history preserve type, status, size, checksum, Flyway version, actor, timestamps, failure messages, and soft-delete state. |
+| Manual database backup | TESTED | `BackupService.java`, `BackupCommandRunner.java`, `ProcessBackupCommandRunner.java`, backup DTOs/controller | V32 | `POST /v1/backups` | `BackupServiceTest`, full Maven suite | Database backups use `pg_dump` with argument lists, pass passwords through environment variables, record checksums, and never expose storage paths in API responses. |
+| Secure backup download and delete | TESTED | `BackupService.java`, `BackupController.java` | V32 | `GET /v1/backups/{backupId}/download`, `DELETE /v1/backups/{backupId}` | `BackupServiceTest`, full Maven suite | Download validates canonical storage paths and checksums; delete marks metadata deleted and removes files only after path validation. |
+| Restore workflow | TESTED | `BackupService.java`, `BackupCommandRunner.java`, backup DTOs/controller | V32 | `POST /v1/backups/{backupId}/restore` | `BackupServiceTest`, full Maven suite | Restore requires typed confirmation, verifies checksum, validates the archive with `pg_restore --list`, creates a pre-restore safety backup, then runs `pg_restore` with clean/if-exists/no-owner/no-privileges/exit-on-error options. |
+| Scheduler and retention foundation | IMPLEMENTED - TEST PENDING | `BackupService.java`, `ApplicationSettingsService.java`, `application.yml` | V32 | Existing backup/settings APIs | Full Maven suite | Scheduled backup checks `backup.backupEnabled` and frequency settings; retention honors backup retention count and days. Dedicated scheduler/retention edge-case tests remain pending. |
+| RBAC, permissions, menu seed | TESTED | `V32__phase7_backup_restore.sql`, `BackupController.java`, `ApiSecurityRegressionTest.java`, Flutter menu/sidebar files | V32 | Backup endpoints and module menu | `ApiSecurityRegressionTest`, full Maven suite | `BACKUP_READ`, `BACKUP_CREATE`, `BACKUP_DOWNLOAD`, `BACKUP_DELETE`, and `BACKUP_RESTORE` permissions are seeded. Super admin receives all backup permissions; admin receives backup permissions except restore. |
+| Hostinger/container compatibility | IMPLEMENTED - TEST PENDING | `Dockerfile`, `compose.production.yml`, `application.yml` | None | Production backend container config | Static review only | Backend image installs PostgreSQL client tools and compose mounts persistent backup storage at `/app/backups`. Runtime validation is pending a deploy/container run. |
+| Flutter Backup UI | IMPLEMENTED - TEST PENDING | `frontend/lib/src/features/backup/**`, router, API paths, dashboard menu/sidebar registry | None | Backup & Restore module at `/modules/backup` | Static review only | Summary, backup history, restore history, manual backup, download, delete, and restore-confirmation flows are implemented. Analyzer/test validation is blocked by the local Flutter toolchain hang. |
+| V32 migration status | IMPLEMENTED - TEST PENDING | `V32__phase7_backup_restore.sql` | V32 | Schema, settings, permissions, menu seed | Full Maven suite with H2 tests; PostgreSQL runtime validation blocked | Migration file exists and is the latest local migration. PostgreSQL/Flyway runtime validation could not run because PostgreSQL CLIs are absent and the Docker daemon is unavailable. |
+
+Verification:
+
+```powershell
+$env:JAVA_HOME='C:\Program Files\Java\jdk-21.0.4'; $env:Path="$env:JAVA_HOME\bin;$env:Path"; .\mvnw.cmd -q -DskipTests compile
+$env:JAVA_HOME='C:\Program Files\Java\jdk-21.0.4'; $env:Path="$env:JAVA_HOME\bin;$env:Path"; .\mvnw.cmd -q "-Dtest=BackupServiceTest,ApiSecurityRegressionTest" test
+$env:JAVA_HOME='C:\Program Files\Java\jdk-21.0.4'; $env:Path="$env:JAVA_HOME\bin;$env:Path"; .\mvnw.cmd -q test
+git diff --check
+```
+
+Result: PASS. 40 test classes, 245 tests, 0 failures, 0 errors, 0 skipped. `git diff --check` passed with LF/CRLF warnings only.
+
+Additional validation notes:
+
+- Local default `JAVA_HOME` still points to Java 8, which cannot compile this Java 21 project. Verification used installed JDK 21 at `C:\Program Files\Java\jdk-21.0.4`.
+- Latest migration: `V32__phase7_backup_restore.sql`.
+- PostgreSQL/Flyway validation: BLOCKED - `psql`, `pg_isready`, and `postgres` are not in PATH. Docker CLI exists (`Docker version 26.1.4`), but `docker info` reports the Docker daemon is not running, so V32 has not been runtime-validated against PostgreSQL locally.
+- Flutter validation: BLOCKED - `flutter --version` hung silently from `frontend/` and was interrupted after the bounded retry; `flutter analyze` and `flutter test` were not run because the base Flutter command did not complete.
+- Uploaded file backup status: DEFERRED - the current application stores document URL/path metadata but does not yet expose a canonical backend-managed upload storage root suitable for full binary file backup/restore.
+
+Remaining Phase 7 items:
+
+- BLOCKED: Run `flutter analyze` and `flutter test` once the local Flutter/Dart toolchain responds.
+- BLOCKED: Run PostgreSQL/Flyway V32 validation once local PostgreSQL or Docker daemon is available.
+- IMPLEMENTED - TEST PENDING: Add focused scheduler/retention edge-case tests if Phase 7 requires coverage beyond the full Maven suite and backup service happy/failure paths.
+- DEFERRED: Full uploaded-file binary backup/restore after a canonical backend-managed file storage root exists.
+
+Deferred beyond Phase 7:
+
+- DEFERRED: Mobile app packaging.
+- DEFERRED: Final 18-module audit and re-score.
+
+## Phase 8 - Apps & Portals
+
+Status: IMPLEMENTED AND BACKEND-TESTED; FLUTTER/POSTGRESQL VALIDATION BLOCKED. Student, Parent, and Teacher portals are implemented on scoped backend APIs using the authenticated user, linked domain identity, and canonical services. Portal-only roles are routed to their portal home and are no longer granted broad operational module permissions. The Flutter portal workspace is implemented and statically reviewed, but local Flutter analyzer/test validation remains blocked because the Flutter command does not return.
+
+Completion snapshot:
+
+- Overall: 92%
+- Backend: 100%
+- Frontend: 90%
+- Testing: 84%
+
+### Phase 8 Work Completed
+
+| Area | Status | Files changed | Migration | API/UI | Tests | Notes |
+|---|---|---|---|---|---|---|
+| Student portal identity and dashboard | TESTED | `Student.java`, `StudentRepository.java`, `PortalService.java`, `PortalController.java`, portal DTOs, Flutter portal feature files | `V33__phase8_apps_portals.sql` | `/v1/portal/student/**`, `/portal/student` | `PortalServiceTest`, full Maven suite | Student portal data is resolved from the authenticated user account linked to the student record. Dashboard data reuses canonical profile, attendance, fees, exams, library, hostel, transport, and communication services. |
+| Parent portal child selector and ownership scope | TESTED | `PortalService.java`, `PortalController.java`, Flutter portal feature files | V33 | `/v1/portal/parent/children/**`, `/portal/parent` | `PortalServiceTest`, full Maven suite | Parent children are loaded from linked parent/guardian records. Child-specific endpoints reject access to unlinked students before returning profile, attendance, fees, exams, library, hostel, transport, or communication data. |
+| Teacher portal scope | TESTED | `PortalService.java`, `PortalController.java`, `SubjectTeacherMappingRepository.java`, Flutter portal feature files | V33 | `/v1/portal/teacher/**`, `/portal/teacher` | `PortalServiceTest`, full Maven suite | Teacher portal resolves the linked teacher identity and limits students, attendance, and marks actions to assigned class/section and subject scope. |
+| Portal RBAC and horizontal privilege protection | TESTED | `DatabaseMasterDataSeeder.java`, `LocalQaDataSeeder.java`, `ApiSecurityRegressionTest.java`, V33 | V33 | Portal permissions and menu entries | `ApiSecurityRegressionTest`, full Maven suite | Student/Parent/Teacher roles are trimmed to portal permissions. Direct access to broad student, fee, attendance, report, communication, and library modules is blocked unless the role has those permissions through an administrative profile. |
+| Portal communication visibility | TESTED | `CommunicationRecordRepository.java`, `PortalService.java` | V33 | Portal communication feeds | `PortalServiceTest`, full Maven suite | Portal feeds return published communication records visible to all users, role audiences, class audiences, and division/section audiences while respecting publish and expiry dates. |
+| Portal library visibility | TESTED | `LibraryMembershipRepository.java`, `PortalService.java` | V33 | Portal library summaries | `PortalServiceTest`, full Maven suite | Student and teacher portal library cards use active canonical library memberships and scoped loan/fine summaries. |
+| Admin, principal, and operational role access | TESTED | Menu/RBAC seeds, Flutter menu policy/sidebar | V33 | Existing operational modules | `ApiSecurityRegressionTest`, full Maven suite | Admin and principal roles retain portal visibility plus existing operational modules. Accountant, warden, receptionist, staff, transport, hostel, and library workflows remain on their existing role-aware module UIs instead of duplicate portal backends. |
+| Flutter portal UI | IMPLEMENTED - TEST PENDING | `frontend/lib/src/features/portal/**`, router, API paths, module registry, menu policy, sidebar | None | Student, Parent, and Teacher portal pages | Static review only | Portal pages load scoped dashboards, parent child selection, teacher assigned scope, and portal-only routing. Analyzer/test is blocked by the local Flutter toolchain hang. |
+| V33 migration status | IMPLEMENTED - TEST PENDING | `V33__phase8_apps_portals.sql` | V33 | Student user link, portal permissions, portal menu entries, role permission cleanup | Full Maven suite with H2 tests; PostgreSQL runtime validation blocked | Migration file exists and is the latest local migration. PostgreSQL/Flyway validation could not run because PostgreSQL CLIs are absent and Docker daemon is unavailable. |
+
+Verification:
+
+```powershell
+$env:JAVA_HOME='C:\Program Files\Java\jdk-21.0.4'; $env:Path="$env:JAVA_HOME\bin;$env:Path"; .\mvnw.cmd -q -DskipTests compile
+$env:JAVA_HOME='C:\Program Files\Java\jdk-21.0.4'; $env:Path="$env:JAVA_HOME\bin;$env:Path"; .\mvnw.cmd test
+```
+
+Result: PASS. 41 test classes, 261 tests, 0 failures, 0 errors, 0 skipped.
+
+Additional validation notes:
+
+- Local default `JAVA_HOME` still points to Java 8, which cannot compile this Java 21 project. Verification used installed JDK 21 at `C:\Program Files\Java\jdk-21.0.4`.
+- Latest migration: `V33__phase8_apps_portals.sql`.
+- PostgreSQL/Flyway validation: BLOCKED - `psql` and `postgres` are not in PATH. Docker CLI exists, but `docker info` reports the Docker daemon is not running, so V33 has not been runtime-validated against PostgreSQL locally.
+- Flutter validation: BLOCKED - `flutter --version` hung silently from `frontend/` and was interrupted after the bounded retry; `flutter analyze` and `flutter test` were not run because the base Flutter command did not complete.
+
+Remaining Phase 8 items:
+
+- BLOCKED: Run `flutter analyze` and `flutter test` once the local Flutter/Dart toolchain responds.
+- BLOCKED: Run PostgreSQL/Flyway V33 validation once local PostgreSQL or Docker daemon is available.
+- IMPLEMENTED - TEST PENDING: Run a browser smoke test for portal navigation once the Flutter web build can be produced locally.
+
+Deferred beyond Phase 8:
+
+- DEFERRED: Native mobile app packaging.
+- DEFERRED: Public website work and Phase 9.
+- DEFERRED: Final 18-module audit and re-score.
+
+## Application UI/UX Polish
+
+Status: IMPLEMENTED POLISH PASS; BACKEND REGRESSION GREEN; FLUTTER AND BROWSER VALIDATION BLOCKED. This pass focused only on the authenticated ERP application and role-specific portals. Public website screens were not redesigned or modified. Backend business calculations, RBAC, portal scoping, backup logic, audit logic, and canonical service behavior were preserved.
+
+Completion snapshot:
+
+- Overall UI/UX polish: IMPLEMENTED - VALIDATION BLOCKED
+- Backend regression: TESTED
+- Flutter static review: ISSUES FOUND AND FIXED
+- Flutter analyzer/test/build: BLOCKED
+- Browser smoke test: BLOCKED
+
+### Application UI/UX Polish Work Completed
+
+| Area | Issue | Fix | Files | Validation | Notes |
+|---|---|---|---|---|---|
+| Shared design system | Semantic colors, status labels, responsive padding, and status chips were still partly duplicated across screens. | Added centralized status color/label helpers, responsive page insets, information color token, and richer status badge support. | `app_design_system.dart`, `app_page_layout.dart` | Static review; backend suite unaffected | Statuses such as Active, Pending, Overdue, Rejected, Present, Leave, Running, Restored, Sent, and Delivered now share one palette. |
+| Theme and typography | Theme styling was solid but still used scattered white surfaces, default typography weights, and basic snackbar/menu/tooltip treatment. | Tightened typography hierarchy, surface colors, table header styling, popup menus, tooltips, and snackbar defaults. | `app_theme.dart` | Static review | Kept a compact Material 3 ERP style without heavy gradients or oversized UI. |
+| Shared buttons, dialogs, tables, feedback | Buttons had only one tone, confirmation dialogs were generic, tables had weak empty states, and snackbars were hand-rolled. | Added button tones, polished confirmation dialogs, empty-state support in `AppDataTable`, and shared `showAppSnackBar`. | `app_button.dart`, `app_confirm_dialog.dart`, `app_data_table.dart`, `app_feedback.dart` | Static review | Dangerous actions now have clearer copy and consistent visual priority. |
+| Date and money formatting | Money appeared as mixed `INR`/`Rs` strings; dates were locally formatted. | Added shared formatter with rupee display and Indian grouping; moved visible money strings to shared formatter. | `app_formatters.dart`, dashboard/fees/staff/library/transport/student/profile files | Static review | Display-only changes; no fee, payroll, hostel, transport, or library calculations changed. |
+| Application shell and sidebar | Sidebar order did not fully match user workflows; hardcoded shell colors remained. | Reworked sidebar grouping into Portal, People, Academics, Finance, Operations, Communication, Documents, Administration while preserving permission filtering. | `admin_shell.dart` | Static review | No route or permission architecture was changed. |
+| Dashboard | Dashboard panels used local card/empty-state styling and local module status styling. | Converted panels to shared section/empty-state styling and centralized module status color use. | `dashboard_page.dart`, `dashboard_repository_impl.dart` | Static review | Dashboard calculations remain canonical. |
+| User Management and Roles | User/role/permission statuses used local status color helpers and local date formatting. | Switched to shared status badges and date/status label helpers. | `users_page.dart`, `role_permission_page.dart` | Static review | Permission workflows and RBAC unchanged. |
+| Fees workflows | Fees screens had mixed money formatting, local status chips, weak empty list surfaces, and generic destructive/payment confirmations. | Centralized fee status chips, rupee money display, fee empty states, snackbars, and specific delete/reverse/refund confirmation copy. | `fee_widgets.dart`, `fees_management_page.dart`, `fee_defaulters_page.dart`, `payment_collection_page.dart`, `student_fee_assignment_page.dart` | Static review | Fee Assignments, Defaulters, and Payment Collection wiring reviewed; business logic unchanged. |
+| Attendance | Attendance statuses were plain text inside roster controls and feedback was local. | Added semantic status badges inside attendance status selection, shared ISO date formatting, and shared feedback tones. | `attendance_page.dart`, student attendance tab | Static review | Attendance save/load/export flow preserved. |
+| Exams and Results | Result status chips used local status colors. | Switched result status badges to shared semantic status styling. | `student_exam_results_tab.dart` | Static review | Exam and report-card business paths unchanged. |
+| Staff, Leave, Payroll | Staff/payroll screens had local money and status formatting. | Centralized status chips and payroll/money display. | `staff_management_page.dart` | Static review | Payroll, leave, and staff attendance calculations unchanged. |
+| Hostel and Transport | Operational status chips and money strings were locally styled. | Centralized statuses and rupee money display. | `hostel_management_page.dart`, `transport_management_page.dart` | Static review | Capacity and assignment rules unchanged. |
+| Library | Library status/fine money styling was local. | Centralized status chips and rupee fine display. | `library_management_page.dart` | Static review | Circulation, fine, and inventory rules unchanged. |
+| Communication and Notifications | Published/draft/archive and delivery statuses used local color maps. | Centralized communication and notification statuses. | `communication_management_page.dart`, `notification_management_page.dart` | Static review | Audience targeting and delivery logic unchanged. |
+| Reports and Documents | Report/document workflow routes were reviewed for consistency with existing shared widgets. | No backend/report logic changes were required in this pass. | `reports_page.dart`, student document/profile surfaces reviewed | Static review | Historical certificate rendering remains deferred. |
+| Student Portal | Portal fee amounts, attendance dates, and statuses were less polished. | Added rupee fee display, readable attendance dates, and shared semantic status badges. | `portal_pages.dart` | Static review | Student portal scoping unchanged. |
+| Parent Portal | Child selector worked but needed stronger mobile-friendly treatment. | Made child selector prominent, constrained, icon-labeled, and responsive inside the page header actions. | `portal_pages.dart` | Static review | Child ownership enforcement remains backend-scoped. |
+| Teacher Portal | Teacher portal panels used generic primary status badges. | Switched portal panel statuses to shared semantic status badges. | `portal_pages.dart` | Static review | Teacher assignment and subject scope enforcement unchanged. |
+
+Verification:
+
+```powershell
+$env:JAVA_HOME='C:\Program Files\Java\jdk-21.0.4'; $env:Path="$env:JAVA_HOME\bin;$env:Path"; .\mvnw.cmd test
+where.exe flutter
+where.exe dart
+flutter --version
+dart --version
+git diff --check
+```
+
+Result: Backend PASS. 41 test classes, 261 tests, 0 failures, 0 errors, 0 skipped. `git diff --check` passed with LF/CRLF warnings only.
+
+Additional validation notes:
+
+- Flutter validation: BLOCKED - `where.exe flutter` and `where.exe dart` found the tools under `C:\Program Files\flutter\bin`, but both `flutter --version` and `dart --version` hung silently for 30 seconds and were interrupted. Because the base commands did not return, `flutter pub get`, `dart format`, `flutter analyze`, `flutter test`, and `flutter build web --release` were not run.
+- Browser smoke test: BLOCKED - Flutter web build could not be produced while the Flutter/Dart toolchain is unavailable.
+- Backend changes: None in this polish pass.
+
+Remaining Application UI/UX Polish items:
+
+- BLOCKED: Run `dart format`, `flutter analyze`, `flutter test`, and `flutter build web --release` once Flutter/Dart responds.
+- BLOCKED: Run browser smoke tests for Login, Dashboard, Students, Attendance, Fees, Fee Assignments, Defaulters, Payment Collection, Exams, Staff, Payroll, Hostel, Transport, Library, Communication, Reports, Settings, Backup, Student Portal, Parent Portal, and Teacher Portal once a Flutter web build is available.
+- IMPLEMENTED - TEST PENDING: Fine-tune any analyzer or browser-smoke findings after the toolchain is available.
+
+## Final Testing and Hostinger Deployment Attempt - 2026-09-27
+
+Status: DEPLOYMENT BLOCKED AFTER LOCAL VALIDATION. The local final gates passed, including backend regression, package build, Flutter analyzer/test/build, PostgreSQL/Flyway validation through V35, SUPER_ADMIN authority checks, and live Flutter browser smoke for the historically problematic Transport, Library, Exams, Fees, Hostel, Attendance, Staff, and Dashboard paths. Production deployment did not proceed because the available non-interactive SSH path to Hostinger failed: OpenSSH had no usable key, and policy blocked using the stored plaintext server password through a helper script.
+
+Validation summary:
+
+- Git branch: `develop`.
+- Tested base commit before local uncommitted deployment fixes: `d8a07cb88fcd1485193467ee64c581922ed8a1ac`.
+- Latest migration: `V35__exam_permission_backfill.sql`.
+- Backend compile/package: PASS with Java 21.
+- Backend tests: PASS. 41 test classes, 261 tests, 0 failures, 0 errors, 0 skipped.
+- Backend artifact: `target/school-erp-api-0.0.1-SNAPSHOT.jar`.
+- Flutter `pub get`: PASS.
+- `dart format lib`: PASS; 207 files checked, 0 changed on the final run.
+- `flutter analyze`: PASS; no issues found.
+- `flutter test`: PASS; 10 tests passed.
+- `flutter build web --release --dart-define=API_BASE_URL=/api`: PASS; `frontend/build/web` produced.
+- Local PostgreSQL/Flyway: PASS against PostgreSQL 17; 35 migrations validated, schema at version 35.
+- Local SUPER_ADMIN authority check: PASS for Students, Fees, Attendance, Exams, Staff, Reports, Settings, Backup, Transport, and Library permission families.
+- Local browser smoke: PASS. Dashboard, Students, Fee Assignments, Fee Defaulters, Payment Collection, Attendance, Exam Schedule, Staff, Hostel Fees, Transport, and Library opened without login redirects, console errors, runtime exceptions, 401/403/404/500 responses, or CORS failures.
+- Transport validation: PASS. Menu entry and route `/transport` are present; Transport Management renders under Operations with Buses, Routes, Fees, and Drivers tabs.
+- Library validation: PASS. Menu entry and route `/modules/library` are present; Library Management renders under Operations with Summary, Catalog, Copies, Members, Circulation, Fines, and Reports tabs.
+
+Production deployment attempt:
+
+- Existing architecture inspected: `/root/school-app`, `compose.production.yml`, Docker backend, Docker PostgreSQL, Docker Nginx/Flutter web build, certbot, `.env` secrets preserved on server.
+- Production SSH status check: BLOCKED. `ssh -o BatchMode=yes root@72.62.250.216` reached the server but failed with `Permission denied (publickey,password)`.
+- Production database backup: NOT RUN because SSH authentication was blocked before any production-changing command.
+- Production Flyway migration: NOT RUN.
+- Production backend/frontend replacement: NOT RUN.
+- Production Nginx reload: NOT RUN.
+- Rollback required: NO; production was not modified.
+
+Errors fixed during final validation:
+
+- Fixed PostgreSQL optional-filter failures caused by JPQL null string predicates binding as `bytea` in Fee Defaulters, Hostel Fee Structures, Library list pages, and Backup history.
+- Added `EXAMS_READ` and `EXAMS_MANAGE` seed/backfill coverage so SUPER_ADMIN can access Exam Types and related exam APIs without frontend hardcoding.
+- Preserved Transport and Library menu/RBAC visibility through the V34 backfill and seed alignment.
+
+Remaining blockers:
+
+- BLOCKED: Complete Hostinger deployment only after an approved SSH authentication path is available, such as a loaded SSH key, an explicitly approved interactive password session, or another approved non-secret deployment channel.
+- BLOCKED: Commit/push or otherwise transfer the current validated working tree before using the server's existing `git pull` deployment script.

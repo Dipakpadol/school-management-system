@@ -41,9 +41,7 @@ class DashboardSummaryModel {
       totalLibraryBooks: _intValue(json['totalLibraryBooks']),
       availableLibraryCopies: _intValue(json['availableLibraryCopies']),
       libraryOverdueLoans: _intValue(json['libraryOverdueLoans']),
-      pendingLibraryFineAmount: _doubleValue(
-        json['pendingLibraryFineAmount'],
-      ),
+      pendingLibraryFineAmount: _doubleValue(json['pendingLibraryFineAmount']),
       recentActivities: _list(
         json['recentActivities'],
       ).map(DashboardActivityModel.fromJson).toList(),

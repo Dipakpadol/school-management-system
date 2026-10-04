@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 import com.school.erp.common.domain.BaseEntity;
 import com.school.erp.modules.academic.domain.AcademicYear;
@@ -60,6 +61,9 @@ public class Student extends BaseEntity {
 
 	@Column(name = "phone_number", length = 30)
 	private String phoneNumber;
+
+	@Column(name = "user_account_id")
+	private UUID userAccountId;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 30)
@@ -263,6 +267,10 @@ public class Student extends BaseEntity {
 
 	public void changeStatus(StudentStatus status) {
 		this.status = status;
+	}
+
+	public void linkUserAccount(UUID userAccountId) {
+		this.userAccountId = userAccountId;
 	}
 
 	public void updatePhoto(

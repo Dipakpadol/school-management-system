@@ -130,7 +130,8 @@ class StaffLeaveFilter {
   }
 
   @override
-  int get hashCode => Object.hash(staffId, status, fromDate, toDate, page, size);
+  int get hashCode =>
+      Object.hash(staffId, status, fromDate, toDate, page, size);
 }
 
 class PayrollFilter {

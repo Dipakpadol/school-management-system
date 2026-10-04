@@ -24,6 +24,10 @@ abstract final class AppRoutes {
   static const staff = '/modules/staff';
   static const communications = '/modules/communications';
   static const library = '/modules/library';
+  static const backup = '/modules/backup';
+  static const studentPortal = '/portal/student';
+  static const parentPortal = '/portal/parent';
+  static const teacherPortal = '/portal/teacher';
   static const users = '/users';
   static const roles = '/roles';
   static const auditLogs = '/audit-logs';
@@ -58,6 +62,10 @@ abstract final class AppRoutes {
       'staff' => staff,
       'communications' => communications,
       'library' => library,
+      'backup' => backup,
+      'student-portal' => studentPortal,
+      'parent-portal' => parentPortal,
+      'teacher-portal' => teacherPortal,
       'users' => users,
       'roles' => roles,
       'audit-logs' => auditLogs,
@@ -165,6 +173,10 @@ abstract final class AppRouteName {
   static const staff = 'staff';
   static const communications = 'communications';
   static const library = 'library';
+  static const backup = 'backup';
+  static const studentPortal = 'student-portal';
+  static const parentPortal = 'parent-portal';
+  static const teacherPortal = 'teacher-portal';
   static const users = 'users';
   static const roles = 'roles';
   static const auditLogs = 'audit-logs';

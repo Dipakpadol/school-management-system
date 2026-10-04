@@ -220,9 +220,7 @@ class FeesRepositoryImpl implements FeesRepository {
     String assignmentId,
     Map<String, dynamic> payload,
   ) {
-    return _guard(
-      () => _remoteDataSource.applyDiscount(assignmentId, payload),
-    );
+    return _guard(() => _remoteDataSource.applyDiscount(assignmentId, payload));
   }
 
   @override

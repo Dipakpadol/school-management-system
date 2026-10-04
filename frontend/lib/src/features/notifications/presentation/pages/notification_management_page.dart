@@ -535,17 +535,8 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppStatusBadge(label: label, color: _statusColor(label));
+    return AppStatusBadge.status(label);
   }
-}
-
-Color _statusColor(String status) {
-  return switch (status.toUpperCase()) {
-    'SENT' || 'DELIVERED' || 'ACTIVE' => const Color(0xFF16A34A),
-    'PENDING' || 'QUEUED' => const Color(0xFFD97706),
-    'FAILED' || 'INACTIVE' => const Color(0xFFDC2626),
-    _ => const Color(0xFF64748B),
-  };
 }
 
 class _EmptyState extends StatelessWidget {

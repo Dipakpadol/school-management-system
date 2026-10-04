@@ -8,6 +8,7 @@ import '../../../../core/upload/file_picker.dart';
 import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_confirm_dialog.dart';
 import '../../../../core/widgets/app_error_state.dart';
+import '../../../../core/widgets/app_feedback.dart';
 import '../../../../core/widgets/app_loading_state.dart';
 import '../../../../core/widgets/app_page_layout.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
@@ -406,7 +407,13 @@ class _CategoryList extends ConsumerWidget {
     WidgetRef ref,
     FeeCategoryModel category,
   ) async {
-    final confirmed = await _confirm(context, 'Delete ${category.name}?');
+    final confirmed = await _confirm(
+      context,
+      'Delete ${category.name}?',
+      title: 'Delete fee category?',
+      confirmLabel: 'Delete',
+      confirmIcon: Icons.delete_outline,
+    );
     if (!confirmed || !context.mounted) {
       return;
     }
@@ -531,7 +538,13 @@ class _StructureListState extends ConsumerState<_StructureList> {
     BuildContext context,
     FeeStructureModel structure,
   ) async {
-    final confirmed = await _confirm(context, 'Delete ${structure.name}?');
+    final confirmed = await _confirm(
+      context,
+      'Delete ${structure.name}?',
+      title: 'Delete fee structure?',
+      confirmLabel: 'Delete',
+      confirmIcon: Icons.delete_outline,
+    );
     if (!confirmed || !context.mounted) {
       return;
     }
@@ -1053,11 +1066,8 @@ class _ResponsiveList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (itemCount == 0) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(emptyMessage),
-        ),
+      return AppSectionCard(
+        child: AppEmptyState(message: emptyMessage, icon: Icons.inbox_outlined),
       );
     }
 
@@ -1231,9 +1241,17 @@ Future<void> _handlePaymentAction(
   String action, {
   VoidCallback? onSuccess,
 }) async {
+  final actionLabel = '${action[0].toUpperCase()}${action.substring(1)}';
   final confirmed = await _confirm(
     context,
-    '${action[0].toUpperCase()}${action.substring(1)} this payment?',
+    '$actionLabel this payment?',
+    title: '$actionLabel payment?',
+    confirmLabel: actionLabel,
+    confirmIcon: switch (action) {
+      'refund' => Icons.currency_rupee_outlined,
+      'reverse' => Icons.undo_outlined,
+      _ => Icons.block_outlined,
+    },
   );
   if (!confirmed) {
     return;
@@ -1507,18 +1525,42 @@ Future<void> _runPickedFeeImport(
   );
 }
 
-Future<bool> _confirm(BuildContext context, String message) async {
+Future<bool> _confirm(
+  BuildContext context,
+  String message, {
+  String title = 'Confirm fee action?',
+  String confirmLabel = 'Confirm',
+  IconData confirmIcon = Icons.check_circle_outline,
+}) async {
+  final consequence = confirmLabel == 'Delete'
+      ? 'This removes the selected fee setup record from active management. Linked collections and historical ledgers remain governed by backend rules.'
+      : 'This updates the selected payment according to backend fee ledger rules. Historical records remain preserved.';
   return showAppConfirmDialog(
     context: context,
-    title: 'Delete fee record?',
-    message:
-        '$message This removes the selected fee setup record from active management. Linked collections and historical ledgers remain governed by backend rules.',
-    confirmLabel: 'Delete',
-    confirmIcon: Icons.delete_outline,
+    title: title,
+    message: '$message $consequence',
+    confirmLabel: confirmLabel,
+    confirmIcon: confirmIcon,
     destructive: true,
   );
 }
 
 void _snack(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  final lower = message.toLowerCase();
+  final tone =
+      lower.contains('failed') ||
+          lower.contains('error') ||
+          lower.contains('invalid') ||
+          lower.contains('denied')
+      ? AppSnackTone.error
+      : lower.contains('select') || lower.contains('cannot')
+      ? AppSnackTone.warning
+      : lower.contains('saved') ||
+            lower.contains('deleted') ||
+            lower.contains('downloaded') ||
+            lower.contains('completed') ||
+            lower.contains('applied')
+      ? AppSnackTone.success
+      : AppSnackTone.neutral;
+  showAppSnackBar(context, message, tone: tone);
 }

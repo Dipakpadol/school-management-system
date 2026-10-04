@@ -37,6 +37,10 @@ class ApiSecurityRegressionTest {
 			"/api/v1/staff/payroll",
 			"/api/v1/communications",
 			"/api/v1/library/books",
+			"/api/v1/backups",
+			"/api/v1/portal/student/dashboard",
+			"/api/v1/portal/parent/children",
+			"/api/v1/portal/teacher/dashboard",
 			"/api/v1/settings"
 	})
 	void protectedAuthStudentsAndFeesRoutesRejectAnonymousUsers(String path) throws Exception {
@@ -54,6 +58,10 @@ class ApiSecurityRegressionTest {
 			"/api/v1/staff/payroll",
 			"/api/v1/communications",
 			"/api/v1/library/books",
+			"/api/v1/backups",
+			"/api/v1/portal/student/dashboard",
+			"/api/v1/portal/parent/children",
+			"/api/v1/portal/teacher/dashboard",
 			"/api/v1/settings"
 	})
 	void protectedReadRoutesRejectAuthenticatedUsersWithoutRequiredRolesOrPermissions(String path) throws Exception {
@@ -65,6 +73,24 @@ class ApiSecurityRegressionTest {
 	void meAllowsAuthenticatedUsersWithoutModulePermissions() throws Exception {
 		mockMvc.perform(api(get("/api/v1/auth/me")).with(user("limited-user")))
 				.andExpect(status().isOk());
+	}
+
+	@Test
+	void studentRoleAloneCannotOpenStudentManagementList() throws Exception {
+		mockMvc.perform(api(get("/api/v1/students")).with(user("student-user").roles("STUDENT")))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void parentRoleAloneCannotOpenFeeManagementList() throws Exception {
+		mockMvc.perform(api(get("/api/v1/fees/categories")).with(user("parent-user").roles("PARENT")))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void teacherRoleAloneCannotOpenStudentManagementList() throws Exception {
+		mockMvc.perform(api(get("/api/v1/students")).with(user("teacher-user").roles("TEACHER")))
+				.andExpect(status().isForbidden());
 	}
 
 	@Test
@@ -235,6 +261,32 @@ class ApiSecurityRegressionTest {
 						  "publicationYear": 1943,
 						  "language": "English",
 						  "active": true
+						}
+						"""))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void phase7BackupCreateRejectsAuthenticatedUserWithoutCreatePermission() throws Exception {
+		mockMvc.perform(api(post("/api/v1/backups"))
+				.with(user("limited-user"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "notes": "Manual backup"
+						}
+						"""))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void phase7BackupRestoreRejectsAuthenticatedUserWithoutRestorePermission() throws Exception {
+		mockMvc.perform(api(post("/api/v1/backups/00000000-0000-0000-0000-000000000001/restore"))
+				.with(user("limited-user"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{
+						  "confirmationText": "RESTORE"
 						}
 						"""))
 				.andExpect(status().isForbidden());

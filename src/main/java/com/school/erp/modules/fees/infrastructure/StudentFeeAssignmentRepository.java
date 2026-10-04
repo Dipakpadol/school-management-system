@@ -42,7 +42,7 @@ public interface StudentFeeAssignmentRepository
 			  and assignment.hostel.id = :hostelId
 			  and (
 			    assignment.hostelRoom.id = :roomId
-			    or (assignment.hostelRoom is null and :roomType is not null and lower(assignment.roomType) = lower(:roomType))
+			    or (assignment.hostelRoom is null and :roomType is not null and assignment.roomType = :roomType)
 			    or (assignment.hostelRoom is null and assignment.roomType is null)
 			  )
 			""")
@@ -172,13 +172,13 @@ public interface StudentFeeAssignmentRepository
 					        or classAssignment.classEntity.id = assignment.classEntity.id)
 					  ))
 					  and (:sourceType is null or assignment.sourceType = :sourceType)
-					  and (:academicYear is null or lower(assignment.academicYear) = lower(:academicYear))
-					  and (:className is null or lower(assignment.className) = lower(:className))
-					  and (:sectionName is null or lower(assignment.sectionName) = lower(:sectionName))
-					  and (:studentName is null or lower(student.admissionNumber) like lower(concat('%', :studentName, '%'))
-					    or lower(student.firstName) like lower(concat('%', :studentName, '%'))
-					    or lower(student.middleName) like lower(concat('%', :studentName, '%'))
-					    or lower(student.lastName) like lower(concat('%', :studentName, '%')))
+					  and (:academicYear is null or lower(assignment.academicYear) = :academicYear)
+					  and (:className is null or lower(assignment.className) = :className)
+					  and (:sectionName is null or lower(assignment.sectionName) = :sectionName)
+					  and (:studentNameLike is null or lower(student.admissionNumber) like :studentNameLike
+					    or lower(student.firstName) like :studentNameLike
+					    or lower(student.middleName) like :studentNameLike
+					    or lower(student.lastName) like :studentNameLike)
 					""",
 			countQuery = """
 					select count(distinct assignment)
@@ -208,13 +208,13 @@ public interface StudentFeeAssignmentRepository
 					        or classAssignment.classEntity.id = assignment.classEntity.id)
 					  ))
 					  and (:sourceType is null or assignment.sourceType = :sourceType)
-					  and (:academicYear is null or lower(assignment.academicYear) = lower(:academicYear))
-					  and (:className is null or lower(assignment.className) = lower(:className))
-					  and (:sectionName is null or lower(assignment.sectionName) = lower(:sectionName))
-					  and (:studentName is null or lower(student.admissionNumber) like lower(concat('%', :studentName, '%'))
-					    or lower(student.firstName) like lower(concat('%', :studentName, '%'))
-					    or lower(student.middleName) like lower(concat('%', :studentName, '%'))
-					    or lower(student.lastName) like lower(concat('%', :studentName, '%')))
+					  and (:academicYear is null or lower(assignment.academicYear) = :academicYear)
+					  and (:className is null or lower(assignment.className) = :className)
+					  and (:sectionName is null or lower(assignment.sectionName) = :sectionName)
+					  and (:studentNameLike is null or lower(student.admissionNumber) like :studentNameLike
+					    or lower(student.firstName) like :studentNameLike
+					    or lower(student.middleName) like :studentNameLike
+					    or lower(student.lastName) like :studentNameLike)
 					""")
 	Page<StudentFeeAssignment> findDefaulters(
 			@Param("asOf") LocalDate asOf,
@@ -225,7 +225,7 @@ public interface StudentFeeAssignmentRepository
 			@Param("className") String className,
 			@Param("sectionName") String sectionName,
 			@Param("sourceType") FeeScope sourceType,
-			@Param("studentName") String studentName,
+			@Param("studentNameLike") String studentNameLike,
 			@Param("minimumBalance") BigDecimal minimumBalance,
 			@Param("paidAssignmentStatus") FeeAssignmentStatus paidAssignmentStatus,
 			@Param("cancelledAssignmentStatus") FeeAssignmentStatus cancelledAssignmentStatus,
@@ -258,9 +258,9 @@ public interface StudentFeeAssignmentRepository
 			from StudentFeeAssignment assignment
 			where assignment.deleted = false
 			  and assignment.status <> :excludedStatus
-			  and (:academicYear is null or lower(assignment.academicYear) = lower(:academicYear))
-			  and (:className is null or lower(assignment.className) = lower(:className))
-			  and (:sectionName is null or lower(assignment.sectionName) = lower(:sectionName))
+			  and (:academicYear is null or lower(assignment.academicYear) = :academicYear)
+			  and (:className is null or lower(assignment.className) = :className)
+			  and (:sectionName is null or lower(assignment.sectionName) = :sectionName)
 			  and (:status is null or assignment.status = :status)
 			""")
 	FeeReportTotals summarize(

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_design_system.dart';
+
 Future<bool> showAppConfirmDialog({
   required BuildContext context,
   required String title,
@@ -12,8 +14,22 @@ Future<bool> showAppConfirmDialog({
   final result = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text(title),
-      content: Text(message),
+      icon: Icon(
+        destructive ? Icons.warning_amber_outlined : Icons.help_outline,
+        color: destructive ? colors.error : colors.primary,
+      ),
+      title: Text(title, textAlign: TextAlign.center),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: AppDesignTokens.muted,
+            height: 1.45,
+          ),
+        ),
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),

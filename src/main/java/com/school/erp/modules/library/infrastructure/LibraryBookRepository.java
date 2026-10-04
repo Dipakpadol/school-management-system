@@ -22,16 +22,16 @@ public interface LibraryBookRepository extends BaseRepository<LibraryBook, UUID>
 			from LibraryBook book
 			left join book.authors author
 			where book.deleted = false
-			  and (:keyword is null
-				or lower(book.title) like lower(concat('%', :keyword, '%'))
-				or lower(book.isbn) like lower(concat('%', :keyword, '%'))
-				or lower(author.name) like lower(concat('%', :keyword, '%')))
+			  and (:keywordLike is null
+				or lower(book.title) like :keywordLike
+				or lower(book.isbn) like :keywordLike
+				or lower(author.name) like :keywordLike)
 			  and (:categoryId is null or book.category.id = :categoryId)
 			  and (:publisherId is null or book.publisher.id = :publisherId)
 			  and (:active is null or book.active = :active)
 			""")
 	Page<LibraryBook> search(
-			@Param("keyword") String keyword,
+			@Param("keywordLike") String keywordLike,
 			@Param("categoryId") UUID categoryId,
 			@Param("publisherId") UUID publisherId,
 			@Param("active") Boolean active,

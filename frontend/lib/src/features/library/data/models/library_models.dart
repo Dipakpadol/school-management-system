@@ -372,13 +372,13 @@ class LibraryBookFilter {
   final int size;
 
   Map<String, dynamic> toQuery() => {
-        if (_has(keyword)) 'keyword': keyword,
-        if (_has(categoryId)) 'categoryId': categoryId,
-        if (_has(publisherId)) 'publisherId': publisherId,
-        if (active != null) 'active': active,
-        'page': page,
-        'size': size,
-      };
+    if (_has(keyword)) 'keyword': keyword,
+    if (_has(categoryId)) 'categoryId': categoryId,
+    if (_has(publisherId)) 'publisherId': publisherId,
+    if (active != null) 'active': active,
+    'page': page,
+    'size': size,
+  };
 
   LibraryBookFilter copyWith({
     String? keyword,
@@ -414,14 +414,8 @@ class LibraryBookFilter {
   }
 
   @override
-  int get hashCode => Object.hash(
-        keyword,
-        categoryId,
-        publisherId,
-        active,
-        page,
-        size,
-      );
+  int get hashCode =>
+      Object.hash(keyword, categoryId, publisherId, active, page, size);
 }
 
 class LibraryCopyFilter {
@@ -440,12 +434,12 @@ class LibraryCopyFilter {
   final int size;
 
   Map<String, dynamic> toQuery() => {
-        if (_has(bookId)) 'bookId': bookId,
-        if (_has(status)) 'status': status,
-        if (_has(keyword)) 'keyword': keyword,
-        'page': page,
-        'size': size,
-      };
+    if (_has(bookId)) 'bookId': bookId,
+    if (_has(status)) 'status': status,
+    if (_has(keyword)) 'keyword': keyword,
+    'page': page,
+    'size': size,
+  };
 
   LibraryCopyFilter copyWith({
     String? bookId,
@@ -496,12 +490,12 @@ class LibraryMembershipFilter {
   final int size;
 
   Map<String, dynamic> toQuery() => {
-        if (_has(memberType)) 'memberType': memberType,
-        if (active != null) 'active': active,
-        if (_has(keyword)) 'keyword': keyword,
-        'page': page,
-        'size': size,
-      };
+    if (_has(memberType)) 'memberType': memberType,
+    if (active != null) 'active': active,
+    if (_has(keyword)) 'keyword': keyword,
+    'page': page,
+    'size': size,
+  };
 
   LibraryMembershipFilter copyWith({
     String? memberType,
@@ -562,17 +556,17 @@ class LibraryLoanFilter {
   final int size;
 
   Map<String, dynamic> toQuery() => {
-        if (_has(status)) 'status': status,
-        if (_has(membershipId)) 'membershipId': membershipId,
-        if (_has(bookId)) 'bookId': bookId,
-        if (_has(copyId)) 'copyId': copyId,
-        if (_has(memberType)) 'memberType': memberType,
-        if (fromDate != null) 'fromDate': libraryDateParam(fromDate!),
-        if (toDate != null) 'toDate': libraryDateParam(toDate!),
-        'overdueOnly': overdueOnly,
-        'page': page,
-        'size': size,
-      };
+    if (_has(status)) 'status': status,
+    if (_has(membershipId)) 'membershipId': membershipId,
+    if (_has(bookId)) 'bookId': bookId,
+    if (_has(copyId)) 'copyId': copyId,
+    if (_has(memberType)) 'memberType': memberType,
+    if (fromDate != null) 'fromDate': libraryDateParam(fromDate!),
+    if (toDate != null) 'toDate': libraryDateParam(toDate!),
+    'overdueOnly': overdueOnly,
+    'page': page,
+    'size': size,
+  };
 
   LibraryLoanFilter copyWith({
     String? status,
@@ -624,17 +618,17 @@ class LibraryLoanFilter {
 
   @override
   int get hashCode => Object.hash(
-        status,
-        membershipId,
-        bookId,
-        copyId,
-        memberType,
-        fromDate,
-        toDate,
-        overdueOnly,
-        page,
-        size,
-      );
+    status,
+    membershipId,
+    bookId,
+    copyId,
+    memberType,
+    fromDate,
+    toDate,
+    overdueOnly,
+    page,
+    size,
+  );
 }
 
 class LibraryFineFilter {
@@ -655,13 +649,13 @@ class LibraryFineFilter {
   final int size;
 
   Map<String, dynamic> toQuery() => {
-        if (_has(status)) 'status': status,
-        if (_has(membershipId)) 'membershipId': membershipId,
-        if (fromDate != null) 'fromDate': libraryDateParam(fromDate!),
-        if (toDate != null) 'toDate': libraryDateParam(toDate!),
-        'page': page,
-        'size': size,
-      };
+    if (_has(status)) 'status': status,
+    if (_has(membershipId)) 'membershipId': membershipId,
+    if (fromDate != null) 'fromDate': libraryDateParam(fromDate!),
+    if (toDate != null) 'toDate': libraryDateParam(toDate!),
+    'page': page,
+    'size': size,
+  };
 
   LibraryFineFilter copyWith({
     String? status,
@@ -697,14 +691,8 @@ class LibraryFineFilter {
   }
 
   @override
-  int get hashCode => Object.hash(
-        status,
-        membershipId,
-        fromDate,
-        toDate,
-        page,
-        size,
-      );
+  int get hashCode =>
+      Object.hash(status, membershipId, fromDate, toDate, page, size);
 }
 
 String libraryDateParam(DateTime date) {

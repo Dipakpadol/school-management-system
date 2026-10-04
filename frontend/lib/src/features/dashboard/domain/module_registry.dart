@@ -4,6 +4,28 @@ import 'erp_module.dart';
 
 const erpModules = <ErpModule>[
   ErpModule(
+    id: 'student-portal',
+    title: 'Student Portal',
+    icon: Icons.school_outlined,
+    status: 'API ready',
+    description:
+        'Profile, attendance, fees, exams, library, hostel, transport.',
+  ),
+  ErpModule(
+    id: 'parent-portal',
+    title: 'Parent Portal',
+    icon: Icons.family_restroom_outlined,
+    status: 'API ready',
+    description: 'Child profile, attendance, fees, exams, transport, notices.',
+  ),
+  ErpModule(
+    id: 'teacher-portal',
+    title: 'Teacher Portal',
+    icon: Icons.co_present_outlined,
+    status: 'API ready',
+    description: 'Assigned classes, attendance, marks, communications.',
+  ),
+  ErpModule(
     id: 'students',
     title: 'Student Management',
     icon: Icons.school_outlined,
@@ -107,6 +129,13 @@ const erpModules = <ErpModule>[
     icon: Icons.local_library_outlined,
     status: 'API ready',
     description: 'Catalog, copies, memberships, circulation, fines, reports.',
+  ),
+  ErpModule(
+    id: 'backup',
+    title: 'Backup & Restore',
+    icon: Icons.backup_outlined,
+    status: 'API ready',
+    description: 'Database backups, restore history, downloads, retention.',
   ),
   ErpModule(
     id: 'settings',

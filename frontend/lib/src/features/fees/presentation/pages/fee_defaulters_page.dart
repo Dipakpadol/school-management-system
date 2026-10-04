@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
+import '../../../../core/formatters/app_formatters.dart';
 import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_state.dart';
@@ -605,7 +606,7 @@ String _dateLabel(DateTime date) {
   return '${date.year}-$month-$day';
 }
 
-String _money(double value) => 'INR ${value.toStringAsFixed(2)}';
+String _money(double value) => AppFormatters.money(value);
 
 String _message(Object error) {
   return error.toString().replaceFirst('Exception: ', '');

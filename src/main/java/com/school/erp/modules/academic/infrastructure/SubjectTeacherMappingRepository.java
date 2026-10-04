@@ -34,4 +34,10 @@ public interface SubjectTeacherMappingRepository extends BaseRepository<SubjectT
 			UUID teacherId,
 			UUID classId,
 			UUID sectionId);
+
+	boolean existsByTeacherIdAndClassEntityIdAndSectionIdAndSubjectIdAndActiveTrueAndDeletedFalse(
+			UUID teacherId,
+			UUID classId,
+			UUID sectionId,
+			UUID subjectId);
 }

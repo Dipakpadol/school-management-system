@@ -290,48 +290,29 @@ class _InfoPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    final visibleChildren = children.take(5).toList(growable: false);
+    return AppSectionCard(
+      title: title,
+      leading: Icon(
+        icon,
+        size: 20,
+        color: Theme.of(context).colorScheme.primary,
+      ),
+      child: children.isEmpty
+          ? AppEmptyState(message: emptyMessage, icon: icon, compact: true)
+          : Column(
               children: [
-                Icon(icon, size: 20, color: theme.colorScheme.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
+                for (
+                  var index = 0;
+                  index < visibleChildren.length;
+                  index++
+                ) ...[
+                  visibleChildren[index],
+                  if (index != visibleChildren.length - 1)
+                    const Divider(height: 18),
+                ],
               ],
             ),
-            const SizedBox(height: 12),
-            if (children.isEmpty)
-              SizedBox(
-                height: 88,
-                child: Center(
-                  child: Text(
-                    emptyMessage,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.outline,
-                    ),
-                  ),
-                ),
-              )
-            else
-              ...children.take(5),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -550,23 +531,10 @@ class _ModuleStatus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ready = status == 'API ready';
-    final color = ready ? const Color(0xFF16A34A) : const Color(0xFF64748B);
-
-    return Container(
-      height: 26,
-      padding: const EdgeInsets.symmetric(horizontal: 9),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(13),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        status,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w800,
-        ),
+    return AppStatusBadge(
+      label: status,
+      color: AppDesignTokens.statusColor(
+        status == 'API ready' ? 'ACTIVE' : status,
       ),
     );
   }

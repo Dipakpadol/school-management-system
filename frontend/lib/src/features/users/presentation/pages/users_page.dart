@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
+import '../../../../core/formatters/app_formatters.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/upload/file_picker.dart';
 import '../../../../core/widgets/admin_shell.dart';
@@ -294,15 +295,13 @@ class _UserCard extends ConsumerWidget {
                     spacing: 8,
                     runSpacing: 6,
                     children: [
-                      AppStatusBadge(
-                        label: _statusLabel(user.status),
-                        color: _statusColor(user.status),
-                      ),
+                      AppStatusBadge.status(user.status),
                       _SoftChip(label: _sourceLabel(user.source)),
                       _SoftChip(label: roleText.isEmpty ? 'No role' : roleText),
                       if (user.createdAt != null)
                         _SoftChip(
-                          label: 'Created ${_dateLabel(user.createdAt!)}',
+                          label:
+                              'Created ${AppFormatters.date(user.createdAt)}',
                         ),
                     ],
                   ),
@@ -649,25 +648,6 @@ String _message(Object error) {
 
 String _sourceLabel(String source) {
   return source == 'SIGN_UP' ? 'Sign up' : 'Admin created';
-}
-
-String _statusLabel(String status) {
-  return status.replaceAll('_', ' ');
-}
-
-Color _statusColor(String status) {
-  return switch (status) {
-    'ACTIVE' => const Color(0xFF16A34A),
-    'PENDING_APPROVAL' => const Color(0xFFB45309),
-    'LOCKED' || 'DISABLED' => const Color(0xFFDC2626),
-    _ => const Color(0xFF64748B),
-  };
-}
-
-String _dateLabel(DateTime date) {
-  final month = date.month.toString().padLeft(2, '0');
-  final day = date.day.toString().padLeft(2, '0');
-  return '${date.year}-$month-$day';
 }
 
 String? _required(String? value) {

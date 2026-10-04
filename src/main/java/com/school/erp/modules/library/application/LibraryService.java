@@ -8,6 +8,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -197,7 +198,7 @@ public class LibraryService {
 			Boolean active,
 			PageRequestDto pageRequest) {
 		return PageResponse.from(
-				bookRepository.search(blankToNull(keyword), categoryId, publisherId, active, pageRequest.toPageable("title")),
+				bookRepository.search(containsLowerOrNull(keyword), categoryId, publisherId, active, pageRequest.toPageable("title")),
 				mapper::toBookResponse);
 	}
 
@@ -276,7 +277,7 @@ public class LibraryService {
 			String keyword,
 			PageRequestDto pageRequest) {
 		return PageResponse.from(
-				copyRepository.search(bookId, status, blankToNull(keyword), pageRequest.toPageable("accessionNumber")),
+				copyRepository.search(bookId, status, containsLowerOrNull(keyword), pageRequest.toPageable("accessionNumber")),
 				mapper::toCopyResponse);
 	}
 
@@ -365,7 +366,7 @@ public class LibraryService {
 			String keyword,
 			PageRequestDto pageRequest) {
 		return PageResponse.from(
-				membershipRepository.search(memberType, active, blankToNull(keyword), pageRequest.toPageable("membershipNumber")),
+				membershipRepository.search(memberType, active, containsLowerOrNull(keyword), pageRequest.toPageable("membershipNumber")),
 				this::toMembershipResponse);
 	}
 
@@ -608,7 +609,7 @@ public class LibraryService {
 			page = copyRepository.search(
 					bookId,
 					status,
-					blankToNull(keyword),
+					containsLowerOrNull(keyword),
 					PageRequest.of(pageNumber, 200, Sort.by("accessionNumber").ascending()));
 			page.getContent().stream().map(this::copyRow).forEach(rows::add);
 			pageNumber++;
@@ -976,6 +977,11 @@ public class LibraryService {
 
 	private String blankToNull(String value) {
 		return StringUtils.hasText(value) ? value.trim() : null;
+	}
+
+	private String containsLowerOrNull(String value) {
+		String normalized = blankToNull(value);
+		return normalized == null ? null : "%" + normalized.toLowerCase(Locale.ROOT) + "%";
 	}
 
 	private String currentActor() {

@@ -16,6 +16,18 @@ public interface LibraryMembershipRepository extends BaseRepository<LibraryMembe
 
 	Optional<LibraryMembership> findByMembershipNumberIgnoreCaseAndDeletedFalse(String membershipNumber);
 
+	Optional<LibraryMembership> findFirstByMemberTypeAndStudentIdAndActiveTrueAndDeletedFalseOrderByStartDateDesc(
+			LibraryMemberType memberType,
+			UUID studentId);
+
+	Optional<LibraryMembership> findFirstByMemberTypeAndTeacherIdAndActiveTrueAndDeletedFalseOrderByStartDateDesc(
+			LibraryMemberType memberType,
+			UUID teacherId);
+
+	Optional<LibraryMembership> findFirstByMemberTypeAndStaffIdAndActiveTrueAndDeletedFalseOrderByStartDateDesc(
+			LibraryMemberType memberType,
+			UUID staffId);
+
 	long countByActiveTrueAndDeletedFalse();
 
 	@Query("""
@@ -24,13 +36,13 @@ public interface LibraryMembershipRepository extends BaseRepository<LibraryMembe
 			where membership.deleted = false
 			  and (:memberType is null or membership.memberType = :memberType)
 			  and (:active is null or membership.active = :active)
-			  and (:keyword is null
-				or lower(membership.membershipNumber) like lower(concat('%', :keyword, '%')))
+			  and (:keywordLike is null
+				or lower(membership.membershipNumber) like :keywordLike)
 			""")
 	Page<LibraryMembership> search(
 			@Param("memberType") LibraryMemberType memberType,
 			@Param("active") Boolean active,
-			@Param("keyword") String keyword,
+			@Param("keywordLike") String keywordLike,
 			Pageable pageable);
 
 	@Query("""

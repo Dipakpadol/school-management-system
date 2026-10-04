@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
+import '../../../../core/formatters/app_formatters.dart';
 import '../../../../core/network/page_payload.dart';
 import '../../../../core/theme/app_design_system.dart';
 import '../../../../core/widgets/admin_shell.dart';
@@ -4072,15 +4073,7 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final normalized = status.toUpperCase();
-    final color = switch (normalized) {
-      'ACTIVE' || 'PRESENT' || 'APPROVED' || 'PAID' => const Color(0xFF16A34A),
-      'PENDING' || 'LATE' || 'REVIEWED' => const Color(0xFFF59E0B),
-      'ABSENT' || 'REJECTED' || 'INACTIVE' => const Color(0xFFDC2626),
-      'EXITED' || 'CANCELLED' || 'ARCHIVED' => const Color(0xFF64748B),
-      _ => const Color(0xFF0891B2),
-    };
-    return AppStatusBadge(label: _display(status), color: color);
+    return AppStatusBadge.status(status);
   }
 }
 
@@ -4393,7 +4386,7 @@ String _staffInitials(StaffModel staff) {
 }
 
 String _money(double value) {
-  return 'Rs ${value.toStringAsFixed(2)}';
+  return AppFormatters.money(value);
 }
 
 String _formatPercent(double? value) {

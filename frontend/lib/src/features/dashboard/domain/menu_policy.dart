@@ -3,6 +3,9 @@ import 'erp_module.dart';
 import 'module_registry.dart';
 
 const _allModuleIds = {
+  'student-portal',
+  'parent-portal',
+  'teacher-portal',
   'students',
   'fees',
   'users',
@@ -19,10 +22,18 @@ const _allModuleIds = {
   'notifications',
   'communications',
   'library',
+  'backup',
   'settings',
 };
 
 const _modulePermissions = <String, Set<String>>{
+  'student-portal': {'PORTAL_STUDENT_READ'},
+  'parent-portal': {'PORTAL_PARENT_READ'},
+  'teacher-portal': {
+    'PORTAL_TEACHER_READ',
+    'PORTAL_TEACHER_ATTENDANCE',
+    'PORTAL_TEACHER_MARKS',
+  },
   'students': {'STUDENTS_READ'},
   'fees': {'FEES_READ', 'FEES_MANAGE'},
   'users': {'USERS_READ'},
@@ -32,12 +43,7 @@ const _modulePermissions = <String, Set<String>>{
   'hostel': {'HOSTEL_READ', 'HOSTEL_MANAGE'},
   'transport': {'TRANSPORT_READ', 'TRANSPORT_MANAGE'},
   'teachers': {'TEACHERS_READ', 'TEACHERS_MANAGE'},
-  'staff': {
-    'STAFF_READ',
-    'LEAVE_READ',
-    'PAYROLL_READ',
-    'PAYROLL_PROCESS',
-  },
+  'staff': {'STAFF_READ', 'LEAVE_READ', 'PAYROLL_READ', 'PAYROLL_PROCESS'},
   'attendance': {'ATTENDANCE_READ', 'ATTENDANCE_MARK'},
   'exams': {'EXAMS_READ', 'EXAMS_MANAGE'},
   'reports': {'REPORTS_READ', 'REPORTS_MANAGE'},
@@ -60,6 +66,13 @@ const _modulePermissions = <String, Set<String>>{
     'LIBRARY_RETURN',
     'LIBRARY_FINE',
   },
+  'backup': {
+    'BACKUP_READ',
+    'BACKUP_CREATE',
+    'BACKUP_DOWNLOAD',
+    'BACKUP_DELETE',
+    'BACKUP_RESTORE',
+  },
   'settings': {'SETTINGS_READ', 'SETTINGS_UPDATE'},
 };
 
@@ -79,17 +92,9 @@ const _roleModuleFallback = <String, Set<String>>{
     'roles',
     'settings',
     'library',
+    'backup',
   },
-  'TEACHER': {
-    'students',
-    'academic',
-    'attendance',
-    'exams',
-    'reports',
-    'teachers',
-    'communications',
-    'library',
-  },
+  'TEACHER': {'teacher-portal'},
   'ACCOUNTANT': {'students', 'fees', 'reports', 'staff', 'communications'},
   'RECEPTIONIST': {
     'students',
@@ -101,24 +106,35 @@ const _roleModuleFallback = <String, Set<String>>{
     'library',
   },
   'WARDEN': {'students', 'hostel', 'attendance', 'reports', 'library'},
-  'STUDENT': {
-    'students',
-    'academic',
-    'attendance',
-    'fees',
-    'communications',
-    'library',
-  },
-  'PARENT': {
-    'students',
-    'academic',
-    'attendance',
-    'fees',
-    'notifications',
-    'communications',
-    'library',
-  },
+  'STUDENT': {'student-portal'},
+  'PARENT': {'parent-portal'},
 };
+
+String portalHomeForUser(AuthUser? user) {
+  if (user == null) {
+    return '/';
+  }
+  final hasAdministrativeRole =
+      user.hasRole('SUPER_ADMIN') ||
+      user.hasRole('ADMIN') ||
+      user.hasRole('PRINCIPAL') ||
+      user.hasRole('ACCOUNTANT') ||
+      user.hasRole('RECEPTIONIST') ||
+      user.hasRole('WARDEN');
+  if (hasAdministrativeRole) {
+    return '/';
+  }
+  if (user.hasRole('STUDENT')) {
+    return '/portal/student';
+  }
+  if (user.hasRole('PARENT')) {
+    return '/portal/parent';
+  }
+  if (user.hasRole('TEACHER')) {
+    return '/portal/teacher';
+  }
+  return '/';
+}
 
 List<ErpModule> visibleErpModules(AuthUser? user) {
   if (user == null) {
@@ -165,6 +181,15 @@ bool canAccessModule(AuthUser? user, String moduleId) {
 }
 
 String? moduleIdForPath(String path) {
+  if (path == '/portal/student' || path.startsWith('/portal/student/')) {
+    return 'student-portal';
+  }
+  if (path == '/portal/parent' || path.startsWith('/portal/parent/')) {
+    return 'parent-portal';
+  }
+  if (path == '/portal/teacher' || path.startsWith('/portal/teacher/')) {
+    return 'teacher-portal';
+  }
   if (path == '/students' || path.startsWith('/students/')) {
     return 'students';
   }
@@ -192,6 +217,9 @@ String? moduleIdForPath(String path) {
   }
   if (path == '/modules/library' || path.startsWith('/modules/library/')) {
     return 'library';
+  }
+  if (path == '/modules/backup' || path.startsWith('/modules/backup/')) {
+    return 'backup';
   }
   if (path == '/users' || path.startsWith('/users/')) {
     return 'users';

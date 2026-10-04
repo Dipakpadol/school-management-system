@@ -110,7 +110,10 @@ class LibraryRemoteDataSource {
       ApiPaths.libraryBooks,
       queryParameters: filter.toQuery(),
     );
-    return PagePayload.fromJson(_unwrapData(response.data), LibraryBookModel.fromJson);
+    return PagePayload.fromJson(
+      _unwrapData(response.data),
+      LibraryBookModel.fromJson,
+    );
   }
 
   Future<LibraryBookModel> createBook(Map<String, dynamic> payload) async {

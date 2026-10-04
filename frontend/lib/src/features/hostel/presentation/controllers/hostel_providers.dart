@@ -196,12 +196,6 @@ class HostelFeeStructureFilter {
   }
 
   @override
-  int get hashCode => Object.hash(
-    academicYearId,
-    hostelId,
-    roomType,
-    status,
-    page,
-    size,
-  );
+  int get hashCode =>
+      Object.hash(academicYearId, hostelId, roomType, status, page, size);
 }

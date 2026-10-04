@@ -7,21 +7,24 @@ import '../theme/app_design_system.dart';
 class AppPageLayout extends StatelessWidget {
   const AppPageLayout({
     required this.children,
-    this.padding = const EdgeInsets.all(AppDesignTokens.pagePadding),
+    this.padding,
     this.spacing = 18,
     this.maxWidth,
     super.key,
   });
 
   final List<Widget> children;
-  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry? padding;
   final double spacing;
   final double? maxWidth;
 
   @override
   Widget build(BuildContext context) {
+    final resolvedPadding =
+        padding ??
+        AppDesignTokens.pageInsetsForWidth(MediaQuery.sizeOf(context).width);
     final content = ListView.separated(
-      padding: padding,
+      padding: resolvedPadding,
       itemCount: children.length,
       separatorBuilder: (context, index) => SizedBox(height: spacing),
       itemBuilder: (context, index) => children[index],
@@ -58,10 +61,11 @@ class AppPageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final compact = MediaQuery.sizeOf(context).width < 640;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(compact ? 16 : 20),
       decoration: BoxDecoration(
         color: AppDesignTokens.surface,
         border: Border.all(color: AppDesignTokens.border),
@@ -80,7 +84,7 @@ class AppPageHeader extends StatelessWidget {
               children: [
                 if (icon != null) ...[
                   SizedBox.square(
-                    dimension: 48,
+                    dimension: compact ? 42 : 48,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         color: AppDesignTokens.tint(AppDesignTokens.primary),
@@ -222,7 +226,7 @@ class AppFilterBar extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: AppDesignTokens.backgroundMuted,
         border: Border.all(color: AppDesignTokens.border),
         borderRadius: AppDesignTokens.borderRadius,
       ),
@@ -350,34 +354,31 @@ class AppStatCard extends StatelessWidget {
 }
 
 class AppStatusBadge extends StatelessWidget {
-  const AppStatusBadge({
-    required this.label,
-    this.color = AppDesignTokens.primary,
-    this.icon,
-    super.key,
-  });
+  const AppStatusBadge({required this.label, this.color, this.icon, super.key});
+
+  AppStatusBadge.status(String status, {this.icon, super.key})
+    : label = AppDesignTokens.statusLabel(status),
+      color = AppDesignTokens.statusColor(status);
 
   final String label;
-  final Color color;
+  final Color? color;
   final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
+    final resolvedColor = color ?? AppDesignTokens.primary;
     return Container(
       height: 28,
-      padding: EdgeInsets.only(
-        left: icon == null ? 10 : 8,
-        right: 10,
-      ),
+      padding: EdgeInsets.only(left: icon == null ? 10 : 8, right: 10),
       decoration: BoxDecoration(
-        color: AppDesignTokens.tint(color),
+        color: AppDesignTokens.tint(resolvedColor),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, color: color, size: 15),
+            Icon(icon, color: resolvedColor, size: 15),
             const SizedBox(width: 5),
           ],
           Text(
@@ -385,7 +386,7 @@ class AppStatusBadge extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: color,
+              color: resolvedColor,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -400,12 +401,14 @@ class AppEmptyState extends StatelessWidget {
     required this.message,
     this.icon = Icons.inbox_outlined,
     this.action,
+    this.compact = false,
     super.key,
   });
 
   final String message;
   final IconData icon;
   final Widget? action;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -418,22 +421,21 @@ class AppEmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox.square(
-              dimension: 48,
+              dimension: compact ? 40 : 48,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: AppDesignTokens.tint(AppDesignTokens.primary),
                   borderRadius: AppDesignTokens.borderRadius,
                 ),
-                child: Icon(
-                  icon,
-                  color: AppDesignTokens.primary,
-                ),
+                child: Icon(icon, color: AppDesignTokens.primary),
               ),
             ),
             const SizedBox(height: 12),
             Text(
               message,
               textAlign: TextAlign.center,
+              maxLines: compact ? 2 : 4,
+              overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: AppDesignTokens.muted,
                 height: 1.45,

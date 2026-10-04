@@ -75,6 +75,12 @@ abstract final class ApiPaths {
   static const libraryLoans = '/v1/library/loans';
   static const libraryIssueLoan = '/v1/library/loans/issue';
   static const libraryFines = '/v1/library/fines';
+  static const backupSummary = '/v1/backups/summary';
+  static const backups = '/v1/backups';
+  static const backupRestores = '/v1/backups/restores';
+  static const portalStudentDashboard = '/v1/portal/student/dashboard';
+  static const portalParentChildren = '/v1/portal/parent/children';
+  static const portalTeacherDashboard = '/v1/portal/teacher/dashboard';
 
   static String notificationTemplate(String id) =>
       '/v1/notifications/templates/$id';
@@ -97,8 +103,7 @@ abstract final class ApiPaths {
 
   static String staffLeaveType(String id) => '/v1/staff/leave-types/$id';
 
-  static String salaryStructure(String id) =>
-      '/v1/staff/salary-structures/$id';
+  static String salaryStructure(String id) => '/v1/staff/salary-structures/$id';
 
   static String staffSalaryAssignmentHistory(String id) =>
       '/v1/staff/$id/salary-assignments';
@@ -149,6 +154,15 @@ abstract final class ApiPaths {
   static String libraryFinePay(String id) => '/v1/library/fines/$id/pay';
 
   static String libraryFineWaive(String id) => '/v1/library/fines/$id/waive';
+
+  static String backup(String id) => '/v1/backups/$id';
+
+  static String backupDownload(String id) => '/v1/backups/$id/download';
+
+  static String backupRestore(String id) => '/v1/backups/$id/restore';
+
+  static String portalParentChildDashboard(String childId) =>
+      '/v1/portal/parent/children/$childId/dashboard';
 
   static const hostelAcademicYears = '/v1/hostels/academic-years';
   static const hostels = '/v1/hostels';

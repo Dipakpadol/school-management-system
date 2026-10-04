@@ -108,7 +108,10 @@ class _TopBar extends ConsumerWidget {
 
     return Container(
       height: 64,
-      color: Colors.white,
+      decoration: const BoxDecoration(
+        color: AppDesignTokens.surface,
+        border: Border(bottom: BorderSide(color: AppDesignTokens.border)),
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -122,9 +125,9 @@ class _TopBar extends ConsumerWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
                 ),
               ),
               const SizedBox(width: 12),
@@ -304,7 +307,7 @@ class _DesktopNavigation extends StatelessWidget {
     return SizedBox(
       width: collapsed ? 84 : 292,
       child: ColoredBox(
-        color: Colors.white,
+        color: AppDesignTokens.surface,
         child: SafeArea(
           child: Padding(
             padding: EdgeInsets.fromLTRB(
@@ -314,8 +317,9 @@ class _DesktopNavigation extends StatelessWidget {
               12,
             ),
             child: Column(
-              crossAxisAlignment:
-                  collapsed ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+              crossAxisAlignment: collapsed
+                  ? CrossAxisAlignment.center
+                  : CrossAxisAlignment.start,
               children: [
                 _BrandHeader(collapsed: collapsed),
                 const SizedBox(height: 12),
@@ -445,47 +449,50 @@ class _NavSection extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 6),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: ExpansionTile(
-          key: PageStorageKey(
-            'nav-${section.id}-${active ? 'open' : 'closed'}',
-          ),
-          initiallyExpanded: active,
-          maintainState: true,
-          tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-          childrenPadding: const EdgeInsets.fromLTRB(8, 0, 0, 8),
-          backgroundColor: active
-              ? const Color(0xFFEEF6FF)
-              : Colors.transparent,
-          collapsedBackgroundColor: active
-              ? const Color(0xFFEEF6FF)
-              : Colors.transparent,
-          iconColor: foreground,
-          collapsedIconColor: foreground,
-          textColor: foreground,
-          collapsedTextColor: foreground,
-          leading: Icon(section.icon, size: 21),
-          title: Text(
-            section.label,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+        child: Material(
+          color: Colors.transparent,
+          child: ExpansionTile(
+            key: PageStorageKey(
+              'nav-${section.id}-${active ? 'open' : 'closed'}',
             ),
-          ),
-          children: [
-            for (final item in section.items)
-              _NavItem(
-                icon: item.icon,
-                label: item.label,
-                selected: item.isActive(activeUri, activeModuleId),
-                compact: true,
-                onTap: () {
-                  if (closeDrawerOnTap) {
-                    Navigator.of(context).pop();
-                  }
-                  context.go(item.route);
-                },
+            initiallyExpanded: active,
+            maintainState: true,
+            tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+            childrenPadding: const EdgeInsets.fromLTRB(8, 0, 0, 8),
+            backgroundColor: active
+                ? AppDesignTokens.tint(AppDesignTokens.primary, 0.10)
+                : Colors.transparent,
+            collapsedBackgroundColor: active
+                ? AppDesignTokens.tint(AppDesignTokens.primary, 0.10)
+                : Colors.transparent,
+            iconColor: foreground,
+            collapsedIconColor: foreground,
+            textColor: foreground,
+            collapsedTextColor: foreground,
+            leading: Icon(section.icon, size: 21),
+            title: Text(
+              section.label,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: active ? FontWeight.w800 : FontWeight.w600,
               ),
-          ],
+            ),
+            children: [
+              for (final item in section.items)
+                _NavItem(
+                  icon: item.icon,
+                  label: item.label,
+                  selected: item.isActive(activeUri, activeModuleId),
+                  compact: true,
+                  onTap: () {
+                    if (closeDrawerOnTap) {
+                      Navigator.of(context).pop();
+                    }
+                    context.go(item.route);
+                  },
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -823,32 +830,33 @@ String _titleCase(String value) {
 
 const _sidebarSections = <_SidebarSection>[
   _SidebarSection(
-    id: 'academics',
-    label: 'ACADEMICS',
-    icon: Icons.account_tree_outlined,
+    id: 'portal',
+    label: 'PORTAL',
+    icon: Icons.apps_outlined,
     items: [
       _SidebarItem(
-        id: 'academic-years',
-        label: 'Academic Years',
-        icon: Icons.calendar_month_outlined,
-        route: '/academic?section=academic-years',
-        moduleId: 'academic',
-        defaultForPath: AppRoutes.academic,
+        id: 'student-portal',
+        label: 'Student Portal',
+        icon: Icons.school_outlined,
+        route: AppRoutes.studentPortal,
+        moduleId: 'student-portal',
+        activePrefixes: ['/portal/student'],
       ),
       _SidebarItem(
-        id: 'student-attendance',
-        label: 'Student Attendance',
-        icon: Icons.fact_check_outlined,
-        route: AppRoutes.attendance,
-        moduleId: 'attendance',
+        id: 'parent-portal',
+        label: 'Parent Portal',
+        icon: Icons.family_restroom_outlined,
+        route: AppRoutes.parentPortal,
+        moduleId: 'parent-portal',
+        activePrefixes: ['/portal/parent'],
       ),
       _SidebarItem(
-        id: 'exams',
-        label: 'Exams & Results',
-        icon: Icons.assignment_outlined,
-        route: AppRoutes.exams,
-        moduleId: 'exams',
-        activePrefixes: ['/exams'],
+        id: 'teacher-portal',
+        label: 'Teacher Portal',
+        icon: Icons.co_present_outlined,
+        route: AppRoutes.teacherPortal,
+        moduleId: 'teacher-portal',
+        activePrefixes: ['/portal/teacher'],
       ),
     ],
   ),
@@ -894,12 +902,42 @@ const _sidebarSections = <_SidebarSection>[
         route: '${AppRoutes.staff}?section=leave',
         moduleId: 'staff',
       ),
+    ],
+  ),
+  _SidebarSection(
+    id: 'academics',
+    label: 'ACADEMICS',
+    icon: Icons.account_tree_outlined,
+    items: [
       _SidebarItem(
-        id: 'payroll',
-        label: 'Payroll',
-        icon: Icons.request_quote_outlined,
-        route: '${AppRoutes.staff}?section=payroll',
-        moduleId: 'staff',
+        id: 'academic-years',
+        label: 'Academic Management',
+        icon: Icons.calendar_month_outlined,
+        route: '/academic?section=academic-years',
+        moduleId: 'academic',
+        defaultForPath: AppRoutes.academic,
+      ),
+      _SidebarItem(
+        id: 'student-attendance',
+        label: 'Attendance',
+        icon: Icons.fact_check_outlined,
+        route: AppRoutes.attendance,
+        moduleId: 'attendance',
+      ),
+      _SidebarItem(
+        id: 'exams',
+        label: 'Exams',
+        icon: Icons.assignment_outlined,
+        route: AppRoutes.exams,
+        moduleId: 'exams',
+        activePrefixes: ['/exams'],
+      ),
+      _SidebarItem(
+        id: 'results',
+        label: 'Results',
+        icon: Icons.workspace_premium_outlined,
+        route: AppRoutes.examResults,
+        moduleId: 'exams',
       ),
     ],
   ),
@@ -915,6 +953,13 @@ const _sidebarSections = <_SidebarSection>[
         route: '/fees?section=categories',
         moduleId: 'fees',
         defaultForPath: AppRoutes.fees,
+      ),
+      _SidebarItem(
+        id: 'payroll',
+        label: 'Payroll',
+        icon: Icons.request_quote_outlined,
+        route: '${AppRoutes.staff}?section=payroll',
+        moduleId: 'staff',
       ),
     ],
   ),
@@ -1054,6 +1099,14 @@ const _sidebarSections = <_SidebarSection>[
         icon: Icons.tune_outlined,
         route: AppRoutes.settings,
         moduleId: 'settings',
+      ),
+      _SidebarItem(
+        id: 'backup',
+        label: 'Backup & Restore',
+        icon: Icons.backup_outlined,
+        route: AppRoutes.backup,
+        moduleId: 'backup',
+        activePrefixes: ['/modules/backup'],
       ),
       _SidebarItem(
         id: 'audit-logs',

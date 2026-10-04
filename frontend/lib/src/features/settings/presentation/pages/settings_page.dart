@@ -75,10 +75,7 @@ class _SettingsContent extends StatelessWidget {
             child: TabBarView(
               children: [
                 for (final group in _groups)
-                  _SettingsGroupEditor(
-                    group: group,
-                    initialSettings: settings,
-                  ),
+                  _SettingsGroupEditor(group: group, initialSettings: settings),
               ],
             ),
           ),
@@ -139,10 +136,9 @@ class _SettingsGroupEditorState extends ConsumerState<_SettingsGroupEditor> {
                     Expanded(
                       child: Text(
                         widget.group.title,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge
-                            ?.copyWith(fontWeight: FontWeight.w800),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                     if (_editing) ...[
@@ -156,7 +152,9 @@ class _SettingsGroupEditorState extends ConsumerState<_SettingsGroupEditor> {
                         icon: _saving
                             ? const SizedBox.square(
                                 dimension: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Icon(Icons.save_outlined),
                         label: const Text('Save'),
@@ -228,13 +226,13 @@ class _SettingsGroupEditorState extends ConsumerState<_SettingsGroupEditor> {
       success: (_) {
         ref.invalidate(appSettingsProvider);
         setState(() => _editing = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Settings saved.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Settings saved.')));
       },
-      failure: (failure) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(failure.message)),
-      ),
+      failure: (failure) => ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(failure.message))),
     );
   }
 }
@@ -263,7 +261,9 @@ class _SettingField extends StatelessWidget {
       );
     }
     if (field.options.isNotEmpty) {
-      final current = field.options.contains(value) ? value : field.options.first;
+      final current = field.options.contains(value)
+          ? value
+          : field.options.first;
       return DropdownButtonFormField<String>(
         initialValue: current,
         decoration: InputDecoration(
@@ -342,14 +342,42 @@ const _groups = [
     tabLabel: 'School Profile',
     icon: Icons.school_outlined,
     fields: [
-      _SettingsField(key: 'schoolName', label: 'School name', icon: Icons.school_outlined),
-      _SettingsField(key: 'schoolCode', label: 'School code', icon: Icons.tag_outlined),
-      _SettingsField(key: 'address', label: 'Address', icon: Icons.location_on_outlined),
-      _SettingsField(key: 'contactNumber', label: 'Contact number', icon: Icons.call_outlined),
+      _SettingsField(
+        key: 'schoolName',
+        label: 'School name',
+        icon: Icons.school_outlined,
+      ),
+      _SettingsField(
+        key: 'schoolCode',
+        label: 'School code',
+        icon: Icons.tag_outlined,
+      ),
+      _SettingsField(
+        key: 'address',
+        label: 'Address',
+        icon: Icons.location_on_outlined,
+      ),
+      _SettingsField(
+        key: 'contactNumber',
+        label: 'Contact number',
+        icon: Icons.call_outlined,
+      ),
       _SettingsField(key: 'email', label: 'Email', icon: Icons.email_outlined),
-      _SettingsField(key: 'logoUrl', label: 'Logo URL', icon: Icons.image_outlined),
-      _SettingsField(key: 'principalName', label: 'Principal name', icon: Icons.person_outline),
-      _SettingsField(key: 'affiliationBoard', label: 'Affiliation / board', icon: Icons.verified_outlined),
+      _SettingsField(
+        key: 'logoUrl',
+        label: 'Logo URL',
+        icon: Icons.image_outlined,
+      ),
+      _SettingsField(
+        key: 'principalName',
+        label: 'Principal name',
+        icon: Icons.person_outline,
+      ),
+      _SettingsField(
+        key: 'affiliationBoard',
+        label: 'Affiliation / board',
+        icon: Icons.verified_outlined,
+      ),
     ],
   ),
   _SettingsGroup(
@@ -358,10 +386,26 @@ const _groups = [
     tabLabel: 'Academic',
     icon: Icons.calendar_month_outlined,
     fields: [
-      _SettingsField(key: 'currentAcademicYearId', label: 'Current academic year', icon: Icons.calendar_today_outlined),
-      _SettingsField(key: 'defaultAttendanceTime', label: 'Default attendance time', icon: Icons.schedule_outlined),
-      _SettingsField(key: 'workingDays', label: 'Working days', icon: Icons.date_range_outlined),
-      _SettingsField(key: 'holidayConfiguration', label: 'Holiday configuration', icon: Icons.event_busy_outlined),
+      _SettingsField(
+        key: 'currentAcademicYearId',
+        label: 'Current academic year',
+        icon: Icons.calendar_today_outlined,
+      ),
+      _SettingsField(
+        key: 'defaultAttendanceTime',
+        label: 'Default attendance time',
+        icon: Icons.schedule_outlined,
+      ),
+      _SettingsField(
+        key: 'workingDays',
+        label: 'Working days',
+        icon: Icons.date_range_outlined,
+      ),
+      _SettingsField(
+        key: 'holidayConfiguration',
+        label: 'Holiday configuration',
+        icon: Icons.event_busy_outlined,
+      ),
     ],
   ),
   _SettingsGroup(
@@ -370,10 +414,29 @@ const _groups = [
     tabLabel: 'Exams',
     icon: Icons.assignment_outlined,
     fields: [
-      _SettingsField(key: 'defaultPassingPercentage', label: 'Default passing percentage', icon: Icons.percent_outlined, kind: _FieldKind.number),
-      _SettingsField(key: 'gradeScale', label: 'Grade scale', icon: Icons.grading_outlined),
-      _SettingsField(key: 'publishResultsAutomatically', label: 'Publish results automatically', icon: Icons.publish_outlined, kind: _FieldKind.boolean),
-      _SettingsField(key: 'allowMarksEditingAfterPublish', label: 'Allow marks editing after publish', icon: Icons.edit_note_outlined, kind: _FieldKind.boolean),
+      _SettingsField(
+        key: 'defaultPassingPercentage',
+        label: 'Default passing percentage',
+        icon: Icons.percent_outlined,
+        kind: _FieldKind.number,
+      ),
+      _SettingsField(
+        key: 'gradeScale',
+        label: 'Grade scale',
+        icon: Icons.grading_outlined,
+      ),
+      _SettingsField(
+        key: 'publishResultsAutomatically',
+        label: 'Publish results automatically',
+        icon: Icons.publish_outlined,
+        kind: _FieldKind.boolean,
+      ),
+      _SettingsField(
+        key: 'allowMarksEditingAfterPublish',
+        label: 'Allow marks editing after publish',
+        icon: Icons.edit_note_outlined,
+        kind: _FieldKind.boolean,
+      ),
     ],
   ),
   _SettingsGroup(
@@ -382,11 +445,36 @@ const _groups = [
     tabLabel: 'Grades',
     icon: Icons.grade_outlined,
     fields: [
-      _SettingsField(key: 'aPlusMinimum', label: 'A+ minimum', icon: Icons.star_outline, kind: _FieldKind.number),
-      _SettingsField(key: 'aMinimum', label: 'A minimum', icon: Icons.star_half_outlined, kind: _FieldKind.number),
-      _SettingsField(key: 'bMinimum', label: 'B minimum', icon: Icons.workspace_premium_outlined, kind: _FieldKind.number),
-      _SettingsField(key: 'cMinimum', label: 'C minimum', icon: Icons.trending_up_outlined, kind: _FieldKind.number),
-      _SettingsField(key: 'dMinimum', label: 'D minimum', icon: Icons.low_priority_outlined, kind: _FieldKind.number),
+      _SettingsField(
+        key: 'aPlusMinimum',
+        label: 'A+ minimum',
+        icon: Icons.star_outline,
+        kind: _FieldKind.number,
+      ),
+      _SettingsField(
+        key: 'aMinimum',
+        label: 'A minimum',
+        icon: Icons.star_half_outlined,
+        kind: _FieldKind.number,
+      ),
+      _SettingsField(
+        key: 'bMinimum',
+        label: 'B minimum',
+        icon: Icons.workspace_premium_outlined,
+        kind: _FieldKind.number,
+      ),
+      _SettingsField(
+        key: 'cMinimum',
+        label: 'C minimum',
+        icon: Icons.trending_up_outlined,
+        kind: _FieldKind.number,
+      ),
+      _SettingsField(
+        key: 'dMinimum',
+        label: 'D minimum',
+        icon: Icons.low_priority_outlined,
+        kind: _FieldKind.number,
+      ),
     ],
   ),
   _SettingsGroup(
@@ -395,11 +483,33 @@ const _groups = [
     tabLabel: 'Fees',
     icon: Icons.payments_outlined,
     fields: [
-      _SettingsField(key: 'receiptPrefix', label: 'Receipt prefix', icon: Icons.receipt_outlined),
-      _SettingsField(key: 'receiptNumberFormat', label: 'Receipt number format', icon: Icons.format_list_numbered_outlined),
-      _SettingsField(key: 'lateFeeDefaultAmount', label: 'Late fee default', icon: Icons.warning_amber_outlined, kind: _FieldKind.number),
-      _SettingsField(key: 'paymentModesEnabled', label: 'Payment modes enabled', icon: Icons.account_balance_wallet_outlined),
-      _SettingsField(key: 'onlinePaymentEnabled', label: 'Online payment enabled', icon: Icons.public_outlined, kind: _FieldKind.boolean),
+      _SettingsField(
+        key: 'receiptPrefix',
+        label: 'Receipt prefix',
+        icon: Icons.receipt_outlined,
+      ),
+      _SettingsField(
+        key: 'receiptNumberFormat',
+        label: 'Receipt number format',
+        icon: Icons.format_list_numbered_outlined,
+      ),
+      _SettingsField(
+        key: 'lateFeeDefaultAmount',
+        label: 'Late fee default',
+        icon: Icons.warning_amber_outlined,
+        kind: _FieldKind.number,
+      ),
+      _SettingsField(
+        key: 'paymentModesEnabled',
+        label: 'Payment modes enabled',
+        icon: Icons.account_balance_wallet_outlined,
+      ),
+      _SettingsField(
+        key: 'onlinePaymentEnabled',
+        label: 'Online payment enabled',
+        icon: Icons.public_outlined,
+        kind: _FieldKind.boolean,
+      ),
     ],
   ),
   _SettingsGroup(
@@ -408,11 +518,36 @@ const _groups = [
     tabLabel: 'Notifications',
     icon: Icons.notifications_active_outlined,
     fields: [
-      _SettingsField(key: 'emailEnabled', label: 'Email enabled', icon: Icons.email_outlined, kind: _FieldKind.boolean),
-      _SettingsField(key: 'smsEnabled', label: 'SMS enabled', icon: Icons.sms_outlined, kind: _FieldKind.boolean),
-      _SettingsField(key: 'whatsAppEnabled', label: 'WhatsApp enabled', icon: Icons.chat_outlined, kind: _FieldKind.boolean),
-      _SettingsField(key: 'reminderDaysBeforeDueDate', label: 'Reminder days before due date', icon: Icons.alarm_outlined, kind: _FieldKind.number),
-      _SettingsField(key: 'schedulerEnabled', label: 'Scheduler enabled', icon: Icons.update_outlined, kind: _FieldKind.boolean),
+      _SettingsField(
+        key: 'emailEnabled',
+        label: 'Email enabled',
+        icon: Icons.email_outlined,
+        kind: _FieldKind.boolean,
+      ),
+      _SettingsField(
+        key: 'smsEnabled',
+        label: 'SMS enabled',
+        icon: Icons.sms_outlined,
+        kind: _FieldKind.boolean,
+      ),
+      _SettingsField(
+        key: 'whatsAppEnabled',
+        label: 'WhatsApp enabled',
+        icon: Icons.chat_outlined,
+        kind: _FieldKind.boolean,
+      ),
+      _SettingsField(
+        key: 'reminderDaysBeforeDueDate',
+        label: 'Reminder days before due date',
+        icon: Icons.alarm_outlined,
+        kind: _FieldKind.number,
+      ),
+      _SettingsField(
+        key: 'schedulerEnabled',
+        label: 'Scheduler enabled',
+        icon: Icons.update_outlined,
+        kind: _FieldKind.boolean,
+      ),
     ],
   ),
   _SettingsGroup(
@@ -421,11 +556,33 @@ const _groups = [
     tabLabel: 'Email',
     icon: Icons.mark_email_read_outlined,
     fields: [
-      _SettingsField(key: 'smtpHost', label: 'SMTP host', icon: Icons.dns_outlined),
-      _SettingsField(key: 'smtpPort', label: 'SMTP port', icon: Icons.numbers_outlined, kind: _FieldKind.number),
-      _SettingsField(key: 'smtpUsername', label: 'SMTP username', icon: Icons.account_circle_outlined),
-      _SettingsField(key: 'smtpPassword', label: 'SMTP password', icon: Icons.password_outlined, sensitive: true),
-      _SettingsField(key: 'fromAddress', label: 'From address', icon: Icons.alternate_email_outlined),
+      _SettingsField(
+        key: 'smtpHost',
+        label: 'SMTP host',
+        icon: Icons.dns_outlined,
+      ),
+      _SettingsField(
+        key: 'smtpPort',
+        label: 'SMTP port',
+        icon: Icons.numbers_outlined,
+        kind: _FieldKind.number,
+      ),
+      _SettingsField(
+        key: 'smtpUsername',
+        label: 'SMTP username',
+        icon: Icons.account_circle_outlined,
+      ),
+      _SettingsField(
+        key: 'smtpPassword',
+        label: 'SMTP password',
+        icon: Icons.password_outlined,
+        sensitive: true,
+      ),
+      _SettingsField(
+        key: 'fromAddress',
+        label: 'From address',
+        icon: Icons.alternate_email_outlined,
+      ),
     ],
   ),
   _SettingsGroup(
@@ -434,11 +591,33 @@ const _groups = [
     tabLabel: 'SMS',
     icon: Icons.sms_outlined,
     fields: [
-      _SettingsField(key: 'provider', label: 'Provider', icon: Icons.hub_outlined),
-      _SettingsField(key: 'senderId', label: 'Sender ID', icon: Icons.badge_outlined),
-      _SettingsField(key: 'apiKey', label: 'API key', icon: Icons.key_outlined, sensitive: true),
-      _SettingsField(key: 'apiSecret', label: 'API secret', icon: Icons.lock_outline, sensitive: true),
-      _SettingsField(key: 'defaultCountryCode', label: 'Default country code', icon: Icons.flag_outlined),
+      _SettingsField(
+        key: 'provider',
+        label: 'Provider',
+        icon: Icons.hub_outlined,
+      ),
+      _SettingsField(
+        key: 'senderId',
+        label: 'Sender ID',
+        icon: Icons.badge_outlined,
+      ),
+      _SettingsField(
+        key: 'apiKey',
+        label: 'API key',
+        icon: Icons.key_outlined,
+        sensitive: true,
+      ),
+      _SettingsField(
+        key: 'apiSecret',
+        label: 'API secret',
+        icon: Icons.lock_outline,
+        sensitive: true,
+      ),
+      _SettingsField(
+        key: 'defaultCountryCode',
+        label: 'Default country code',
+        icon: Icons.flag_outlined,
+      ),
     ],
   ),
   _SettingsGroup(
@@ -447,11 +626,35 @@ const _groups = [
     tabLabel: 'Application',
     icon: Icons.settings_outlined,
     fields: [
-      _SettingsField(key: 'timezone', label: 'Timezone', icon: Icons.public_outlined),
-      _SettingsField(key: 'dateFormat', label: 'Date format', icon: Icons.date_range_outlined, options: ['yyyy-MM-dd', 'dd-MM-yyyy', 'MM/dd/yyyy']),
-      _SettingsField(key: 'language', label: 'Language', icon: Icons.language_outlined, options: ['en', 'hi']),
-      _SettingsField(key: 'themePreference', label: 'Theme preference', icon: Icons.contrast_outlined, options: ['system', 'light', 'dark']),
-      _SettingsField(key: 'maintenanceMode', label: 'Maintenance mode', icon: Icons.construction_outlined, kind: _FieldKind.boolean),
+      _SettingsField(
+        key: 'timezone',
+        label: 'Timezone',
+        icon: Icons.public_outlined,
+      ),
+      _SettingsField(
+        key: 'dateFormat',
+        label: 'Date format',
+        icon: Icons.date_range_outlined,
+        options: ['yyyy-MM-dd', 'dd-MM-yyyy', 'MM/dd/yyyy'],
+      ),
+      _SettingsField(
+        key: 'language',
+        label: 'Language',
+        icon: Icons.language_outlined,
+        options: ['en', 'hi'],
+      ),
+      _SettingsField(
+        key: 'themePreference',
+        label: 'Theme preference',
+        icon: Icons.contrast_outlined,
+        options: ['system', 'light', 'dark'],
+      ),
+      _SettingsField(
+        key: 'maintenanceMode',
+        label: 'Maintenance mode',
+        icon: Icons.construction_outlined,
+        kind: _FieldKind.boolean,
+      ),
     ],
   ),
   _SettingsGroup(
@@ -460,10 +663,30 @@ const _groups = [
     tabLabel: 'Security',
     icon: Icons.security_outlined,
     fields: [
-      _SettingsField(key: 'passwordExpiryDays', label: 'Password expiry days', icon: Icons.password_outlined, kind: _FieldKind.number),
-      _SettingsField(key: 'maxFailedLoginAttempts', label: 'Max failed login attempts', icon: Icons.report_gmailerrorred_outlined, kind: _FieldKind.number),
-      _SettingsField(key: 'sessionTimeoutMinutes', label: 'Session timeout minutes', icon: Icons.timer_outlined, kind: _FieldKind.number),
-      _SettingsField(key: 'requireTwoFactorAuth', label: 'Require two factor auth', icon: Icons.verified_user_outlined, kind: _FieldKind.boolean),
+      _SettingsField(
+        key: 'passwordExpiryDays',
+        label: 'Password expiry days',
+        icon: Icons.password_outlined,
+        kind: _FieldKind.number,
+      ),
+      _SettingsField(
+        key: 'maxFailedLoginAttempts',
+        label: 'Max failed login attempts',
+        icon: Icons.report_gmailerrorred_outlined,
+        kind: _FieldKind.number,
+      ),
+      _SettingsField(
+        key: 'sessionTimeoutMinutes',
+        label: 'Session timeout minutes',
+        icon: Icons.timer_outlined,
+        kind: _FieldKind.number,
+      ),
+      _SettingsField(
+        key: 'requireTwoFactorAuth',
+        label: 'Require two factor auth',
+        icon: Icons.verified_user_outlined,
+        kind: _FieldKind.boolean,
+      ),
     ],
   ),
   _SettingsGroup(
@@ -472,10 +695,29 @@ const _groups = [
     tabLabel: 'Backup',
     icon: Icons.backup_outlined,
     fields: [
-      _SettingsField(key: 'backupEnabled', label: 'Backup enabled', icon: Icons.cloud_sync_outlined, kind: _FieldKind.boolean),
-      _SettingsField(key: 'backupFrequency', label: 'Backup frequency', icon: Icons.schedule_outlined, options: ['DAILY', 'WEEKLY', 'MONTHLY']),
-      _SettingsField(key: 'backupRetentionDays', label: 'Backup retention days', icon: Icons.history_outlined, kind: _FieldKind.number),
-      _SettingsField(key: 'backupLocation', label: 'Backup location', icon: Icons.folder_outlined),
+      _SettingsField(
+        key: 'backupEnabled',
+        label: 'Backup enabled',
+        icon: Icons.cloud_sync_outlined,
+        kind: _FieldKind.boolean,
+      ),
+      _SettingsField(
+        key: 'backupFrequency',
+        label: 'Backup frequency',
+        icon: Icons.schedule_outlined,
+        options: ['DAILY', 'WEEKLY', 'MONTHLY'],
+      ),
+      _SettingsField(
+        key: 'backupRetentionDays',
+        label: 'Backup retention days',
+        icon: Icons.history_outlined,
+        kind: _FieldKind.number,
+      ),
+      _SettingsField(
+        key: 'backupLocation',
+        label: 'Backup location',
+        icon: Icons.folder_outlined,
+      ),
     ],
   ),
 ];

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
+import '../../../../core/formatters/app_formatters.dart';
 import '../../../../core/network/page_payload.dart';
 import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_confirm_dialog.dart';
@@ -2468,17 +2469,7 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (status.toUpperCase()) {
-      'ACTIVE' ||
-      'AVAILABLE' ||
-      'RETURNED' ||
-      'PAID' => const Color(0xFF16A34A),
-      'ISSUED' || 'PENDING' => const Color(0xFFF59E0B),
-      'LOST' || 'DAMAGED' || 'OVERDUE' => const Color(0xFFDC2626),
-      'INACTIVE' || 'WITHDRAWN' || 'WAIVED' => const Color(0xFF64748B),
-      _ => const Color(0xFF0891B2),
-    };
-    return AppStatusBadge(label: _display(status), color: color);
+    return AppStatusBadge.status(status);
   }
 }
 
@@ -2849,7 +2840,7 @@ String _intLabel(int value) {
 }
 
 String _money(double value) {
-  return 'Rs ${value.toStringAsFixed(2)}';
+  return AppFormatters.money(value);
 }
 
 String _message(Object error) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_design_system.dart';
+import 'app_page_layout.dart';
 
 class AppTableColumn<T> {
   const AppTableColumn({
@@ -19,26 +20,40 @@ class AppDataTable<T> extends StatelessWidget {
     required this.items,
     required this.columns,
     this.onRowTap,
+    this.emptyMessage = 'No records found.',
+    this.emptyIcon = Icons.inbox_outlined,
+    this.minWidth,
     super.key,
   });
 
   final List<T> items;
   final List<AppTableColumn<T>> columns;
   final ValueChanged<T>? onRowTap;
+  final String emptyMessage;
+  final IconData emptyIcon;
+  final double? minWidth;
 
   @override
   Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return AppEmptyState(
+        message: emptyMessage,
+        icon: emptyIcon,
+        compact: true,
+      );
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
+        final tableMinWidth = minWidth ?? constraints.maxWidth;
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: ClipRRect(
             borderRadius: AppDesignTokens.borderRadius,
             child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              constraints: BoxConstraints(minWidth: tableMinWidth),
               child: DataTable(
                 showCheckboxColumn: false,
-                columnSpacing: 28,
+                columnSpacing: constraints.maxWidth < 760 ? 18 : 28,
                 headingRowHeight: 44,
                 dataRowMinHeight: 54,
                 dataRowMaxHeight: 68,

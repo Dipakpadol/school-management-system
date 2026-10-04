@@ -72,26 +72,27 @@ final feeAssignmentsProvider =
     });
 
 final feeAssignmentsPageProvider =
-    FutureProvider.family<PagePayload<StudentFeeAssignmentModel>, FeeListFilter>(
-      (ref, filter) {
-        return _resolve(
-          ref
-              .watch(feesRepositoryProvider)
-              .assignmentsPage(
-                academicYearId: filter.academicYearId,
-                classId: filter.classId,
-                sectionId: filter.sectionId,
-                feeCategoryId: filter.feeCategoryId,
-                feeStructureId: filter.feeStructureId,
-                sourceType: filter.sourceType,
-                status: filter.status,
-                query: filter.query,
-                page: filter.page,
-                size: filter.size,
-              ),
-        );
-      },
-    );
+    FutureProvider.family<
+      PagePayload<StudentFeeAssignmentModel>,
+      FeeListFilter
+    >((ref, filter) {
+      return _resolve(
+        ref
+            .watch(feesRepositoryProvider)
+            .assignmentsPage(
+              academicYearId: filter.academicYearId,
+              classId: filter.classId,
+              sectionId: filter.sectionId,
+              feeCategoryId: filter.feeCategoryId,
+              feeStructureId: filter.feeStructureId,
+              sourceType: filter.sourceType,
+              status: filter.status,
+              query: filter.query,
+              page: filter.page,
+              size: filter.size,
+            ),
+      );
+    });
 
 final feeAssignmentProvider =
     FutureProvider.family<StudentFeeAssignmentModel, String>((
@@ -162,10 +163,7 @@ final classFeeStudentsProvider =
       return _resolve(
         ref
             .watch(feesRepositoryProvider)
-            .classStudents(
-              key.classId,
-              academicYearId: key.academicYearId,
-            ),
+            .classStudents(key.classId, academicYearId: key.academicYearId),
       );
     });
 
@@ -251,13 +249,7 @@ class FeeStructureFilter {
   }
 
   @override
-  int get hashCode => Object.hash(
-    academicYearId,
-    classId,
-    status,
-    page,
-    size,
-  );
+  int get hashCode => Object.hash(academicYearId, classId, status, page, size);
 }
 
 class FeeListFilter {
@@ -398,15 +390,14 @@ class FeeDefaulterFilter {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(
-        academicYearId,
-        classId,
-        sectionId,
-        sourceType,
-        asOf,
-        query,
-        page,
-        size,
-      );
+  int get hashCode => Object.hash(
+    academicYearId,
+    classId,
+    sectionId,
+    sourceType,
+    asOf,
+    query,
+    page,
+    size,
+  );
 }

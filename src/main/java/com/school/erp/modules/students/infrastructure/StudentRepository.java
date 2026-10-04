@@ -19,6 +19,8 @@ public interface StudentRepository extends BaseRepository<Student, UUID>, JpaSpe
 
 	Optional<Student> findByAdmissionNumberIgnoreCaseAndDeletedFalse(String admissionNumber);
 
+	Optional<Student> findByUserAccountIdAndDeletedFalse(UUID userAccountId);
+
 	@Query("""
 			select count(assignment) > 0
 			from StudentClassAssignment assignment

@@ -2104,9 +2104,8 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = label == 'ACTIVE' || label == 'PAID';
-    return AppStatusBadge(
-      label: label,
-      color: active ? const Color(0xFF16A34A) : const Color(0xFFF59E0B),
+    return AppStatusBadge.status(
+      label,
       icon: active ? Icons.check_circle_outline : Icons.schedule_outlined,
     );
   }

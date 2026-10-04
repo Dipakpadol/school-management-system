@@ -80,6 +80,14 @@ app:
       access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:60m}
       refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:7d}
       password-reset-token-ttl: ${JWT_PASSWORD_RESET_TOKEN_TTL:30m}
+  backup:
+    storage-path: ${APP_BACKUP_STORAGE_PATH:./var/backups}
+    pg-dump-path: ${APP_BACKUP_PG_DUMP_PATH:pg_dump}
+    pg-restore-path: ${APP_BACKUP_PG_RESTORE_PATH:pg_restore}
+    process-timeout: ${APP_BACKUP_PROCESS_TIMEOUT:10m}
+    retention-days: ${APP_BACKUP_RETENTION_DAYS:30}
+    retain-last: ${APP_BACKUP_RETAIN_LAST:10}
+    scheduler-cron: "${APP_BACKUP_SCHEDULER_CRON:0 0 * * * *}"
 
 school:
   public-site:

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
+import '../../../../core/theme/app_design_system.dart';
 import '../../../../core/widgets/admin_shell.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_confirm_dialog.dart';
@@ -280,10 +281,7 @@ class _RoleCard extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      AppStatusBadge(
-                        label: _statusLabel(role.status),
-                        color: _statusColor(role.status),
-                      ),
+                      AppStatusBadge.status(role.status),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -654,7 +652,10 @@ Future<void> _showRoleDetails(BuildContext context, RoleModel role) {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _DetailRow(label: 'Role name', value: role.name),
-                _DetailRow(label: 'Status', value: _statusLabel(role.status)),
+                _DetailRow(
+                  label: 'Status',
+                  value: AppDesignTokens.statusLabel(role.status),
+                ),
                 _DetailRow(
                   label: 'Protected',
                   value: role.systemRole ? 'Yes' : 'No',
@@ -946,10 +947,7 @@ class _PermissionManagementList extends ConsumerWidget {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              AppStatusBadge(
-                                label: _statusLabel(permission.status),
-                                color: _statusColor(permission.status),
-                              ),
+                              AppStatusBadge.status(permission.status),
                             ],
                           ),
                           const SizedBox(height: 4),
@@ -1174,14 +1172,6 @@ Future<void> _deletePermission(
 
 String _message(Object error) {
   return error.toString().replaceFirst('Exception: ', '');
-}
-
-String _statusLabel(String status) {
-  return status == 'ACTIVE' ? 'Active' : 'Inactive';
-}
-
-Color _statusColor(String status) {
-  return status == 'ACTIVE' ? const Color(0xFF16A34A) : const Color(0xFF64748B);
 }
 
 String? _required(String? value) {

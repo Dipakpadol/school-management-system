@@ -1025,11 +1025,11 @@ public class FeeService {
 						request.academicYearId(),
 						request.classId(),
 						request.sectionId(),
-						blankToNull(request.academicYear()),
-						blankToNull(request.className()),
-						blankToNull(request.sectionName()),
+						lowerToNull(request.academicYear()),
+						lowerToNull(request.className()),
+						lowerToNull(request.sectionName()),
 						request.sourceType(),
-						blankToNull(request.studentName()),
+						containsLowerOrNull(request.studentName()),
 						minimumBalance,
 						FeeAssignmentStatus.PAID,
 						FeeAssignmentStatus.CANCELLED,
@@ -1042,9 +1042,9 @@ public class FeeService {
 	@Transactional(readOnly = true)
 	public FeeReportSummaryResponse summarizeFees(FeeReportRequest request) {
 		return feeMapper.toReportSummary(assignmentRepository.summarize(
-				blankToNull(request.academicYear()),
-				blankToNull(request.className()),
-				blankToNull(request.sectionName()),
+				lowerToNull(request.academicYear()),
+				lowerToNull(request.className()),
+				lowerToNull(request.sectionName()),
 				request.status(),
 				FeeAssignmentStatus.CANCELLED));
 	}
@@ -1353,6 +1353,16 @@ public class FeeService {
 
 	private String blankToNull(String value) {
 		return StringUtils.hasText(value) ? value.trim() : null;
+	}
+
+	private String lowerToNull(String value) {
+		String normalized = blankToNull(value);
+		return normalized == null ? null : normalized.toLowerCase(Locale.ROOT);
+	}
+
+	private String containsLowerOrNull(String value) {
+		String normalized = lowerToNull(value);
+		return normalized == null ? null : "%" + normalized + "%";
 	}
 
 	private String firstText(String primary, String fallback) {

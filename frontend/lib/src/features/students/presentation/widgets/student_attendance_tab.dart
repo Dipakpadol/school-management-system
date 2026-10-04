@@ -348,15 +348,7 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final normalized = status.toUpperCase();
-    final color = switch (normalized) {
-      'PRESENT' => const Color(0xFF16A34A),
-      'LATE' || 'HALF_DAY' => const Color(0xFFF59E0B),
-      'ABSENT' => const Color(0xFFDC2626),
-      'LEAVE' || 'EXCUSED' => const Color(0xFF64748B),
-      _ => const Color(0xFF0891B2),
-    };
-    return AppStatusBadge(label: status.replaceAll('_', ' '), color: color);
+    return AppStatusBadge.status(status);
   }
 }
 

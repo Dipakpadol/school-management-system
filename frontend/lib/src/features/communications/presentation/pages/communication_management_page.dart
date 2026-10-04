@@ -705,14 +705,7 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final normalized = status.toUpperCase();
-    final color = switch (normalized) {
-      'PUBLISHED' => const Color(0xFF16A34A),
-      'DRAFT' => const Color(0xFFF59E0B),
-      'ARCHIVED' => const Color(0xFF64748B),
-      _ => const Color(0xFF0891B2),
-    };
-    return AppStatusBadge(label: _display(status), color: color);
+    return AppStatusBadge.status(status);
   }
 }
 

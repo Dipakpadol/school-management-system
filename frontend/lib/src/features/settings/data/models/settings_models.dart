@@ -8,7 +8,8 @@ class ApplicationSettingsModel {
       rawGroups.forEach((group, value) {
         if (value is Map<String, dynamic>) {
           groups[group] = value.map(
-            (key, settingValue) => MapEntry(key, settingValue?.toString() ?? ''),
+            (key, settingValue) =>
+                MapEntry(key, settingValue?.toString() ?? ''),
           );
         }
       });

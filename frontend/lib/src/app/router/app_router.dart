@@ -9,6 +9,7 @@ import '../../features/auth/presentation/pages/reset_password_page.dart';
 import '../../features/auth/presentation/pages/signup_page.dart';
 import '../../features/audit_logs/presentation/pages/audit_logs_page.dart';
 import '../../features/attendance/presentation/pages/attendance_page.dart';
+import '../../features/backup/presentation/pages/backup_management_page.dart';
 import '../../features/communications/presentation/pages/communication_management_page.dart';
 import '../../features/dashboard/domain/menu_policy.dart';
 import '../../features/dashboard/presentation/dashboard_page.dart';
@@ -23,6 +24,7 @@ import '../../features/exams/presentation/pages/exams_page.dart';
 import '../../features/hostel/presentation/pages/hostel_management_page.dart';
 import '../../features/library/presentation/pages/library_management_page.dart';
 import '../../features/notifications/presentation/pages/notification_management_page.dart';
+import '../../features/portal/presentation/pages/portal_pages.dart';
 import '../../features/reports/presentation/pages/reports_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/staff/presentation/pages/staff_management_page.dart';
@@ -74,8 +76,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ? null
             : AppRoutes.login;
       }
+      final roleHome = portalHomeForUser(authState.user);
       if (onPublicAuthRoute) {
-        return AppRoutes.dashboard;
+        return roleHome;
+      }
+      if (state.matchedLocation == AppRoutes.dashboard &&
+          roleHome != AppRoutes.dashboard) {
+        return roleHome;
       }
       if (onPublicWebsiteRoute) {
         return null;
@@ -83,7 +90,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final guardedModuleId = moduleIdForPath(state.uri.path);
       if (guardedModuleId != null &&
           !canAccessModule(authState.user, guardedModuleId)) {
-        return AppRoutes.dashboard;
+        return roleHome;
       }
       return null;
     },
@@ -239,6 +246,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.library,
         name: AppRouteName.library,
         builder: (context, state) => const LibraryManagementPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.backup,
+        name: AppRouteName.backup,
+        builder: (context, state) => const BackupManagementPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.studentPortal,
+        name: AppRouteName.studentPortal,
+        builder: (context, state) => const StudentPortalPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.parentPortal,
+        name: AppRouteName.parentPortal,
+        builder: (context, state) => const ParentPortalPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.teacherPortal,
+        name: AppRouteName.teacherPortal,
+        builder: (context, state) => const TeacherPortalPage(),
       ),
       GoRoute(
         path: AppRoutes.users,
